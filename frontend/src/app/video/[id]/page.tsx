@@ -21,8 +21,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
   const { data: video, isLoading, refetch } = useQuery({
     queryKey: ["video", params.id],
     queryFn: () => getVideo(params.id),
-    refetchInterval: (data) =>
-      data?.status && ["ready", "error"].includes(data.status) ? false : 5000,
+    refetchInterval: (query) =>
+      query.state.data?.status && ["ready", "error"].includes(query.state.data.status) ? false : 5000,
     retry: 2,
   });
 
