@@ -1,0 +1,235 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --volt: #c8ff00;
+  --volt-dim: #9dc700;
+  --volt-glow: rgba(200, 255, 0, 0.15);
+  --volt-glow-strong: rgba(200, 255, 0, 0.35);
+  --dark-950: #060608;
+  --dark-900: #0c0d10;
+  --dark-800: #111318;
+  --dark-700: #181b22;
+  --dark-600: #1f232c;
+  --dark-500: #2a2f3a;
+  --glass: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--dark-950);
+  color: #fff;
+  font-family: var(--font-dm-sans), sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--dark-900); }
+::-webkit-scrollbar-thumb { background: var(--dark-500); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--volt-dim); }
+
+/* ─── Selection ─────────────────────────────────────────── */
+::selection { background: var(--volt); color: #000; }
+
+/* ─── Glass morphism card ───────────────────────────────── */
+.glass-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-card-hover {
+  @apply glass-card transition-all duration-300;
+}
+
+.glass-card-hover:hover {
+  border-color: rgba(200, 255, 0, 0.2);
+  background: rgba(200, 255, 0, 0.04);
+  box-shadow: 0 0 30px rgba(200, 255, 0, 0.08);
+}
+
+/* ─── Volt accent elements ──────────────────────────────── */
+.volt-glow {
+  box-shadow: 0 0 20px var(--volt-glow), 0 0 60px var(--volt-glow);
+}
+
+.volt-text-glow {
+  text-shadow: 0 0 20px var(--volt-glow-strong);
+}
+
+.volt-border {
+  border-color: var(--volt);
+  box-shadow: 0 0 0 1px var(--volt), 0 0 20px var(--volt-glow);
+}
+
+/* ─── Shimmer loading ───────────────────────────────────── */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--dark-800) 0%,
+    var(--dark-600) 50%,
+    var(--dark-800) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ─── Noise texture overlay ─────────────────────────────── */
+.noise-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+/* ─── Animated gradient mesh ────────────────────────────── */
+.gradient-mesh {
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 0%, rgba(200,255,0,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 80% 100%, rgba(200,255,0,0.04) 0%, transparent 70%),
+    var(--dark-950);
+}
+
+/* ─── Status indicator pulse ────────────────────────────── */
+.status-pulse {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ─── Progress bar ──────────────────────────────────────── */
+.progress-bar {
+  background: linear-gradient(90deg, var(--volt), var(--volt-dim));
+  box-shadow: 0 0 10px var(--volt-glow);
+}
+
+/* ─── Video player custom styles ────────────────────────── */
+video::-webkit-media-controls-panel {
+  background: var(--dark-800);
+}
+
+/* ─── Timeline marker ───────────────────────────────────── */
+.timeline-marker {
+  background: var(--volt);
+  box-shadow: 0 0 8px var(--volt-glow-strong);
+}
+
+/* ─── Chat bubble ───────────────────────────────────────── */
+.chat-bubble-user {
+  background: linear-gradient(135deg, rgba(200,255,0,0.15), rgba(200,255,0,0.05));
+  border: 1px solid rgba(200,255,0,0.2);
+}
+
+.chat-bubble-ai {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+}
+
+/* ─── Upload zone ───────────────────────────────────────── */
+.upload-zone-active {
+  border-color: var(--volt) !important;
+  background: rgba(200,255,0,0.04) !important;
+  box-shadow: 0 0 40px rgba(200,255,0,0.1), inset 0 0 40px rgba(200,255,0,0.05);
+}
+
+/* ─── Scan line animation ───────────────────────────────── */
+.scan-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--volt), transparent);
+  animation: scan-line 4s linear infinite;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+@keyframes scan-line {
+  0% { top: 0%; }
+  100% { top: 100%; }
+}
+
+/* ─── Typewriter cursor ─────────────────────────────────── */
+.typewriter::after {
+  content: "|";
+  color: var(--volt);
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ─── Chapter timeline ──────────────────────────────────── */
+.chapter-line {
+  background: linear-gradient(90deg, var(--volt), transparent);
+}
+
+/* ─── Mobile safe areas ─────────────────────────────────── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* ─── Hide scrollbar (stats bar) ───────────────────────── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ─── Touch target minimum ──────────────────────────────── */
+@media (pointer: coarse) {
+  button, a { min-height: 44px; }
+  .no-min-h { min-height: unset; }
+}
+
+/* ─── Submission polish: volt border glow on focus ──────── */
+input:focus, textarea:focus {
+  outline: none;
+}
+
+/* ─── Smooth page transitions ───────────────────────────── */
+main {
+  animation: page-in 0.25s ease-out;
+}
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Card hover lift ───────────────────────────────────── */
+.glass-card-hover:hover {
+  transform: translateY(-2px);
+}
+
+/* ─── Mobile drawer handle ──────────────────────────────── */
+.drawer-handle {
+  width: 40px;
+  height: 4px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+  margin: 0 auto;
+}

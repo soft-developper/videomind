@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Environment files — never commit these
+.env
+.env.local
+
+
+# Build outputs
+dist/
+.next/
+out/
+
+# Uploads temp folder
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Turso local dev db (if any)
+*.db
+*.db-shm
+*.db-wal
