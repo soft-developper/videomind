@@ -6,14 +6,14 @@ import { useState, useRef, useEffect } from "react";
 import { clsx } from "clsx";
 
 export function WalletButton() {
-  const { connect, disconnect, connected, account, wallets = [] } = useWallet();
-  const [connecting, setConnecting] = useState(false);
+  // In wallet-adapter-react v7, connect() returns void — no Promise.
+  // We track connecting state manually via isLoading from the context.
+  const { connect, disconnect, connected, isLoading, account, wallets = [] } = useWallet();
   const [showMenu, setShowMenu] = useState(false);
   const [showWallets, setShowWallets] = useState(false);
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menus on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -24,6 +24,11 @@ export function WalletButton() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // Close wallet picker once connected
+  useEffect(() => {
+    if (connected) setShowWallets(false);
+  }, [connected]);
 
   function copyAddress() {
     if (!account?.address) return;
@@ -36,8 +41,8 @@ export function WalletButton() {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   }
 
-  // ── Connecting state ──────────────────────────────────────────────────
-  if (connecting) {
+  // ── Connecting / loading state ─────────────────────────────────────────
+  if (isLoading) {
     return (
       <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-700 border border-white/10">
         <Loader2 size={13} className="text-volt animate-spin" />
@@ -54,7 +59,6 @@ export function WalletButton() {
           onClick={() => setShowMenu((v) => !v)}
           className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-volt/20 bg-volt/5 hover:bg-volt/10 transition-all"
         >
-          {/* Green dot */}
           <div className="w-2 h-2 rounded-full bg-volt status-pulse" />
           <span className="font-mono text-xs text-volt">
             {short(account.address.toString())}
@@ -67,7 +71,6 @@ export function WalletButton() {
 
         {showMenu && (
           <div className="absolute right-0 top-full mt-2 w-56 glass-card rounded-xl overflow-hidden z-50 shadow-xl shadow-black/40">
-            {/* Address row */}
             <div className="px-4 py-3 border-b border-white/[0.06]">
               <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest mb-1">
                 Connected wallet
@@ -77,7 +80,6 @@ export function WalletButton() {
               </p>
             </div>
 
-            {/* Copy */}
             <button
               onClick={copyAddress}
               className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/60 hover:text-white hover:bg-white/[0.04] transition-all"
@@ -88,7 +90,6 @@ export function WalletButton() {
               {copied ? "Copied!" : "Copy address"}
             </button>
 
-            {/* Disconnect */}
             <button
               onClick={() => { disconnect(); setShowMenu(false); }}
               className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400/70 hover:text-red-400 hover:bg-red-500/[0.06] transition-all border-t border-white/[0.06]"
@@ -147,7 +148,11 @@ export function WalletButton() {
           {wallets.map((wallet) => (
             <button
               key={wallet.name}
-              onClick={() => { setConnecting(true); connect(wallet.name).finally(() => setConnecting(false)); setShowWallets(false); }}
+              onClick={() => {
+                // v7: connect() returns void, not a Promise
+                connect(wallet.name);
+                setShowWallets(false);
+              }}
               className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/[0.04] transition-all"
             >
               {wallet.icon && (
