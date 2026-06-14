@@ -6,7 +6,8 @@ import { useState, useRef, useEffect } from "react";
 import { clsx } from "clsx";
 
 export function WalletButton() {
-  const { connect, disconnect, connected, connecting, account, wallets = [] } = useWallet();
+  const { connect, disconnect, connected, account, wallets = [] } = useWallet();
+  const [connecting, setConnecting] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showWallets, setShowWallets] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -146,7 +147,7 @@ export function WalletButton() {
           {wallets.map((wallet) => (
             <button
               key={wallet.name}
-              onClick={() => { connect(wallet.name); setShowWallets(false); }}
+              onClick={() => { setConnecting(true); connect(wallet.name).finally(() => setConnecting(false)); setShowWallets(false); }}
               className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/[0.04] transition-all"
             >
               {wallet.icon && (
