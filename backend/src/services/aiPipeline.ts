@@ -22,7 +22,13 @@ export async function transcribeVideo(videoFilePath: string): Promise<Transcript
   // filename extension to detect format — without it you get a 400 error.
   const buffer = await fileToBuffer(videoFilePath);
   const fileName = path.basename(videoFilePath); // e.g. "abc123.mp4"
-  const file = new File([buffer], fileName);
+  // Copy Buffer into a fresh ArrayBuffer (not SharedArrayBuffer) so TypeScript
+  // accepts it as BlobPart. Buffer.buffer is ArrayBufferLike which is too broad.
+  const arrayBuffer = buffer.buffer.slice(
+    buffer.byteOffset,
+    buffer.byteOffset + buffer.byteLength
+  ) as ArrayBuffer;
+  const file = new File([arrayBuffer], fileName);
 
   const response = await openai.audio.transcriptions.create({
     file,

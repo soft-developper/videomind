@@ -1,10 +1,8 @@
 // src/lib/shelbyClient.ts
-// Shelby Testnet integration using official SDK
 import { ShelbyNodeClient } from "@shelby-protocol/sdk/node";
-import { Account, Ed25519PrivateKey, Network } from "@aptos-labs/ts-sdk";
+import { Ed25519Account, Ed25519PrivateKey, Network } from "@aptos-labs/ts-sdk";
 import "dotenv/config";
 
-// ── 48-hour testnet blob cap ───────────────────────────────────────────────
 const MAX_EXPIRY_HOURS = 47;
 const MICROS_PER_HOUR = 3_600_000_000;
 
@@ -13,12 +11,16 @@ export function expirationMicros(hours = MAX_EXPIRY_HOURS): number {
 }
 
 // ── Account singleton ──────────────────────────────────────────────────────
-let _account: ReturnType<typeof Account.fromPrivateKey> | null = null;
-export function getShelbyAccount() {
+// Use Ed25519Account directly — avoids the SingleKeyAccount type mismatch
+// that occurs with Account.fromPrivateKey() in @aptos-labs/ts-sdk v6.
+let _account: Ed25519Account | null = null;
+export function getShelbyAccount(): Ed25519Account {
   if (_account) return _account;
   const rawKey = process.env.APTOS_PRIVATE_KEY;
   if (!rawKey) throw new Error("APTOS_PRIVATE_KEY not set in .env");
-  _account = Account.fromPrivateKey({ privateKey: new Ed25519PrivateKey(rawKey) });
+  _account = new Ed25519Account({
+    privateKey: new Ed25519PrivateKey(rawKey),
+  });
   return _account;
 }
 
@@ -32,7 +34,7 @@ export function getShelbyClient(): ShelbyNodeClient {
   return _client;
 }
 
-// ── Upload helper (used by renewal cron only now) ──────────────────────────
+// ── Upload helper ──────────────────────────────────────────────────────────
 export async function uploadToShelby(
   blobData: Buffer,
   blobName: string
@@ -40,31 +42,33 @@ export async function uploadToShelby(
   const client = getShelbyClient();
   const signer = getShelbyAccount();
 
-  const { transaction } = await client.upload({
+  // client.upload() returns void in some SDK versions — handle both cases
+  const result = await client.upload({
     signer,
     blobData,
     blobName,
     expirationMicros: expirationMicros(),
-  });
+  }) as { transaction?: { hash: string } } | void;
+
+  const txHash =
+    result && typeof result === "object" && result.transaction
+      ? result.transaction.hash
+      : `upload-${Date.now()}`;
 
   return {
     blobName,
     accountAddress: signer.accountAddress.toString(),
-    txHash: transaction.hash,
+    txHash,
   };
 }
 
-// ── Download helper (used by renewal cron) ────────────────────────────────
+// ── Download helper ────────────────────────────────────────────────────────
 export async function downloadFromShelby(
   blobName: string,
   ownerAddress: string
 ): Promise<Buffer> {
   const client = getShelbyClient();
-  const blob = await client.download({
-    account: ownerAddress,
-    blobName,
-  });
-
+  const blob = await client.download({ account: ownerAddress, blobName });
   const chunks: Buffer[] = [];
   for await (const chunk of blob.readable) {
     chunks.push(Buffer.from(chunk));
@@ -72,7 +76,7 @@ export async function downloadFromShelby(
   return Buffer.concat(chunks);
 }
 
-// ── Blob metadata (used by renewal cron) ─────────────────────────────────
+// ── Blob metadata ─────────────────────────────────────────────────────────
 export async function getBlobMeta(blobName: string, ownerAddress: string) {
   const client = getShelbyClient();
   return client.coordination.getBlobMetadata({
@@ -81,17 +85,8 @@ export async function getBlobMeta(blobName: string, ownerAddress: string) {
   });
 }
 
-/**
- * Construct the direct HTTP URL to stream a blob from Shelby testnet.
- * Per official docs: https://api.testnet.shelby.xyz/shelby/v1/blobs/<address>/<blobName>
- * The <video> tag can load this directly — no auth headers needed for reads.
- *
- * @param blobName  - e.g. "videomind/videos/{id}/raw.mp4"
- * @param ownerAddress - the wallet address that uploaded the blob (the user's Petra wallet)
- */
+// ── Stream URL ────────────────────────────────────────────────────────────
 export function shelbyBlobUrl(blobName: string, ownerAddress: string): string {
-  // blobName may contain slashes — do NOT encodeURIComponent the whole thing,
-  // just encode each segment individually to preserve the path structure.
   const encodedPath = blobName
     .split("/")
     .map((segment) => encodeURIComponent(segment))

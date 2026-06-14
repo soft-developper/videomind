@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "VideoMind API Server",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
@@ -11,8 +14,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
-    "@libsql/client": "^0.14.0",
     "@aptos-labs/ts-sdk": "^6.0.0",
+    "@libsql/client": "^0.14.0",
     "@shelby-protocol/sdk": "latest",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

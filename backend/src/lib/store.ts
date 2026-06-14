@@ -3,7 +3,11 @@
 // All operations are async and use libSQL via @libsql/client.
 
 import { getDb } from "./db.js";
+import type { InValue } from "@libsql/client";
 import type { VideoRecord } from "../types/video.js";
+
+// Cast helper — libSQL batch requires InValue[] not unknown[]
+const args = (a: unknown[]): InValue[] => a as InValue[];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -107,11 +111,11 @@ export const store = {
   /** Partial update — only supply what changed. */
   async update(id: string, partial: Partial<VideoRecord>): Promise<void> {
     const db = getDb();
-    const stmts: Array<{ sql: string; args: unknown[] }> = [];
+    const stmts: Array<{ sql: string; args: import("@libsql/client").InValue[] }> = [];
 
     if (partial.status || partial.title || partial.description !== undefined || partial.meta) {
       const sets: string[] = [];
-      const args: unknown[] = [];
+      const args: import("@libsql/client").InValue[] = [];
 
       if (partial.status)      { sets.push("status = ?");      args.push(partial.status); }
       if (partial.title)       { sets.push("title = ?");       args.push(partial.title); }
