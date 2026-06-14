@@ -117,7 +117,7 @@ export function UploadZone() {
       await new Promise<void>((resolve, reject) => {
         uploadBlobs.mutate(
           {
-            signer: { account: account.address, signAndSubmitTransaction },
+            signer: { account: account.address.toString() as any, signAndSubmitTransaction },
             blobs: [{ blobName: videoBlobName, blobData: bytes }],
             expirationMicros: expirationMicros(),
           },

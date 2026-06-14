@@ -3,7 +3,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AptosWalletAdapterProvider } from "@aptos-labs/wallet-adapter-react";
 import { ShelbyClientProvider } from "@shelby-protocol/react";
-import { Network } from "@aptos-labs/ts-sdk";
 import { useState } from "react";
 import { shelbyClient } from "@/lib/shelby";
 
@@ -17,7 +16,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       <AptosWalletAdapterProvider
         autoConnect
         dappConfig={{
-          network: Network.TESTNET,
+          // Use string literal to avoid Network enum version mismatch
+          // between @aptos-labs/ts-sdk and the one bundled in wallet-adapter
+          network: "testnet" as any,
           aptosApiKeys: {
             testnet: process.env.NEXT_PUBLIC_APTOS_API_KEY,
           },

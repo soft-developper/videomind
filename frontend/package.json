@@ -20,8 +20,6 @@
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.4.0",
     "@aptos-labs/wallet-adapter-react": "^7.0.0",
-    "@aptos-labs/ts-sdk": "^6.0.0",
-    "@shelby-protocol/sdk": "latest",
     "@shelby-protocol/react": "latest"
   },
   "devDependencies": {
