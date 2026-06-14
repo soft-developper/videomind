@@ -222,7 +222,7 @@ export default function AboutPage() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Link
-                href="https://github.com"
+                href="http://github.com/soft-developper/videomind"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dark-700 border border-white/10 text-white/70 font-syne font-semibold text-sm hover:border-white/20 transition-all"
