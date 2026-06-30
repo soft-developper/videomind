@@ -35,7 +35,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 cron.schedule("0 */6 * * *", () => {
-  console.log("[Cron] Running scheduled blob renewal check...");
+  console.log("[Cron] Blob renewal check — wallet-owned blobs renewed via frontend.");
   renewExpiringBlobs().catch(console.error);
 });
 

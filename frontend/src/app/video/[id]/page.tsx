@@ -126,7 +126,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
               {video.streamUrl && (
                 <div className="flex items-center justify-between px-1">
                   <p className="text-[11px] font-mono text-white/20">
-                    Shelby blobs expire after 48hrs
+                    Blobs expire after 48hrs · renew to keep accessible
                   </p>
                   <RenewButton
                     streamUrl={video.streamUrl}

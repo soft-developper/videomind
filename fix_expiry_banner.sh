@@ -1,3 +1,10 @@
+#!/usr/bin/env bash
+# Run from /home/probeat/videomind
+set -e
+
+FILE="frontend/src/components/layout/ExpiryBanner.tsx"
+
+cat > "$FILE" << 'EOF'
 "use client";
 
 import { useState, useEffect } from "react";
@@ -20,19 +27,20 @@ export function ExpiryBanner() {
 
   useEffect(() => { setDismissed(false); setRenewState("idle"); }, [walletAddress]);
 
+  // useAccountBlobs takes a single argument — no options object
   const { data: blobs, isLoading } = useAccountBlobs({
-    account: walletAddress!,
-    enabled: !!walletAddress && connected,
+    account: walletAddress ?? "",
   } as any);
 
   const uploadBlobs = useUploadBlobs({
     onError: (err) => { setErrMsg(err.message); setRenewState("error"); },
   });
 
+  // Guard: not connected, dismissed, loading, or no address
   if (!connected || !walletAddress || dismissed || isLoading) return null;
 
   const nowMicros = Date.now() * 1000;
-  const expiringBlobs = (blobs ?? []).filter((blob) => {
+  const expiringBlobs = (blobs ?? []).filter((blob: any) => {
     const exp = Number(blob.expires_at ?? 0);
     return exp > 0 && exp < nowMicros + WARN_MICROS;
   });
@@ -48,7 +56,7 @@ export function ExpiryBanner() {
     );
   }
 
-  const expiredCount = expiringBlobs.filter((b) => Number(b.expires_at ?? 0) < nowMicros).length;
+  const expiredCount = expiringBlobs.filter((b: any) => Number(b.expires_at ?? 0) < nowMicros).length;
   const soonCount = expiringBlobs.length - expiredCount;
 
   const handleRenewAll = async () => {
@@ -57,16 +65,15 @@ export function ExpiryBanner() {
     setErrMsg(null);
 
     try {
+      const notExpired = expiringBlobs.filter((b: any) => Number(b.expires_at ?? 0) > nowMicros);
       const blobPayloads = await Promise.all(
-        expiringBlobs
-          .filter((b) => Number(b.expires_at ?? 0) > nowMicros)
-          .map(async (blob) => {
-            const url = `https://api.testnet.shelby.xyz/shelby/v1/blobs/${walletAddress}/${encodeURIComponent(blob.name)}`;
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`Failed to fetch ${blob.name} (${res.status})`);
-            const ab = await res.arrayBuffer();
-            return { blobName: blob.name, blobData: new Uint8Array(ab) };
-          })
+        notExpired.map(async (blob: any) => {
+          const url = `https://api.testnet.shelby.xyz/shelby/v1/blobs/${walletAddress}/${encodeURIComponent(blob.name)}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`Failed to fetch ${blob.name} (${res.status})`);
+          const ab = await res.arrayBuffer();
+          return { blobName: blob.name, blobData: new Uint8Array(ab) };
+        })
       );
 
       setRenewState("signing");
@@ -123,15 +130,13 @@ export function ExpiryBanner() {
               disabled={renewState !== "idle" && renewState !== "error"}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-volt text-black text-xs font-syne font-semibold hover:bg-volt-dim transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {renewState === "idle"    && <><RefreshCw size={11} /> Renew All ({soonCount})</>}
-              {renewState === "fetching"&& <><Loader2 size={11} className="animate-spin" /> Fetching videos...</>}
-              {renewState === "signing" && <><Loader2 size={11} className="animate-spin" /> Check wallet...</>}
-              {renewState === "error"   && <><RefreshCw size={11} /> Retry</>}
+              {renewState === "idle"     && <><RefreshCw size={11} /> Renew All ({soonCount})</>}
+              {renewState === "fetching" && <><Loader2 size={11} className="animate-spin" /> Fetching videos...</>}
+              {renewState === "signing"  && <><Loader2 size={11} className="animate-spin" /> Check wallet...</>}
+              {renewState === "error"    && <><RefreshCw size={11} /> Retry</>}
             </button>
             {renewState === "signing" && (
-              <p className="text-[10px] font-mono text-volt/60 animate-pulse">
-                ⚡ One signature renews all
-              </p>
+              <p className="text-[10px] font-mono text-volt/60 animate-pulse">⚡ One signature renews all</p>
             )}
             <button onClick={() => setDismissed(true)} className="ml-auto text-xs font-mono text-white/20 hover:text-white/40 transition-colors">
               Remind me later
@@ -142,3 +147,11 @@ export function ExpiryBanner() {
     </div>
   );
 }
+EOF
+
+echo "✅ ExpiryBanner.tsx fixed"
+echo ""
+echo "Now run:"
+echo "  git add frontend/src/components/layout/ExpiryBanner.tsx"
+echo "  git commit -m 'fix: useAccountBlobs single arg, typed as any'"
+echo "  git push"

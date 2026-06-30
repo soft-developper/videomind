@@ -155,7 +155,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 cron.schedule("0 */6 * * *", () => {
-  console.log("[Cron] Running scheduled blob renewal check...");
+  console.log("[Cron] Blob renewal check — wallet-owned blobs renewed via frontend.");
   renewExpiringBlobs().catch(console.error);
 });
 
@@ -867,7 +867,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
               {video.streamUrl && (
                 <div className="flex items-center justify-between px-1">
                   <p className="text-[11px] font-mono text-white/20">
-                    Shelby blobs expire after 48hrs
+                    Blobs expire after 48hrs · renew to keep accessible
                   </p>
                   <RenewButton
                     streamUrl={video.streamUrl}
