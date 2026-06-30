@@ -11,6 +11,9 @@ const WARN_MICROS = WARN_HOURS * 3_600_000_000;
 
 type RenewState = "idle" | "fetching" | "signing" | "done" | "error";
 
+// BlobMetadata type doesn't publicly expose expires_at — cast to any for access
+type AnyBlob = Record<string, any>;
+
 export function ExpiryBanner() {
   const { connected, account, signAndSubmitTransaction } = useWallet();
   const walletAddress = account?.address?.toString();
@@ -20,10 +23,11 @@ export function ExpiryBanner() {
 
   useEffect(() => { setDismissed(false); setRenewState("idle"); }, [walletAddress]);
 
-  const { data: blobs, isLoading } = useAccountBlobs({
-    account: walletAddress!,
-    enabled: !!walletAddress && connected,
+  const { data: rawBlobs, isLoading } = useAccountBlobs({
+    account: walletAddress ?? "",
   } as any);
+
+  const blobs = (rawBlobs ?? []) as AnyBlob[];
 
   const uploadBlobs = useUploadBlobs({
     onError: (err) => { setErrMsg(err.message); setRenewState("error"); },
@@ -32,8 +36,9 @@ export function ExpiryBanner() {
   if (!connected || !walletAddress || dismissed || isLoading) return null;
 
   const nowMicros = Date.now() * 1000;
-  const expiringBlobs = (blobs ?? []).filter((blob) => {
-    const exp = Number(blob.expires_at ?? 0);
+
+  const expiringBlobs = blobs.filter((blob) => {
+    const exp = Number(blob["expires_at"] ?? blob["expiresAt"] ?? 0);
     return exp > 0 && exp < nowMicros + WARN_MICROS;
   });
 
@@ -48,7 +53,10 @@ export function ExpiryBanner() {
     );
   }
 
-  const expiredCount = expiringBlobs.filter((b) => Number(b.expires_at ?? 0) < nowMicros).length;
+  const expiredCount = expiringBlobs.filter((b) => {
+    const exp = Number(b["expires_at"] ?? b["expiresAt"] ?? 0);
+    return exp < nowMicros;
+  }).length;
   const soonCount = expiringBlobs.length - expiredCount;
 
   const handleRenewAll = async () => {
@@ -57,16 +65,20 @@ export function ExpiryBanner() {
     setErrMsg(null);
 
     try {
+      const notExpired = expiringBlobs.filter((b) => {
+        const exp = Number(b["expires_at"] ?? b["expiresAt"] ?? 0);
+        return exp > nowMicros;
+      });
+
       const blobPayloads = await Promise.all(
-        expiringBlobs
-          .filter((b) => Number(b.expires_at ?? 0) > nowMicros)
-          .map(async (blob) => {
-            const url = `https://api.testnet.shelby.xyz/shelby/v1/blobs/${walletAddress}/${encodeURIComponent(blob.name)}`;
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`Failed to fetch ${blob.name} (${res.status})`);
-            const ab = await res.arrayBuffer();
-            return { blobName: blob.name, blobData: new Uint8Array(ab) };
-          })
+        notExpired.map(async (blob) => {
+          const blobName = String(blob["name"] ?? blob["blobName"] ?? "");
+          const url = `https://api.testnet.shelby.xyz/shelby/v1/blobs/${walletAddress}/${encodeURIComponent(blobName)}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`Failed to fetch ${blobName} (${res.status})`);
+          const ab = await res.arrayBuffer();
+          return { blobName, blobData: new Uint8Array(ab) };
+        })
       );
 
       setRenewState("signing");
@@ -123,15 +135,13 @@ export function ExpiryBanner() {
               disabled={renewState !== "idle" && renewState !== "error"}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-volt text-black text-xs font-syne font-semibold hover:bg-volt-dim transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {renewState === "idle"    && <><RefreshCw size={11} /> Renew All ({soonCount})</>}
-              {renewState === "fetching"&& <><Loader2 size={11} className="animate-spin" /> Fetching videos...</>}
-              {renewState === "signing" && <><Loader2 size={11} className="animate-spin" /> Check wallet...</>}
-              {renewState === "error"   && <><RefreshCw size={11} /> Retry</>}
+              {renewState === "idle"     && <><RefreshCw size={11} /> Renew All ({soonCount})</>}
+              {renewState === "fetching" && <><Loader2 size={11} className="animate-spin" /> Fetching videos...</>}
+              {renewState === "signing"  && <><Loader2 size={11} className="animate-spin" /> Check wallet...</>}
+              {renewState === "error"    && <><RefreshCw size={11} /> Retry</>}
             </button>
             {renewState === "signing" && (
-              <p className="text-[10px] font-mono text-volt/60 animate-pulse">
-                ⚡ One signature renews all
-              </p>
+              <p className="text-[10px] font-mono text-volt/60 animate-pulse">⚡ One signature renews all</p>
             )}
             <button onClick={() => setDismissed(true)} className="ml-auto text-xs font-mono text-white/20 hover:text-white/40 transition-colors">
               Remind me later
