@@ -399,10 +399,10 @@ export function ExpiryBanner() {
 
   useEffect(() => { setDismissed(false); setRenewState("idle"); }, [walletAddress]);
 
-  const { data: blobs, isLoading } = useAccountBlobs(
-    { account: walletAddress! },
-    { enabled: !!walletAddress && connected }
-  );
+  const { data: blobs, isLoading } = useAccountBlobs({
+    account: walletAddress!,
+    enabled: !!walletAddress && connected,
+  } as any);
 
   const uploadBlobs = useUploadBlobs({
     onError: (err) => { setErrMsg(err.message); setRenewState("error"); },
