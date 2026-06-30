@@ -16,12 +16,8 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       <AptosWalletAdapterProvider
         autoConnect
         dappConfig={{
-          // Use string literal to avoid Network enum version mismatch
-          // between @aptos-labs/ts-sdk and the one bundled in wallet-adapter
           network: "testnet" as any,
-          aptosApiKeys: {
-            testnet: process.env.NEXT_PUBLIC_APTOS_API_KEY,
-          },
+          aptosApiKeys: { testnet: process.env.NEXT_PUBLIC_APTOS_API_KEY },
         }}
         onError={(error) => console.error("[Wallet]", error)}
       >

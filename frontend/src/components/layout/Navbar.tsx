@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Brain, Upload, Search, LayoutGrid, Zap, Menu, X, Info } from "lucide-react";
 import { clsx } from "clsx";
 import { WalletButton } from "./WalletButton";
+import { ExpiryBanner } from "./ExpiryBanner";
 import { useState, useEffect } from "react";
 
 const NAV = [
@@ -27,8 +28,6 @@ export function Navbar() {
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-white/[0.06] glass-card">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between gap-3">
-
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group shrink-0">
             <div className="relative w-8 h-8">
               <div className="absolute inset-0 rounded-lg bg-volt/20 group-hover:bg-volt/30 transition-colors" />
@@ -39,7 +38,6 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1">
             {NAV.map(({ href, label, icon: Icon }) => {
               const active = pathname === href;
@@ -49,9 +47,7 @@ export function Navbar() {
                   href={href}
                   className={clsx(
                     "flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-dm transition-all duration-200",
-                    active
-                      ? "text-volt bg-volt/10 border border-volt/20"
-                      : "text-white/50 hover:text-white hover:bg-white/[0.06]"
+                    active ? "text-volt bg-volt/10 border border-volt/20" : "text-white/50 hover:text-white hover:bg-white/[0.06]"
                   )}
                 >
                   <Icon size={13} />
@@ -61,7 +57,6 @@ export function Navbar() {
             })}
           </div>
 
-          {/* Right side */}
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-volt/20 bg-volt/5">
               <Zap size={12} className="text-volt" />
@@ -80,22 +75,16 @@ export function Navbar() {
         </div>
       </nav>
 
+      {/* Expiry banner — shown when wallet-owned blobs are expiring */}
+      <ExpiryBanner />
+
       {/* Mobile drawer */}
-      <div className={clsx(
-        "fixed inset-0 z-40 md:hidden transition-all duration-300",
-        open ? "pointer-events-auto" : "pointer-events-none"
-      )}>
+      <div className={clsx("fixed inset-0 z-40 md:hidden transition-all duration-300", open ? "pointer-events-auto" : "pointer-events-none")}>
         <div
-          className={clsx(
-            "absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300",
-            open ? "opacity-100" : "opacity-0"
-          )}
+          className={clsx("absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300", open ? "opacity-100" : "opacity-0")}
           onClick={() => setOpen(false)}
         />
-        <div className={clsx(
-          "absolute top-16 left-0 right-0 glass-card border-b border-white/[0.06] transition-transform duration-300",
-          open ? "translate-y-0" : "-translate-y-full"
-        )}>
+        <div className={clsx("absolute top-16 left-0 right-0 glass-card border-b border-white/[0.06] transition-transform duration-300", open ? "translate-y-0" : "-translate-y-full")}>
           <div className="p-4 space-y-1">
             {NAV.map(({ href, label, icon: Icon }) => {
               const active = pathname === href;
@@ -105,9 +94,7 @@ export function Navbar() {
                   href={href}
                   className={clsx(
                     "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-dm transition-all",
-                    active
-                      ? "text-volt bg-volt/10 border border-volt/20"
-                      : "text-white/60 hover:text-white hover:bg-white/[0.06]"
+                    active ? "text-volt bg-volt/10 border border-volt/20" : "text-white/60 hover:text-white hover:bg-white/[0.06]"
                   )}
                 >
                   <Icon size={16} />

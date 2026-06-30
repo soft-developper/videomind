@@ -6,6 +6,7 @@ import { ChatPanel } from "@/components/chat/ChatPanel";
 import { InsightsPanel } from "@/components/video/InsightsPanel";
 import { ProcessingStatus } from "@/components/video/ProcessingStatus";
 import { VideoPlayer } from "@/components/video/VideoPlayer";
+import { RenewButton } from "@/components/video/RenewButton";
 import { SkeletonVideoPage } from "@/components/ui/SkeletonCard";
 import {
   ArrowLeft, Zap, ExternalLink, FileText,
@@ -28,7 +29,6 @@ export default function VideoPage({ params }: { params: { id: string } }) {
 
   const onReady = useCallback(() => { refetch(); }, [refetch]);
 
-  // ── Loading ────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="min-h-screen gradient-mesh">
@@ -40,7 +40,6 @@ export default function VideoPage({ params }: { params: { id: string } }) {
     );
   }
 
-  // ── Not found ──────────────────────────────────────────────────────────
   if (!video) {
     return (
       <div className="min-h-screen gradient-mesh flex items-center justify-center px-4">
@@ -49,9 +48,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
             <AlertTriangle size={20} className="text-white/20" />
           </div>
           <p className="text-white/40 font-dm">Video not found</p>
-          <Link href="/" className="text-volt text-sm font-mono hover:underline">
-            ← Back to library
-          </Link>
+          <Link href="/" className="text-volt text-sm font-mono hover:underline">← Back to library</Link>
         </div>
       </div>
     );
@@ -64,32 +61,21 @@ export default function VideoPage({ params }: { params: { id: string } }) {
   return (
     <div className="min-h-screen gradient-mesh">
       <Navbar />
-
       <main className="pt-16 sm:pt-20 pb-24 lg:pb-16 px-4 sm:px-6 max-w-7xl mx-auto">
 
         {/* Header */}
         <div className="flex items-start gap-3 py-5 border-b border-white/[0.06] mb-6">
-          <Link
-            href="/"
-            className="flex items-center gap-1.5 text-white/30 hover:text-white text-xs font-mono transition-colors mt-1 shrink-0"
-          >
+          <Link href="/" className="flex items-center gap-1.5 text-white/30 hover:text-white text-xs font-mono transition-colors mt-1 shrink-0">
             <ArrowLeft size={12} /> Library
           </Link>
-
           <div className="flex-1 min-w-0">
-            <h1 className="font-syne font-800 text-lg sm:text-xl text-white leading-tight line-clamp-2">
-              {video.title}
-            </h1>
-            {video.description && (
-              <p className="text-sm text-white/40 font-dm mt-1 line-clamp-1">{video.description}</p>
-            )}
+            <h1 className="font-syne font-800 text-lg sm:text-xl text-white leading-tight line-clamp-2">{video.title}</h1>
+            {video.description && <p className="text-sm text-white/40 font-dm mt-1 line-clamp-1">{video.description}</p>}
           </div>
-
           {video.shelby.accountAddress && (
             <a
               href={`https://explorer.shelby.xyz/testnet/accounts/${video.shelby.accountAddress}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-volt/20 bg-volt/5 hover:bg-volt/10 transition-all group shrink-0"
             >
               <Zap size={11} className="text-volt" />
@@ -115,14 +101,9 @@ export default function VideoPage({ params }: { params: { id: string } }) {
               <AlertTriangle size={32} className="text-red-400 mx-auto" />
               <div>
                 <p className="font-syne font-semibold text-white">Processing failed</p>
-                <p className="text-sm text-white/40 font-dm mt-1">
-                  Something went wrong during AI processing.
-                </p>
+                <p className="text-sm text-white/40 font-dm mt-1">Something went wrong during AI processing.</p>
               </div>
-              <Link
-                href="/upload"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-volt text-black font-syne font-semibold text-sm hover:bg-volt-dim transition-all"
-              >
+              <Link href="/upload" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-volt text-black font-syne font-semibold text-sm hover:bg-volt-dim transition-all">
                 Try uploading again
               </Link>
             </div>
@@ -132,10 +113,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
         {/* Ready layout */}
         {isReady && (
           <div className="grid lg:grid-cols-[1fr_380px] gap-6">
-
-            {/* Left column */}
             <div className="space-y-5">
-
               {/* Video player */}
               <VideoPlayer
                 streamUrl={video.streamUrl ?? null}
@@ -144,14 +122,25 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 blobName={video.shelby.videoBlobName}
               />
 
+              {/* Renew button */}
+              {video.streamUrl && (
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-[11px] font-mono text-white/20">
+                    Shelby blobs expire after 48hrs
+                  </p>
+                  <RenewButton
+                    streamUrl={video.streamUrl}
+                    videoBlobName={video.shelby.videoBlobName}
+                    onRenewed={() => refetch()}
+                  />
+                </div>
+              )}
+
               {/* Tags */}
               {video.ai?.tags && video.ai.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {video.ai.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1 rounded-full bg-dark-800 border border-white/[0.06] text-xs font-mono text-white/35"
-                    >
+                    <span key={tag} className="px-3 py-1 rounded-full bg-dark-800 border border-white/[0.06] text-xs font-mono text-white/35">
                       {tag}
                     </span>
                   ))}
@@ -167,9 +156,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   <div className="flex items-center gap-3 p-4 border-b border-white/[0.06]">
                     <FileText size={14} className="text-white/40" />
                     <p className="text-sm font-syne font-semibold text-white">Full Transcript</p>
-                    <span className="ml-auto font-mono text-xs text-white/25">
-                      {video.ai.transcript.length} segments
-                    </span>
+                    <span className="ml-auto font-mono text-xs text-white/25">{video.ai.transcript.length} segments</span>
                   </div>
                   <div className="max-h-72 overflow-y-auto p-4 space-y-2">
                     {video.ai.transcript.map((seg, i) => (
@@ -177,9 +164,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                         <span className="font-mono text-[10px] text-volt/50 shrink-0 mt-1 w-10 text-right">
                           {Math.floor(seg.start / 60)}:{String(Math.floor(seg.start % 60)).padStart(2, "0")}
                         </span>
-                        <p className="text-sm text-white/55 font-dm leading-relaxed group-hover:text-white/80 transition-colors">
-                          {seg.text}
-                        </p>
+                        <p className="text-sm text-white/55 font-dm leading-relaxed group-hover:text-white/80 transition-colors">{seg.text}</p>
                       </div>
                     ))}
                   </div>
@@ -187,7 +172,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
               )}
             </div>
 
-            {/* Right column: chat — desktop sticky */}
+            {/* Desktop chat */}
             <div className="hidden lg:block lg:sticky lg:top-20 lg:h-[calc(100vh-5rem)]">
               <div className="glass-card rounded-2xl h-full flex flex-col overflow-hidden">
                 <ChatPanel videoId={params.id} videoTitle={video.title} />
@@ -197,10 +182,9 @@ export default function VideoPage({ params }: { params: { id: string } }) {
         )}
       </main>
 
-      {/* Mobile: floating chat button + drawer */}
+      {/* Mobile chat */}
       {isReady && (
         <>
-          {/* Floating button */}
           <button
             onClick={() => setMobileChatOpen(true)}
             className="lg:hidden fixed bottom-6 right-4 z-30 flex items-center gap-2 px-4 py-3 rounded-2xl bg-volt text-black font-syne font-semibold text-sm shadow-lg shadow-volt/20 volt-glow"
@@ -209,41 +193,21 @@ export default function VideoPage({ params }: { params: { id: string } }) {
             Ask AI
           </button>
 
-          {/* Mobile chat drawer */}
-          <div className={clsx(
-            "lg:hidden fixed inset-0 z-40 transition-all duration-300",
-            mobileChatOpen ? "pointer-events-auto" : "pointer-events-none"
-          )}>
-            {/* Backdrop */}
+          <div className={clsx("lg:hidden fixed inset-0 z-40 transition-all duration-300", mobileChatOpen ? "pointer-events-auto" : "pointer-events-none")}>
             <div
-              className={clsx(
-                "absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-300",
-                mobileChatOpen ? "opacity-100" : "opacity-0"
-              )}
+              className={clsx("absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-300", mobileChatOpen ? "opacity-100" : "opacity-0")}
               onClick={() => setMobileChatOpen(false)}
             />
-
-            {/* Panel — slides up from bottom */}
-            <div className={clsx(
-              "absolute bottom-0 left-0 right-0 glass-card rounded-t-3xl border-t border-white/[0.08] transition-transform duration-300 flex flex-col",
-              "h-[85vh]",
-              mobileChatOpen ? "translate-y-0" : "translate-y-full"
-            )}>
-              {/* Drag handle + close */}
+            <div className={clsx("absolute bottom-0 left-0 right-0 glass-card rounded-t-3xl border-t border-white/[0.08] transition-transform duration-300 flex flex-col h-[85vh]", mobileChatOpen ? "translate-y-0" : "translate-y-full")}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0">
                 <div className="flex items-center gap-2">
                   <Brain size={14} className="text-volt" />
                   <span className="text-sm font-syne font-semibold text-white">Ask the Video</span>
                 </div>
-                <button
-                  onClick={() => setMobileChatOpen(false)}
-                  className="w-8 h-8 rounded-lg bg-dark-700 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-colors"
-                >
+                <button onClick={() => setMobileChatOpen(false)} className="w-8 h-8 rounded-lg bg-dark-700 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-colors">
                   <X size={14} />
                 </button>
               </div>
-
-              {/* Chat content fills remaining height */}
               <div className="flex-1 min-h-0 overflow-hidden">
                 <ChatPanel videoId={params.id} videoTitle={video.title} />
               </div>
