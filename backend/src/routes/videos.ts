@@ -136,6 +136,28 @@ router.get("/:id/status", async (req, res) => {
   }
 });
 
+// ── PATCH /api/videos/:id/duration ───────────────────────────────────────────
+// Called once by the frontend player when video metadata loads.
+router.patch("/:id/duration", async (req, res) => {
+  try {
+    const { durationSeconds } = req.body as { durationSeconds: number };
+    if (typeof durationSeconds !== "number" || !isFinite(durationSeconds) || durationSeconds <= 0) {
+      return res.status(400).json({ error: "durationSeconds must be a positive number" });
+    }
+
+    const video = await store.get(req.params.id);
+    if (!video) return res.status(404).json({ error: "Video not found" });
+
+    await store.update(req.params.id, {
+      meta: { ...video.meta, durationSeconds },
+    });
+
+    return res.json({ success: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ── DELETE /api/videos/all?wallet=0x... ─────────────────────────────────────
 // Deletes all videos for a wallet (or all videos if no wallet param).
 // Used for cleanup of test uploads.

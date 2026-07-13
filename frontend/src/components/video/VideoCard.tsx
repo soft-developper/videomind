@@ -1,6 +1,9 @@
 "use client";
 import Link from "next/link";
-import { Film, Clock, CheckCircle, Loader2, AlertTriangle, Zap, RefreshCw, Trash2, X } from "lucide-react";
+import {
+  Film, Clock, CheckCircle, Loader2, AlertTriangle,
+  Zap, RefreshCw, Trash2, X, Play,
+} from "lucide-react";
 import { clsx } from "clsx";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,8 +22,7 @@ const STATUS_CONFIG = {
 
 function formatDate(ms: number) {
   return new Intl.DateTimeFormat("en", {
-    month: "short", day: "numeric",
-    hour: "2-digit", minute: "2-digit",
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
   }).format(new Date(ms));
 }
 
@@ -30,10 +32,21 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
 }
 
+/** 1:23:45 or 4:32 */
+function formatDuration(sec?: number) {
+  if (!sec || !isFinite(sec)) return null;
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export function VideoCard({ video }: { video: VideoRecord }) {
   const cfg = STATUS_CONFIG[video.status];
   const isError = video.status === "error";
   const isProcessing = !["ready", "error"].includes(video.status);
+  const duration = formatDuration(video.meta.durationSeconds);
 
   const { account } = useWallet();
   const queryClient = useQueryClient();
@@ -52,7 +65,6 @@ export function VideoCard({ video }: { video: VideoRecord }) {
     try {
       await api.delete(`/api/videos/${video.id}`);
       setDeleted(true);
-      // Invalidate the library query so the card disappears
       queryClient.invalidateQueries({ queryKey: ["videos", walletAddress] });
       queryClient.invalidateQueries({ queryKey: ["shelby-stats", walletAddress] });
       queryClient.invalidateQueries({ queryKey: ["shelby-badge", walletAddress] });
@@ -68,7 +80,6 @@ export function VideoCard({ video }: { video: VideoRecord }) {
     setConfirm(false);
   };
 
-  // Fade out after deletion
   if (deleted) return null;
 
   return (
@@ -79,9 +90,8 @@ export function VideoCard({ video }: { video: VideoRecord }) {
           isError && "border border-red-500/20 hover:border-red-500/30",
           confirm && "ring-2 ring-red-500/40"
         )}>
-          {/* Thumbnail area */}
+          {/* Thumbnail */}
           <div className="relative aspect-video bg-dark-800 overflow-hidden">
-            {/* Grid pattern */}
             <div
               className="absolute inset-0 opacity-[0.03]"
               style={{
@@ -91,16 +101,22 @@ export function VideoCard({ video }: { video: VideoRecord }) {
               }}
             />
 
-            {/* Center icon */}
             <div className="absolute inset-0 flex items-center justify-center">
               {isError
                 ? <AlertTriangle size={32} className="text-red-400/20" strokeWidth={1} />
-                : <Film size={40} className="text-white/10" strokeWidth={1} />
-              }
+                : <Film size={40} className="text-white/10" strokeWidth={1} />}
             </div>
 
-            {/* Processing shimmer */}
             {isProcessing && <div className="absolute inset-0 shimmer opacity-30" />}
+
+            {/* Play overlay on hover */}
+            {video.status === "ready" && (
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-volt/20 border border-volt/40 backdrop-blur-sm flex items-center justify-center">
+                  <Play size={18} className="text-volt ml-0.5" />
+                </div>
+              </div>
+            )}
 
             {/* Status badge */}
             <div className={clsx(
@@ -115,12 +131,11 @@ export function VideoCard({ video }: { video: VideoRecord }) {
                 ? <Loader2 size={10} className="animate-spin" />
                 : isError
                 ? <AlertTriangle size={10} />
-                : <CheckCircle size={10} />
-              }
+                : <CheckCircle size={10} />}
               {cfg.label}
             </div>
 
-            {/* Delete button — appears on hover (top-left) */}
+            {/* Delete button */}
             {!confirm && (
               <button
                 onClick={handleDelete}
@@ -129,6 +144,13 @@ export function VideoCard({ video }: { video: VideoRecord }) {
               >
                 <Trash2 size={12} />
               </button>
+            )}
+
+            {/* Duration badge */}
+            {duration && (
+              <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded bg-black/70 border border-white/10">
+                <span className="font-mono text-[10px] text-white/70 tabular-nums">{duration}</span>
+              </div>
             )}
 
             {/* Shelby badge */}
@@ -142,9 +164,7 @@ export function VideoCard({ video }: { video: VideoRecord }) {
           <div className="p-4 space-y-3">
             <h3 className={clsx(
               "font-syne font-semibold text-sm leading-snug line-clamp-2 transition-colors",
-              isError
-                ? "text-white/50 group-hover:text-white/70"
-                : "text-white group-hover:text-volt"
+              isError ? "text-white/50 group-hover:text-white/70" : "text-white group-hover:text-volt"
             )}>
               {video.title}
             </h3>
@@ -181,7 +201,7 @@ export function VideoCard({ video }: { video: VideoRecord }) {
         </div>
       </Link>
 
-      {/* Confirm delete overlay */}
+      {/* Delete confirm */}
       {confirm && (
         <div
           className="absolute inset-0 rounded-2xl bg-dark-950/90 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-5 z-10"
@@ -202,10 +222,7 @@ export function VideoCard({ video }: { video: VideoRecord }) {
               disabled={deleting}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-syne font-semibold hover:bg-red-500/30 transition-all disabled:opacity-50"
             >
-              {deleting
-                ? <Loader2 size={11} className="animate-spin" />
-                : <Trash2 size={11} />
-              }
+              {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
               {deleting ? "Deleting..." : "Delete"}
             </button>
             <button

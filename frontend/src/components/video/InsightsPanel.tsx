@@ -2,10 +2,11 @@
 import { useState } from "react";
 import {
   BookOpen, Zap, FileText, Twitter, AlignLeft,
-  Tag, ChevronRight, Clock, Copy, CheckCircle,
+  Tag, Clock, Copy, CheckCircle, Play,
 } from "lucide-react";
 import { clsx } from "clsx";
 import type { VideoRecord } from "@/lib/api";
+import { readableTime } from "@/lib/exports";
 
 type Tab = "summary" | "chapters" | "highlights" | "blog" | "thread";
 
@@ -16,12 +17,6 @@ const TABS: Array<{ key: Tab; label: string; icon: React.ComponentType<any> }> =
   { key: "blog",      label: "Blog Post",  icon: FileText },
   { key: "thread",    label: "X Thread",   icon: Twitter },
 ];
-
-function formatTime(s: number) {
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60);
-  return `${m}:${sec.toString().padStart(2, "0")}`;
-}
 
 function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
@@ -37,20 +32,27 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
     >
       {copied
         ? <><CheckCircle size={11} className="text-volt" /> Copied!</>
-        : <><Copy size={11} /> {label}</>
-      }
+        : <><Copy size={11} /> {label}</>}
     </button>
   );
 }
 
-export function InsightsPanel({ video }: { video: VideoRecord }) {
+interface InsightsPanelProps {
+  video: VideoRecord;
+  /** Jump the video player to a timestamp */
+  onSeek?: (seconds: number) => void;
+}
+
+export function InsightsPanel({ video, onSeek }: InsightsPanelProps) {
   const [tab, setTab] = useState<Tab>("summary");
   const ai = video.ai;
   if (!ai) return null;
 
+  const seekable = typeof onSeek === "function";
+
   return (
     <div className="glass-card rounded-2xl overflow-hidden">
-      {/* Tab bar */}
+      {/* Tabs */}
       <div className="flex overflow-x-auto border-b border-white/[0.06] px-2 scrollbar-hide">
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
@@ -70,25 +72,19 @@ export function InsightsPanel({ video }: { video: VideoRecord }) {
       </div>
 
       <div className="p-5">
-
         {/* ── Summary ── */}
         {tab === "summary" && (
           <div className="space-y-4">
             <p className="text-sm text-white/70 font-dm leading-relaxed">
               {ai.summary ?? "No summary available."}
             </p>
-            {ai.summary && (
-              <CopyButton text={ai.summary} label="Copy summary" />
-            )}
+            {ai.summary && <CopyButton text={ai.summary} label="Copy summary" />}
             {ai.tags && ai.tags.length > 0 && (
               <div className="flex items-start gap-2 pt-2 border-t border-white/[0.06]">
                 <Tag size={12} className="text-white/30 mt-1 shrink-0" />
                 <div className="flex flex-wrap gap-1.5">
                   {ai.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2.5 py-1 rounded-lg bg-dark-700 border border-white/[0.06] text-xs font-mono text-white/40 hover:border-volt/20 hover:text-white/60 transition-all cursor-default"
-                    >
+                    <span key={tag} className="px-2.5 py-1 rounded-lg bg-dark-700 border border-white/[0.06] text-xs font-mono text-white/40">
                       {tag}
                     </span>
                   ))}
@@ -98,16 +94,21 @@ export function InsightsPanel({ video }: { video: VideoRecord }) {
           </div>
         )}
 
-        {/* ── Chapters ── */}
+        {/* ── Chapters (clickable) ── */}
         {tab === "chapters" && (
           <div className="space-y-1">
             {(ai.chapters ?? []).length === 0 && (
               <p className="text-white/30 text-sm py-4 text-center">No chapters available.</p>
             )}
             {(ai.chapters ?? []).map((ch, i) => (
-              <div
+              <button
                 key={i}
-                className="flex items-start gap-3 p-3.5 rounded-xl hover:bg-white/[0.03] transition-colors group cursor-default"
+                onClick={() => seekable && onSeek!(ch.startSeconds)}
+                disabled={!seekable}
+                className={clsx(
+                  "w-full flex items-start gap-3 p-3.5 rounded-xl text-left transition-all group",
+                  seekable ? "hover:bg-volt/[0.05] cursor-pointer" : "cursor-default"
+                )}
               >
                 <div className="flex items-center gap-2 shrink-0 mt-0.5">
                   <span className="font-mono text-xs text-white/20 w-5 text-right">{i + 1}</span>
@@ -120,44 +121,56 @@ export function InsightsPanel({ video }: { video: VideoRecord }) {
                     </p>
                     <div className="flex items-center gap-1 text-[10px] font-mono text-volt/60">
                       <Clock size={9} />
-                      {formatTime(ch.startSeconds)}
+                      {readableTime(ch.startSeconds)}
                     </div>
                   </div>
                   <p className="text-xs text-white/40 font-dm mt-1 leading-relaxed">{ch.summary}</p>
                 </div>
-                <ChevronRight size={14} className="text-white/10 group-hover:text-volt/40 transition-colors shrink-0 mt-1" />
-              </div>
+                {seekable && (
+                  <div className="shrink-0 mt-1 w-6 h-6 rounded-lg bg-volt/10 border border-volt/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Play size={10} className="text-volt ml-0.5" />
+                  </div>
+                )}
+              </button>
             ))}
           </div>
         )}
 
-        {/* ── Highlights ── */}
+        {/* ── Highlights (clickable) ── */}
         {tab === "highlights" && (
           <div className="space-y-3">
             {(ai.highlights ?? []).length === 0 && (
               <p className="text-white/30 text-sm py-4 text-center">No highlights available.</p>
             )}
             {(ai.highlights ?? []).map((hl, i) => (
-              <div key={i} className="p-4 rounded-xl bg-volt/[0.04] border border-volt/10 space-y-2.5">
+              <div key={i} className="p-4 rounded-xl bg-volt/[0.04] border border-volt/10 space-y-2.5 group">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <Zap size={12} className="text-volt" />
                     <span className="text-xs font-mono text-volt">{hl.reason}</span>
                   </div>
                   <span className="text-[10px] font-mono text-white/30">
-                    {formatTime(hl.startSeconds)} – {formatTime(hl.endSeconds)}
+                    {readableTime(hl.startSeconds)} – {readableTime(hl.endSeconds)}
                   </span>
                 </div>
-                <p className="text-sm text-white/60 font-dm leading-relaxed italic">
-                  "{hl.text}"
-                </p>
-                <CopyButton text={hl.text} label="Copy quote" />
+                <p className="text-sm text-white/60 font-dm leading-relaxed italic">"{hl.text}"</p>
+                <div className="flex items-center gap-2">
+                  {seekable && (
+                    <button
+                      onClick={() => onSeek!(hl.startSeconds)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-volt/10 border border-volt/20 text-xs font-mono text-volt hover:bg-volt/20 transition-all"
+                    >
+                      <Play size={10} /> Jump to moment
+                    </button>
+                  )}
+                  <CopyButton text={hl.text} label="Copy quote" />
+                </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* ── Blog Post ── */}
+        {/* ── Blog ── */}
         {tab === "blog" && (
           <div className="space-y-4">
             {ai.blogPost ? (
@@ -168,8 +181,7 @@ export function InsightsPanel({ video }: { video: VideoRecord }) {
                 <div className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
                   <CopyButton text={ai.blogPost} label="Copy blog post" />
                   <span className="text-[10px] font-mono text-white/20">
-                    ~{Math.ceil(ai.blogPost.split(" ").length / 200)} min read ·{" "}
-                    {ai.blogPost.split(" ").length} words
+                    ~{Math.ceil(ai.blogPost.split(" ").length / 200)} min read · {ai.blogPost.split(" ").length} words
                   </span>
                 </div>
               </>
@@ -179,31 +191,23 @@ export function InsightsPanel({ video }: { video: VideoRecord }) {
           </div>
         )}
 
-        {/* ── X Thread ── */}
+        {/* ── Thread ── */}
         {tab === "thread" && (
           <div className="space-y-4">
             {ai.tweetThread ? (
               <>
                 <div className="space-y-2">
-                  {ai.tweetThread
-                    .split(/\n(?=\d+\/)/)
-                    .filter(Boolean)
-                    .map((tweet, i) => (
-                      <div
-                        key={i}
-                        className="group relative p-4 rounded-xl bg-dark-800 border border-white/[0.06] hover:border-white/10 transition-all"
+                  {ai.tweetThread.split(/\n(?=\d+\/)/).filter(Boolean).map((tweet, i) => (
+                    <div key={i} className="group relative p-4 rounded-xl bg-dark-800 border border-white/[0.06] hover:border-white/10 transition-all">
+                      <p className="text-sm text-white/70 font-dm leading-relaxed pr-8">{tweet.trim()}</p>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(tweet.trim())}
+                        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-white/30 hover:text-white"
                       >
-                        <p className="text-sm text-white/70 font-dm leading-relaxed pr-8">
-                          {tweet.trim()}
-                        </p>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(tweet.trim())}
-                          className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-white/30 hover:text-white"
-                        >
-                          <Copy size={12} />
-                        </button>
-                      </div>
-                    ))}
+                        <Copy size={12} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
                 <div className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
                   <CopyButton text={ai.tweetThread} label="Copy full thread" />

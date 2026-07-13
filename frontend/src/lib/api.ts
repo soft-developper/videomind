@@ -4,38 +4,28 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 export const api = axios.create({ baseURL: BASE, timeout: 120_000 });
 
-// ── Global error interceptor ─────────────────────────────────────────────────
 api.interceptors.response.use(
   (res) => res,
   (err: AxiosError<{ error?: string }>) => {
     const serverMsg = err.response?.data?.error;
     const statusCode = err.response?.status;
     let message: string;
-    if (serverMsg) {
-      message = serverMsg;
-    } else if (err.code === "ECONNABORTED" || err.message.includes("timeout")) {
+    if (serverMsg) message = serverMsg;
+    else if (err.code === "ECONNABORTED" || err.message.includes("timeout"))
       message = "Request timed out. The server may be busy — please try again.";
-    } else if (!err.response) {
+    else if (!err.response)
       message = "Cannot reach the VideoMind server. Is the backend running?";
-    } else if (statusCode === 413) {
-      message = "File is too large. Maximum size is 2 GB.";
-    } else if (statusCode === 415) {
-      message = "Unsupported file type. Please upload MP4, WebM, MOV, AVI, or MKV.";
-    } else if (statusCode === 500) {
-      message = "Server error. Check the backend logs for details.";
-    } else {
-      message = err.message ?? "An unexpected error occurred.";
-    }
+    else if (statusCode === 413) message = "File is too large. Maximum size is 2 GB.";
+    else if (statusCode === 415) message = "Unsupported file type. Please upload MP4, WebM, MOV, AVI, or MKV.";
+    else if (statusCode === 500) message = "Server error. Check the backend logs for details.";
+    else message = err.message ?? "An unexpected error occurred.";
     return Promise.reject(new Error(message));
   }
 );
 
-// ── Video endpoints ──────────────────────────────────────────────────────────
-
+// ── Upload flow ─────────────────────────────────────────────────────────────
 export async function prepareVideo(
-  file: File,
-  title: string,
-  description: string,
+  file: File, title: string, description: string,
   onProgress?: (pct: number) => void
 ): Promise<{ id: string; videoBlobName: string; base64Data: string; mimeType: string }> {
   const form = new FormData();
@@ -44,9 +34,7 @@ export async function prepareVideo(
   form.append("description", description);
   const res = await api.post("/api/videos/prepare", form, {
     headers: { "Content-Type": "multipart/form-data" },
-    onUploadProgress: (e) => {
-      if (e.total) onProgress?.(Math.round((e.loaded / e.total) * 100));
-    },
+    onUploadProgress: (e) => { if (e.total) onProgress?.(Math.round((e.loaded / e.total) * 100)); },
   });
   return res.data;
 }
@@ -58,7 +46,7 @@ export async function confirmVideo(payload: {
   return res.data;
 }
 
-/** Fetch videos for a specific wallet. Returns [] when no wallet connected. */
+// ── Video queries ───────────────────────────────────────────────────────────
 export async function getVideos(walletAddress?: string): Promise<VideoRecord[]> {
   if (!walletAddress) return [];
   const res = await api.get("/api/videos", { params: { wallet: walletAddress } });
@@ -75,6 +63,13 @@ export async function getVideoStatus(id: string) {
   return res.data as { id: string; status: string };
 }
 
+/** Persist the video duration once it's known from the player. */
+export async function setVideoDuration(id: string, seconds: number) {
+  const res = await api.patch(`/api/videos/${id}/duration`, { durationSeconds: seconds });
+  return res.data as { success: boolean };
+}
+
+// ── AI ──────────────────────────────────────────────────────────────────────
 export async function chatWithVideo(videoId: string, question: string) {
   const res = await api.post(`/api/chat/${videoId}`, { question });
   return res.data as { answer: string; sources: Array<{ time: number; text: string }> };
@@ -90,13 +85,12 @@ export async function searchAllVideos(query: string, walletAddress?: string) {
   };
 }
 
-/** Delete all videos for a wallet (cleanup). */
 export async function deleteAllVideos(walletAddress: string) {
   const res = await api.delete("/api/videos/all", { params: { wallet: walletAddress } });
   return res.data as { success: boolean; deleted: number; message: string };
 }
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// ── Types ───────────────────────────────────────────────────────────────────
 export interface VideoRecord {
   id: string;
   title: string;
