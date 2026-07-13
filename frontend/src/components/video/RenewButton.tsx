@@ -1,87 +1,73 @@
 "use client";
-
 import { useState } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useUploadBlobs } from "@shelby-protocol/react";
-import { RefreshCw, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+import { RefreshCw, Check, AlertTriangle } from "lucide-react";
 import { expirationMicros } from "@/lib/shelby";
 import { clsx } from "clsx";
 
-interface RenewButtonProps {
-  streamUrl: string;
-  videoBlobName: string;
-  onRenewed?: () => void;
-}
+type S = "idle" | "fetching" | "signing" | "done" | "error";
 
-type RenewState = "idle" | "fetching" | "signing" | "done" | "error";
-
-export function RenewButton({ streamUrl, videoBlobName, onRenewed }: RenewButtonProps) {
+export function RenewButton({
+  streamUrl, videoBlobName, onRenewed,
+}: { streamUrl: string; videoBlobName: string; onRenewed?: () => void }) {
   const { account, signAndSubmitTransaction, connected } = useWallet();
-  const [state, setState] = useState<RenewState>("idle");
-  const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [s, setS] = useState<S>("idle");
+  const [err, setErr] = useState<string | null>(null);
 
-  const uploadBlobs = useUploadBlobs({
-    onError: (err) => { setErrMsg(err.message); setState("error"); },
+  const upload = useUploadBlobs({
+    onError: (e) => { setErr(e.message); setS("error"); },
   });
 
-  const handleRenew = async () => {
+  const go = async () => {
     if (!connected || !account || !signAndSubmitTransaction) return;
-    setState("fetching");
-    setErrMsg(null);
-
+    setS("fetching"); setErr(null);
     try {
-      const response = await fetch(streamUrl);
-      if (!response.ok) throw new Error(`Could not fetch video (${response.status}). It may have already expired.`);
-      const arrayBuffer = await response.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
+      const r = await fetch(streamUrl);
+      if (!r.ok) throw new Error("Blob already expired — re-upload the file.");
+      const buf = new Uint8Array(await r.arrayBuffer());
 
-      setState("signing");
-      await new Promise<void>((resolve, reject) => {
-        uploadBlobs.mutate(
+      setS("signing");
+      await new Promise<void>((res, rej) => {
+        upload.mutate(
           {
             signer: { account: account.address.toString() as any, signAndSubmitTransaction },
-            blobs: [{ blobName: videoBlobName, blobData: bytes }],
+            blobs: [{ blobName: videoBlobName, blobData: buf }],
             expirationMicros: expirationMicros(),
           },
-          { onSuccess: () => resolve(), onError: (err) => reject(err) }
+          { onSuccess: () => res(), onError: (e) => rej(e) }
         );
       });
 
-      setState("done");
-      onRenewed?.();
-      setTimeout(() => setState("idle"), 4000);
-    } catch (err: any) {
-      setErrMsg(err.message ?? "Renewal failed. Please try again.");
-      setState("error");
+      setS("done"); onRenewed?.();
+      setTimeout(() => setS("idle"), 4000);
+    } catch (e: any) {
+      setErr(e.message ?? "Renewal failed."); setS("error");
     }
   };
 
   if (!connected) return null;
 
   return (
-    <div className="space-y-1.5">
+    <div className="flex flex-col items-end gap-1">
       <button
-        onClick={handleRenew}
-        disabled={state === "fetching" || state === "signing" || state === "done"}
+        onClick={go}
+        disabled={s === "fetching" || s === "signing" || s === "done"}
         className={clsx(
-          "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-syne font-semibold transition-all",
-          state === "done"    ? "bg-volt/10 border border-volt/20 text-volt cursor-default"
-          : state === "error"  ? "bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 cursor-pointer"
-          : state !== "idle"   ? "bg-volt/10 border border-volt/20 text-volt/50 cursor-not-allowed"
-          : "bg-volt/10 border border-volt/20 text-volt hover:bg-volt/20 cursor-pointer"
+          "flex items-center gap-1.5 h-8 px-3 text-[12px] font-sans transition-colors border no-min",
+          s === "done"  ? "border-marker-dim text-marker cursor-default"
+          : s === "error" ? "border-error/40 text-error hover:bg-error/10"
+          : "border-rule text-dim hover:text-paper hover:border-rule-lit"
         )}
       >
-        {state === "idle"     && <><RefreshCw size={12} /> Renew on Shelby</>}
-        {state === "fetching" && <><Loader2 size={12} className="animate-spin" /> Fetching from Shelby...</>}
-        {state === "signing"  && <><Loader2 size={12} className="animate-spin" /> Check wallet...</>}
-        {state === "done"     && <><CheckCircle size={12} /> Renewed — good for 47hrs</>}
-        {state === "error"    && <><AlertTriangle size={12} /> Failed — tap to retry</>}
+        {s === "idle"     && <><RefreshCw size={10} /> Renew on Shelby</>}
+        {s === "fetching" && <><span className="dot dot-work" /> Fetching…</>}
+        {s === "signing"  && <><span className="dot dot-work" /> Check wallet</>}
+        {s === "done"     && <><Check size={10} /> Good for 47h</>}
+        {s === "error"    && <><AlertTriangle size={10} /> Retry</>}
       </button>
-      {state === "signing" && (
-        <p className="text-[10px] font-mono text-volt/50 animate-pulse pl-1">⚡ Approve the signing request in Petra</p>
-      )}
-      {state === "error" && errMsg && (
-        <p className="text-[10px] font-mono text-red-400/60 pl-1 leading-relaxed">{errMsg}</p>
+      {s === "error" && err && (
+        <p className="tc text-error/70 max-w-[220px] text-right leading-relaxed">{err}</p>
       )}
     </div>
   );

@@ -3,17 +3,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { getLearningPaths, regenerateLearningPaths, type LearningPath } from "@/lib/api";
 import { Navbar } from "@/components/layout/Navbar";
-import {
-  GraduationCap, Wallet, Loader2, RefreshCw, AlertTriangle,
-  Play, ArrowRight, Sparkles, Upload, Clock,
-} from "lucide-react";
+import { RefreshCw, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { clsx } from "clsx";
 
-const LEVEL_STYLES: Record<string, { dot: string; badge: string; label: string }> = {
-  Beginner:     { dot: "bg-green-400",  badge: "border-green-400/20 bg-green-400/5 text-green-400",   label: "Start here" },
-  Intermediate: { dot: "bg-yellow-400", badge: "border-yellow-400/20 bg-yellow-400/5 text-yellow-400", label: "Build on basics" },
-  Advanced:     { dot: "bg-volt",        badge: "border-volt/20 bg-volt/5 text-volt",                   label: "Go deep" },
+const LEVEL: Record<string, string> = {
+  Beginner:     "text-marker",
+  Intermediate: "text-warn",
+  Advanced:     "text-signal",
 };
 
 export default function LearnPage() {
@@ -30,204 +27,143 @@ export default function LearnPage() {
 
   const regen = useMutation({
     mutationFn: () => regenerateLearningPaths(wallet!),
-    onSuccess: (fresh) => {
-      qc.setQueryData(["learning-paths", wallet], fresh);
-    },
+    onSuccess: (d) => qc.setQueryData(["learning-paths", wallet], d),
   });
 
   return (
-    <div className="min-h-screen gradient-mesh">
+    <div className="min-h-screen bg-void">
       <Navbar />
-      <main className="pt-20 sm:pt-24 pb-16 px-4 sm:px-6 max-w-4xl mx-auto">
-
-        {/* Header */}
-        <div className="pt-4 mb-10">
-          <span className="px-3 py-1 rounded-full border border-volt/20 bg-volt/5 text-xs font-mono text-volt">
-            AI Curriculum
-          </span>
-          <h1 className="font-syne text-2xl sm:text-3xl font-800 text-white mt-3 leading-tight">
-            Learning <span className="text-volt">Paths</span>
-          </h1>
-          <p className="text-white/40 font-dm text-sm mt-3 max-w-lg leading-relaxed">
-            Claude analyses your entire library and builds ordered paths — so you
-            know exactly what to watch, and in what order.
-          </p>
+      <main className="pt-14">
+        <div className="border-b border-rule">
+          <div className="max-w-[900px] mx-auto px-4 sm:px-6 py-10">
+            <p className="eyebrow mb-4">Curriculum</p>
+            <h1 className="font-display text-[32px] sm:text-[42px] leading-[1.05] text-paper max-w-lg">
+              Your library,
+              <br />
+              <span className="italic text-signal">in the right order.</span>
+            </h1>
+            <p className="text-[14px] font-sans text-dim mt-4 max-w-md leading-relaxed">
+              Claude reads everything you've uploaded and works out what to watch first —
+              and why.
+            </p>
+          </div>
         </div>
 
-        {/* Not connected */}
-        {!connected && (
-          <div className="text-center py-16 space-y-5">
-            <div className="w-14 h-14 rounded-2xl bg-dark-800 border border-white/10 flex items-center justify-center mx-auto">
-              <Wallet size={20} className="text-white/20" strokeWidth={1.5} />
-            </div>
-            <div>
-              <p className="font-syne font-semibold text-white">Connect your wallet</p>
-              <p className="text-white/30 text-sm font-dm mt-2 max-w-sm mx-auto leading-relaxed">
-                Learning paths are built from your personal video library.
+        <div className="max-w-[900px] mx-auto px-4 sm:px-6 py-8">
+
+          {!connected && (
+            <div className="py-20 text-center">
+              <p className="font-display text-[24px] text-paper mb-3">Connect a wallet</p>
+              <p className="text-[13px] font-sans text-dim">
+                Paths are built from your own library.
               </p>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Loading */}
-        {connected && isLoading && (
-          <div className="space-y-4">
-            {[0, 1].map((i) => (
-              <div key={i} className="glass-card rounded-2xl p-6 space-y-4">
-                <div className="h-5 bg-dark-700 rounded shimmer w-1/3" />
-                <div className="h-3 bg-dark-700 rounded shimmer w-2/3" />
-                <div className="space-y-2 pt-2">
-                  {[0, 1, 2].map((j) => (
-                    <div key={j} className="h-14 bg-dark-700 rounded-xl shimmer" />
-                  ))}
+          {connected && isLoading && (
+            <div className="space-y-4">
+              {[0, 1].map((i) => (
+                <div key={i} className="panel">
+                  <div className="h-16 scan border-b border-rule" />
+                  <div className="h-40 scan" />
                 </div>
-              </div>
-            ))}
-            <div className="flex items-center justify-center gap-2 pt-4 text-white/25">
-              <Sparkles size={12} className="text-volt animate-pulse" />
-              <span className="text-xs font-mono">Claude is designing your curriculum...</span>
+              ))}
+              <p className="tc text-center pt-4">Claude is reading your library…</p>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Error */}
-        {connected && isError && (
-          <div className="max-w-md mx-auto py-12 text-center space-y-5">
-            <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto">
-              <AlertTriangle size={20} className="text-red-400" />
+          {connected && isError && (
+            <div className="py-16 text-center space-y-3">
+              <p className="font-display text-[22px] text-paper">Couldn't build paths</p>
+              <p className="text-[13px] font-sans text-dim">{(error as Error)?.message}</p>
             </div>
-            <div>
-              <p className="font-syne font-semibold text-white">Could not build learning paths</p>
-              <p className="text-sm text-white/40 font-dm mt-2">{(error as Error)?.message}</p>
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Not enough videos */}
-        {connected && data && data.paths.length === 0 && (data.minRequired ?? 0) > 0 && (
-          <div className="text-center py-16 space-y-5">
-            <div className="w-14 h-14 rounded-2xl bg-dark-800 border border-white/10 flex items-center justify-center mx-auto">
-              <GraduationCap size={20} className="text-white/20" strokeWidth={1.5} />
-            </div>
-            <div>
-              <p className="font-syne font-semibold text-white">Not enough videos yet</p>
-              <p className="text-white/30 text-sm font-dm mt-2 max-w-sm mx-auto leading-relaxed">
-                You have <span className="text-volt">{data.videoCount}</span> processed
-                video{data.videoCount !== 1 ? "s" : ""}. Learning paths need at
-                least <span className="text-volt">{data.minRequired}</span> so
-                Claude has enough material to build a meaningful curriculum.
+          {connected && data && data.paths.length === 0 && (data.minRequired ?? 0) > 0 && (
+            <div className="py-20 text-center space-y-4">
+              <p className="font-display text-[24px] text-paper">
+                Not enough to work with yet
               </p>
+              <p className="text-[13px] font-sans text-dim max-w-sm mx-auto leading-relaxed">
+                You have {data.videoCount} processed video{data.videoCount !== 1 ? "s" : ""}.
+                Paths need at least {data.minRequired} so there's an actual sequence to build.
+              </p>
+              <Link href="/upload" className="btn btn-signal h-10 px-5 inline-flex items-center gap-2 mt-2">
+                Upload another <ArrowRight size={13} />
+              </Link>
             </div>
-            <Link
-              href="/upload"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-volt text-black font-syne font-semibold text-sm hover:bg-volt-dim transition-all"
-            >
-              <Upload size={14} /> Upload another video
-            </Link>
-          </div>
-        )}
+          )}
 
-        {/* Paths */}
-        {connected && data && data.paths.length > 0 && (
-          <div className="space-y-6">
-            {/* Meta row */}
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-2 text-[11px] font-mono text-white/25">
-                <Clock size={10} />
-                Built from {data.videoCount} videos
-                {data.cached && <span className="text-white/15">· cached</span>}
+          {connected && data && data.paths.length > 0 && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between pb-3 border-b border-rule">
+                <span className="tc">
+                  From {data.videoCount} videos{data.cached && " · cached"}
+                </span>
+                <button
+                  onClick={() => regen.mutate()}
+                  disabled={regen.isPending}
+                  className="flex items-center gap-1.5 tc hover:text-paper transition-colors disabled:opacity-50 no-min"
+                >
+                  <RefreshCw size={10} className={clsx(regen.isPending && "animate-spin")} />
+                  {regen.isPending ? "Rebuilding…" : "Rebuild"}
+                </button>
               </div>
-              <button
-                onClick={() => regen.mutate()}
-                disabled={regen.isPending}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dark-700 border border-white/10 text-[11px] font-mono text-white/40 hover:text-white hover:border-white/20 transition-all disabled:opacity-50"
-              >
-                {regen.isPending
-                  ? <><Loader2 size={10} className="animate-spin" /> Rebuilding...</>
-                  : <><RefreshCw size={10} /> Rebuild paths</>}
-              </button>
-            </div>
 
-            {data.paths.map((path, pi) => (
-              <PathCard key={pi} path={path} />
-            ))}
-          </div>
-        )}
+              {data.paths.map((p, i) => <Path key={i} p={p} />)}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
 }
 
-function PathCard({ path }: { path: LearningPath }) {
-  const style = LEVEL_STYLES[path.level] ?? LEVEL_STYLES.Beginner;
-
+function Path({ p }: { p: LearningPath }) {
   return (
-    <div className="glass-card rounded-2xl overflow-hidden">
-      {/* Path header */}
-      <div className="p-5 border-b border-white/[0.06]">
-        <div className="flex items-start justify-between gap-3">
+    <section className="panel">
+      <header className="px-4 py-4 border-b border-rule">
+        <div className="flex items-baseline justify-between gap-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <div className={clsx("w-2 h-2 rounded-full", style.dot)} />
-              <span className={clsx(
-                "px-2 py-0.5 rounded-full border text-[10px] font-mono",
-                style.badge
-              )}>
-                {path.level}
-              </span>
-              <span className="text-[10px] font-mono text-white/20">{style.label}</span>
-            </div>
-            <h2 className="font-syne font-800 text-white text-lg leading-tight">
-              {path.title}
+            <p className={clsx("eyebrow mb-1.5", LEVEL[p.level] ?? "text-marker")}>
+              {p.level}
+            </p>
+            <h2 className="font-display text-[22px] text-paper leading-tight">
+              {p.title}
             </h2>
-            <p className="text-sm text-white/40 font-dm mt-1.5 leading-relaxed">
-              {path.description}
+            <p className="text-[13px] font-sans text-dim mt-1.5 leading-relaxed">
+              {p.description}
             </p>
           </div>
-          <div className="shrink-0 text-right">
-            <p className="font-syne font-800 text-volt text-2xl">{path.steps.length}</p>
-            <p className="text-[10px] font-mono text-white/25 uppercase tracking-widest">
-              video{path.steps.length !== 1 ? "s" : ""}
-            </p>
-          </div>
+          <span className="tc tabular-nums shrink-0">
+            {p.steps.length} step{p.steps.length !== 1 ? "s" : ""}
+          </span>
         </div>
-      </div>
+      </header>
 
-      {/* Steps */}
-      <div className="p-3">
-        {path.steps.map((step, i) => (
+      <div>
+        {p.steps.map((s, i) => (
           <Link
-            key={`${step.videoId}-${i}`}
-            href={`/video/${step.videoId}`}
-            className="group flex items-start gap-4 p-3 rounded-xl hover:bg-white/[0.03] transition-all"
+            key={`${s.videoId}-${i}`}
+            href={`/video/${s.videoId}`}
+            className="flex items-start gap-4 px-4 py-3.5 border-b border-rule last:border-0 hover:bg-slate transition-colors group"
           >
-            {/* Step number + connector */}
-            <div className="flex flex-col items-center shrink-0 pt-0.5">
-              <div className="w-7 h-7 rounded-lg bg-dark-700 border border-white/10 group-hover:border-volt/30 group-hover:bg-volt/10 flex items-center justify-center transition-all">
-                <span className="font-mono text-[11px] text-white/40 group-hover:text-volt transition-colors">
-                  {i + 1}
-                </span>
-              </div>
-              {i < path.steps.length - 1 && (
-                <div className="w-px h-8 bg-gradient-to-b from-white/10 to-transparent mt-1" />
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-syne font-semibold text-white group-hover:text-volt transition-colors line-clamp-1">
-                {step.title}
-              </p>
-              <p className="text-xs text-white/35 font-dm mt-1 leading-relaxed">
-                {step.reason}
-              </p>
-            </div>
-
-            <div className="shrink-0 w-7 h-7 rounded-lg bg-volt/10 border border-volt/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">
-              <Play size={11} className="text-volt ml-0.5" />
-            </div>
+            <span className="tc tabular-nums shrink-0 pt-1 group-hover:tc-signal transition-colors">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <span className="w-px self-stretch bg-rule group-hover:bg-signal transition-colors shrink-0" />
+            <span className="flex-1 min-w-0">
+              <span className="block font-display text-[17px] text-paper leading-tight group-hover:text-signal transition-colors">
+                {s.title}
+              </span>
+              <span className="block text-[12px] font-sans text-dim mt-1 leading-relaxed">
+                {s.reason}
+              </span>
+            </span>
+            <ArrowRight size={12} className="text-dim-2 group-hover:text-signal shrink-0 mt-1 transition-colors" />
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

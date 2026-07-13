@@ -1,13 +1,12 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { Download, FileText, Captions, FileCode, ChevronDown, CheckCircle } from "lucide-react";
+import { Download, ChevronDown, Check } from "lucide-react";
 import { clsx } from "clsx";
 import {
-  toSRT, toVTT, toMarkdown, toPlainText, downloadFile, slugify,
-  type Segment,
+  toSRT, toVTT, toMarkdown, toPlainText, downloadFile, slugify, type Segment,
 } from "@/lib/exports";
 
-interface ExportMenuProps {
+interface Props {
   title: string;
   transcript?: Segment[];
   summary?: string;
@@ -16,92 +15,53 @@ interface ExportMenuProps {
   tags?: string[];
 }
 
-export function ExportMenu(props: ExportMenuProps) {
+export function ExportMenu(props: Props) {
   const { title, transcript } = props;
   const [open, setOpen] = useState(false);
-  const [done, setDone] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function handler(e: MouseEvent) {
+    const h = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
   }, []);
 
   if (!transcript?.length) return null;
-
   const slug = slugify(title);
 
-  const flash = (label: string) => {
-    setDone(label);
-    setTimeout(() => setDone(null), 2000);
-    setOpen(false);
-  };
+  const flash = () => { setDone(true); setTimeout(() => setDone(false), 1800); setOpen(false); };
 
-  const OPTIONS = [
-    {
-      key: "srt",
-      label: "Subtitles (.srt)",
-      hint: "For video editors & players",
-      icon: Captions,
-      run: () => { downloadFile(toSRT(transcript), `${slug}.srt`, "text/plain"); flash("srt"); },
-    },
-    {
-      key: "vtt",
-      label: "WebVTT (.vtt)",
-      hint: "For web video players",
-      icon: Captions,
-      run: () => { downloadFile(toVTT(transcript), `${slug}.vtt`, "text/vtt"); flash("vtt"); },
-    },
-    {
-      key: "md",
-      label: "Full notes (.md)",
-      hint: "Summary, chapters, highlights & transcript",
-      icon: FileCode,
-      run: () => { downloadFile(toMarkdown(props), `${slug}.md`, "text/markdown"); flash("md"); },
-    },
-    {
-      key: "txt",
-      label: "Plain text (.txt)",
-      hint: "Transcript only, no timestamps",
-      icon: FileText,
-      run: () => { downloadFile(toPlainText(transcript), `${slug}.txt`, "text/plain"); flash("txt"); },
-    },
+  const OPTS = [
+    { ext: "srt", note: "subtitles for editors",  run: () => { downloadFile(toSRT(transcript), `${slug}.srt`); flash(); } },
+    { ext: "vtt", note: "web video players",       run: () => { downloadFile(toVTT(transcript), `${slug}.vtt`, "text/vtt"); flash(); } },
+    { ext: "md",  note: "notes, cuts and quotes",  run: () => { downloadFile(toMarkdown(props), `${slug}.md`, "text/markdown"); flash(); } },
+    { ext: "txt", note: "transcript, no timecodes",run: () => { downloadFile(toPlainText(transcript), `${slug}.txt`); flash(); } },
   ];
 
   return (
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-dark-700 border border-white/10 text-xs font-syne font-semibold text-white/60 hover:text-white hover:border-white/20 transition-all"
+        className="flex items-center gap-1.5 h-8 px-3 btn-ghost text-[12px] no-min"
       >
-        {done
-          ? <><CheckCircle size={12} className="text-volt" /> Downloaded</>
-          : <><Download size={12} /> Export</>
-        }
-        <ChevronDown size={11} className={clsx("transition-transform", open && "rotate-180")} />
+        {done ? <Check size={11} className="text-marker" /> : <Download size={11} />}
+        {done ? "Downloaded" : "Export"}
+        <ChevronDown size={10} className={clsx("transition-transform", open && "rotate-180")} />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-64 glass-card rounded-xl overflow-hidden z-40 shadow-xl shadow-black/40">
-          <div className="px-4 py-2.5 border-b border-white/[0.06]">
-            <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest">
-              Export transcript
-            </p>
-          </div>
-          {OPTIONS.map(({ key, label, hint, icon: Icon, run }) => (
+        <div className="absolute left-0 top-full mt-1 w-56 bg-void border border-rule z-40">
+          {OPTS.map(({ ext, note, run }) => (
             <button
-              key={key}
+              key={ext}
               onClick={run}
-              className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-white/[0.04] transition-all border-b border-white/[0.03] last:border-0"
+              className="w-full flex items-baseline gap-3 px-3 py-2.5 text-left border-b border-rule last:border-0 hover:bg-slate transition-colors no-min"
             >
-              <Icon size={13} className="text-volt/60 shrink-0 mt-0.5" />
-              <div className="min-w-0">
-                <p className="text-xs font-dm text-white/80">{label}</p>
-                <p className="text-[10px] font-mono text-white/25 mt-0.5">{hint}</p>
-              </div>
+              <span className="tc tc-signal">.{ext}</span>
+              <span className="text-[12px] font-sans text-dim">{note}</span>
             </button>
           ))}
         </div>

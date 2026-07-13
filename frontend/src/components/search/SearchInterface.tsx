@@ -1,70 +1,47 @@
 "use client";
 import { useState } from "react";
-import { Search, Loader2, Film, Clock, Zap, AlertTriangle, RefreshCw, SearchX, Wallet } from "lucide-react";
+import { Search, RefreshCw, X } from "lucide-react";
 import { searchAllVideos } from "@/lib/api";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { readableTime } from "@/lib/exports";
 import Link from "next/link";
 
-function formatTime(seconds: number) {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
 const EXAMPLES = [
-  "What did they say about Shelby architecture?",
-  "Explain blob expiration and renewal",
-  "Key insights on decentralized storage",
-  "How to integrate the SDK",
+  "What did they say about expiration?",
+  "Explain how blobs get renewed",
+  "The part about wallet signing",
+  "Anything on decentralised storage",
 ];
 
 export function SearchInterface() {
   const { connected, account } = useWallet();
-  const walletAddress = account?.address?.toString();
+  const wallet = account?.address?.toString();
 
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<any[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [lastQuery, setLastQuery] = useState("");
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<any[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [last, setLast] = useState("");
 
-  const doSearch = async (q: string) => {
-    const trimmed = q.trim();
-    if (!trimmed) return;
-    setQuery(trimmed);
-    setLastQuery(trimmed);
-    setLoading(true);
-    setResults(null);
-    setError(null);
-
+  const run = async (text: string) => {
+    const query = text.trim();
+    if (!query) return;
+    setQ(query); setLast(query); setBusy(true); setHits(null); setErr(null);
     try {
-      const data = await searchAllVideos(trimmed, walletAddress);
-      setResults(data.results);
-    } catch (err: any) {
-      setError(err.message ?? "Search failed. Please try again.");
-      setResults(null);
-    } finally {
-      setLoading(false);
-    }
+      const d = await searchAllVideos(query, wallet);
+      setHits(d.results);
+    } catch (e: any) { setErr(e.message); }
+    finally { setBusy(false); }
   };
 
-  const retry = () => doSearch(lastQuery);
-
-  // Wallet not connected
   if (!connected) {
     return (
-      <div className="text-center py-16 space-y-5">
-        <div className="w-14 h-14 rounded-2xl bg-dark-800 border border-white/10 flex items-center justify-center mx-auto">
-          <Wallet size={20} className="text-white/20" strokeWidth={1} />
-        </div>
-        <div>
-          <p className="font-syne font-semibold text-white">Connect your wallet to search</p>
-          <p className="text-white/30 text-sm font-dm mt-2 max-w-sm mx-auto leading-relaxed">
-            Search is scoped to your wallet's video library. Connect your Aptos wallet to get started.
-          </p>
-        </div>
-        <p className="text-[11px] font-mono text-white/20">
-          Use the Connect Wallet button in the top navigation
+      <div className="py-20 text-center">
+        <p className="font-display text-[24px] text-paper mb-3">
+          Connect a wallet to search
+        </p>
+        <p className="text-[13px] font-sans text-dim">
+          Search runs across your library only.
         </p>
       </div>
     );
@@ -72,147 +49,97 @@ export function SearchInterface() {
 
   return (
     <div className="space-y-8">
-      {/* Search bar */}
-      <div className="relative">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2">
-          {loading
-            ? <Loader2 size={18} className="text-volt animate-spin" />
-            : <Search size={18} className="text-white/30" />
-          }
-        </div>
+      {/* Query bar */}
+      <div className="flex items-center border border-rule focus-within:border-rule-lit transition-colors">
+        <span className="pl-3 shrink-0">
+          {busy ? <span className="dot dot-work" /> : <Search size={14} className="text-dim" />}
+        </span>
         <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && doSearch(query)}
-          placeholder="Search across your videos by meaning, not keywords..."
-          disabled={loading}
-          className="w-full bg-dark-800 border border-white/10 rounded-2xl pl-12 pr-32 py-4 text-white placeholder-white/20 font-dm text-sm focus:outline-none focus:border-volt/30 focus:bg-dark-700 transition-all disabled:opacity-60"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && run(q)}
+          placeholder="Describe what you're looking for…"
+          disabled={busy}
+          className="flex-1 h-12 px-3 text-[15px] font-sans bg-transparent border-0 focus:border-0"
         />
         <button
-          onClick={() => doSearch(query)}
-          disabled={loading || !query.trim()}
-          className="absolute right-3 top-1/2 -translate-y-1/2 px-5 py-2 rounded-xl bg-volt text-black text-xs font-syne font-semibold hover:bg-volt-dim disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          onClick={() => run(q)}
+          disabled={busy || !q.trim()}
+          className="h-12 px-5 bg-signal text-void text-[13px] font-sans font-medium hover:bg-[#FF6449] transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0 no-min"
         >
           Search
         </button>
       </div>
 
-      {/* Wallet scope indicator */}
-      <div className="flex items-center gap-2 text-[11px] font-mono text-white/20">
-        <Zap size={10} className="text-volt/40" />
-        Searching videos for {walletAddress?.slice(0, 8)}...{walletAddress?.slice(-6)}
-      </div>
-
-      {/* Example queries */}
-      {results === null && !loading && !error && (
-        <div className="space-y-3">
-          <p className="text-xs font-mono text-white/25 uppercase tracking-widest">Example queries</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {EXAMPLES.map((ex) => (
+      {/* Idle */}
+      {hits === null && !busy && !err && (
+        <div>
+          <p className="eyebrow mb-3">Try</p>
+          <div className="grid sm:grid-cols-2 gap-px">
+            {EXAMPLES.map((e) => (
               <button
-                key={ex}
-                onClick={() => doSearch(ex)}
-                className="text-left px-4 py-3 rounded-xl bg-dark-800/60 border border-white/[0.06] hover:border-volt/20 hover:bg-volt/[0.03] text-sm text-white/40 hover:text-white/70 transition-all font-dm"
+                key={e}
+                onClick={() => run(e)}
+                className="text-left px-4 py-3 border border-rule text-[13px] font-sans text-dim hover:text-paper hover:border-rule-lit hover:bg-slate transition-colors no-min"
               >
-                <span className="text-volt mr-2">"</span>
-                {ex}
-                <span className="text-volt ml-1">"</span>
+                {e}
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Error state */}
-      {error && (
-        <div className="rounded-xl bg-red-500/10 border border-red-500/20 overflow-hidden">
-          <div className="flex items-start gap-3 p-4">
-            <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-syne font-semibold text-red-400">Search failed</p>
-              <p className="text-xs text-red-400/70 font-dm mt-1 leading-relaxed">{error}</p>
-            </div>
-          </div>
-          <div className="border-t border-red-500/20 px-4 py-2.5">
-            <button
-              onClick={retry}
-              className="flex items-center gap-1.5 text-xs text-red-400/60 hover:text-red-400 transition-colors font-mono"
-            >
-              <RefreshCw size={11} /> Try again
-            </button>
-          </div>
+      {/* Error */}
+      {err && (
+        <div className="border border-error/40 bg-error/5 p-3 flex items-start gap-3">
+          <p className="text-[13px] font-sans text-error flex-1">{err}</p>
+          <button onClick={() => run(last)} className="tc text-error/70 hover:text-error no-min">
+            <RefreshCw size={11} />
+          </button>
         </div>
       )}
 
       {/* Results */}
-      {results !== null && !loading && !error && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Zap size={14} className="text-volt" />
-              <p className="text-sm font-syne text-white">
-                {results.length === 0
-                  ? "No results found"
-                  : `${results.length} video${results.length !== 1 ? "s" : ""} matched`}
-              </p>
-            </div>
+      {hits !== null && !busy && !err && (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between pb-3 border-b border-rule">
+            <p className="eyebrow">
+              {hits.length === 0 ? "No match" : `${hits.length} video${hits.length !== 1 ? "s" : ""}`}
+            </p>
             <button
-              onClick={() => { setResults(null); setQuery(""); setLastQuery(""); }}
-              className="text-xs font-mono text-white/25 hover:text-white/50 transition-colors"
+              onClick={() => { setHits(null); setQ(""); }}
+              className="tc hover:text-paper transition-colors no-min flex items-center gap-1"
             >
-              Clear
+              <X size={10} /> Clear
             </button>
           </div>
 
-          {/* Empty state */}
-          {results.length === 0 && (
-            <div className="text-center py-16 space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-dark-800 border border-white/[0.06] flex items-center justify-center mx-auto">
-                <SearchX size={20} className="text-white/20" strokeWidth={1.5} />
-              </div>
-              <div>
-                <p className="text-white/40 font-dm text-sm">No videos matched your query</p>
-                <p className="text-white/20 font-mono text-xs mt-1">
-                  Try different keywords or upload more videos
-                </p>
-              </div>
-              <button
-                onClick={() => { setResults(null); setQuery(""); }}
-                className="text-xs font-mono text-volt/60 hover:text-volt transition-colors"
-              >
-                ← Back to examples
-              </button>
-            </div>
+          {hits.length === 0 && (
+            <p className="py-16 text-center text-[13px] font-sans text-dim">
+              Nothing in your library matches that. Try different words.
+            </p>
           )}
 
-          {/* Result cards */}
-          {results.map((result) => (
-            <Link
-              key={result.videoId}
-              href={`/video/${result.videoId}`}
-              className="block glass-card-hover rounded-2xl p-5 space-y-4"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-dark-700 border border-white/10 flex items-center justify-center shrink-0">
-                  <Film size={16} className="text-white/30" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-syne font-semibold text-white text-sm truncate">{result.title}</p>
-                  <p className="text-xs font-mono text-white/30">
-                    {result.matches.length} match{result.matches.length !== 1 ? "es" : ""}
-                  </p>
-                </div>
-                <Zap size={12} className="text-volt/40 shrink-0" />
-              </div>
+          {hits.map((r) => (
+            <Link key={r.videoId} href={`/video/${r.videoId}`} className="block panel-hover group">
+              <header className="flex items-baseline justify-between gap-4 px-4 py-3 border-b border-rule">
+                <h3 className="font-display text-[19px] text-paper group-hover:text-signal transition-colors truncate">
+                  {r.title}
+                </h3>
+                <span className="tc shrink-0">
+                  {r.matches.length} moment{r.matches.length !== 1 ? "s" : ""}
+                </span>
+              </header>
 
-              <div className="space-y-2">
-                {result.matches.map((match: any, i: number) => (
-                  <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-dark-800/60 border border-white/[0.06]">
-                    <div className="flex items-center gap-1 shrink-0 mt-0.5">
-                      <Clock size={10} className="text-volt" />
-                      <span className="text-[10px] font-mono text-volt">{formatTime(match.time)}</span>
-                    </div>
-                    <p className="text-xs text-white/50 font-dm leading-relaxed line-clamp-2">{match.text}</p>
+              <div>
+                {r.matches.map((m: any, i: number) => (
+                  <div key={i} className="flex items-start gap-3 px-4 py-2.5 border-b border-rule last:border-0">
+                    <span className="tc tc-signal tabular-nums shrink-0 pt-0.5">
+                      {readableTime(m.time)}
+                    </span>
+                    <p className="text-[13px] font-sans text-paper-2/70 leading-relaxed line-clamp-2">
+                      {m.text}
+                    </p>
                   </div>
                 ))}
               </div>

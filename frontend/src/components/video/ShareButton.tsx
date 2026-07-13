@@ -1,34 +1,27 @@
 "use client";
 import { useState } from "react";
-import { Share2, CheckCircle, Link2 } from "lucide-react";
+import { Share2, Check } from "lucide-react";
 
 export function ShareButton({ videoId }: { videoId: string }) {
   const [copied, setCopied] = useState(false);
 
   const share = async () => {
     const url = `${window.location.origin}/v/${videoId}`;
-
-    // Use native share sheet on mobile if available
     if (navigator.share) {
-      try {
-        await navigator.share({ title: "VideoMind", url });
-        return;
-      } catch { /* user cancelled — fall through to copy */ }
+      try { await navigator.share({ title: "VideoMind", url }); return; } catch {}
     }
-
     navigator.clipboard.writeText(url);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    setTimeout(() => setCopied(false), 2200);
   };
 
   return (
     <button
       onClick={share}
-      className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-dark-700 border border-white/10 text-xs font-syne font-semibold text-white/60 hover:text-white hover:border-white/20 transition-all"
+      className="flex items-center gap-1.5 h-8 px-3 btn-ghost text-[12px] no-min"
     >
-      {copied
-        ? <><CheckCircle size={12} className="text-volt" /> Link copied</>
-        : <><Share2 size={12} /> Share</>}
+      {copied ? <Check size={11} className="text-marker" /> : <Share2 size={11} />}
+      {copied ? "Link copied" : "Share"}
     </button>
   );
 }
