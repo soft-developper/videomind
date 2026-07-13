@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Instrument_Serif, Inter_Tight, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/layout/AppProviders";
@@ -45,6 +45,15 @@ export const metadata: Metadata = {
     title: "VideoMind — see the shape of any video",
     description: "AI reads your video, maps its structure, and answers questions about it.",
   },
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-icon.svg" }],
+  },
+  manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0A0A0C",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
