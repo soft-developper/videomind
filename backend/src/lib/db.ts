@@ -47,6 +47,14 @@ export async function migrate() {
       expires_at_micros   INTEGER
     )`,
 
+    // Cached learning paths per wallet
+    `CREATE TABLE IF NOT EXISTS learning_paths (
+      wallet_address TEXT PRIMARY KEY,
+      paths_json     TEXT NOT NULL,
+      video_count    INTEGER NOT NULL,
+      generated_at   INTEGER NOT NULL
+    )`,
+
     // AI outputs (stored as JSON columns for flexibility)
     `CREATE TABLE IF NOT EXISTS video_ai (
       video_id     TEXT PRIMARY KEY REFERENCES videos(id) ON DELETE CASCADE,

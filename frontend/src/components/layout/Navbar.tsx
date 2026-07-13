@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Brain, Upload, Search, LayoutGrid, Zap, Menu, X, Info } from "lucide-react";
+import { Brain, Upload, Search, LayoutGrid, Zap, Menu, X, Info, GraduationCap, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 import { WalletButton } from "./WalletButton";
 import { ExpiryBanner } from "./ExpiryBanner";
@@ -11,6 +11,8 @@ const NAV = [
   { href: "/",       label: "Library", icon: LayoutGrid },
   { href: "/upload", label: "Upload",  icon: Upload },
   { href: "/search", label: "Search",  icon: Search },
+  { href: "/assistant", label: "Assistant", icon: Sparkles },
+  { href: "/learn",  label: "Learn",   icon: GraduationCap },
   { href: "/about",  label: "About",   icon: Info },
 ];
 

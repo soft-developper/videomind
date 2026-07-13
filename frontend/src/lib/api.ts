@@ -90,6 +90,49 @@ export async function deleteAllVideos(walletAddress: string) {
   return res.data as { success: boolean; deleted: number; message: string };
 }
 
+// ── Learning Paths ──────────────────────────────────────────────────────────
+export interface LearningPath {
+  level: "Beginner" | "Intermediate" | "Advanced";
+  title: string;
+  description: string;
+  steps: Array<{ videoId: string; title: string; reason: string }>;
+}
+
+export interface PathsResponse {
+  paths: LearningPath[];
+  videoCount: number;
+  minRequired?: number;
+  generatedAt?: number;
+  cached: boolean;
+}
+
+export async function getLearningPaths(wallet: string): Promise<PathsResponse> {
+  const res = await api.get("/api/learn/paths", { params: { wallet } });
+  return res.data;
+}
+
+export async function regenerateLearningPaths(wallet: string): Promise<PathsResponse> {
+  const res = await api.post("/api/learn/paths/regenerate", { wallet });
+  return res.data;
+}
+
+// ── Library Assistant ───────────────────────────────────────────────────────
+export interface LibraryAnswer {
+  answer: string;
+  citations: Array<{
+    videoId: string;
+    videoTitle: string;
+    time: number;
+    quote: string;
+  }>;
+  videosUsed: string[];
+}
+
+export async function askLibrary(question: string, wallet: string): Promise<LibraryAnswer> {
+  const res = await api.post("/api/learn/ask", { question, wallet });
+  return res.data;
+}
+
 // ── Types ───────────────────────────────────────────────────────────────────
 export interface VideoRecord {
   id: string;

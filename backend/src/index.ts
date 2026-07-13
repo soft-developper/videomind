@@ -6,6 +6,7 @@ import { renewExpiringBlobs } from "./cron/renewBlobs.js";
 import videosRouter from "./routes/videos.js";
 import chatRouter from "./routes/chat.js";
 import statsRouter from "./routes/stats.js";
+import learnRouter from "./routes/learn.js";
 import cron from "node-cron";
 
 const app = express();
@@ -29,6 +30,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/videos", videosRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/shelby", statsRouter);
+app.use("/api/learn", learnRouter);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "VideoMind API", timestamp: new Date().toISOString() });
