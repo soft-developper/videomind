@@ -1,70 +1,60 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { UploadZone } from "@/components/upload/UploadZone";
-import { Brain, Zap, FileText, Sparkles } from "lucide-react";
 
-const PIPELINE = [
-  { icon: Zap,      label: "Shelby Storage",  desc: "Raw video stored on decentralised Shelby Protocol" },
-  { icon: FileText, label: "Whisper AI",       desc: "Full transcript with timestamps extracted" },
-  { icon: Brain,    label: "Claude Analysis",  desc: "Chapters, highlights, summary, blog post & X thread" },
-  { icon: Sparkles, label: "AI Chat Ready",    desc: "Ask any question about your video instantly" },
+const STEPS = [
+  { n: "Store",      d: "Your wallet signs the blob. It lands on Shelby Protocol, owned by you." },
+  { n: "Read",       d: "Whisper transcribes every word with a timecode attached." },
+  { n: "Map",        d: "Claude finds the cuts, flags what matters, and writes the summary." },
+  { n: "Ask",        d: "Question the video in plain language. Every answer cites a timecode." },
 ];
 
 export default function UploadPage() {
   return (
-    <div className="min-h-screen gradient-mesh">
+    <div className="min-h-screen bg-void">
       <Navbar />
-      <main className="pt-20 sm:pt-24 pb-16 px-4 sm:px-6 max-w-6xl mx-auto">
-
-        {/* Page header */}
-        <div className="mb-8 pt-4">
-          <span className="px-3 py-1 rounded-full border border-volt/20 bg-volt/5 text-xs font-mono text-volt">
-            Upload & Analyze
-          </span>
-          <h1 className="font-syne text-2xl sm:text-3xl font-800 text-white mt-3 leading-tight">
-            Transform your video into{" "}
-            <span className="text-volt">AI intelligence</span>
-          </h1>
-          <p className="text-white/40 font-dm text-sm mt-3 max-w-lg leading-relaxed">
-            Upload once. VideoMind handles everything — transcription, analysis,
-            and decentralised storage on Shelby Protocol.
-          </p>
+      <main className="pt-14">
+        <div className="border-b border-rule">
+          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-10">
+            <p className="eyebrow mb-4">Upload</p>
+            <h1 className="font-display text-[32px] sm:text-[42px] leading-[1.05] text-paper max-w-xl">
+              Hand it a recording.
+              <br />
+              <span className="italic text-signal">Get back a map.</span>
+            </h1>
+          </div>
         </div>
 
-        <div className="grid lg:grid-cols-[1fr_360px] gap-8 lg:gap-10 items-start">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
+          <div className="grid lg:grid-cols-[1fr_320px] gap-10 items-start">
+            <UploadZone />
 
-          {/* Upload zone */}
-          <UploadZone />
+            <aside className="space-y-0">
+              <p className="eyebrow mb-4">What happens next</p>
 
-          {/* Pipeline sidebar */}
-          <div className="space-y-3">
-            <p className="text-xs font-mono text-white/25 uppercase tracking-widest">
-              What happens after upload
-            </p>
-
-            {PIPELINE.map(({ icon: Icon, label, desc }, i) => (
-              <div key={label} className="flex items-start gap-4 glass-card rounded-xl p-4">
-                <div className="relative shrink-0">
-                  <div className="w-9 h-9 rounded-xl bg-volt/10 border border-volt/20 flex items-center justify-center">
-                    <Icon size={15} className="text-volt" />
+              {/* This IS a sequence — order carries real information here. */}
+              {STEPS.map((s, i) => (
+                <div key={s.n} className="flex gap-4 py-4 border-t border-rule last:border-b">
+                  <span className="tc tabular-nums shrink-0 pt-0.5">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-display text-[17px] text-paper leading-none">
+                      {s.n}
+                    </p>
+                    <p className="text-[12px] font-sans text-dim mt-1.5 leading-relaxed">
+                      {s.d}
+                    </p>
                   </div>
-                  {i < PIPELINE.length - 1 && (
-                    <div className="absolute left-1/2 top-full w-px h-3 bg-gradient-to-b from-volt/20 to-transparent -translate-x-1/2" />
-                  )}
                 </div>
-                <div className="pt-1 min-w-0">
-                  <p className="text-sm font-syne font-semibold text-white">{label}</p>
-                  <p className="text-xs text-white/35 font-dm mt-0.5 leading-relaxed">{desc}</p>
-                </div>
-              </div>
-            ))}
+              ))}
 
-            {/* 48hr renewal note */}
-            <div className="p-4 rounded-xl bg-volt/[0.04] border border-volt/15">
-              <p className="text-xs font-mono text-volt/70 leading-relaxed">
-                ⚡ Shelby Testnet: Blobs expire after 48hrs.
-                VideoMind auto-renews all your videos every 6 hours.
-              </p>
-            </div>
+              <div className="mt-6 pt-4 border-t border-rule">
+                <p className="tc leading-relaxed">
+                  Shelby testnet expires blobs after 48 hours. VideoMind flags
+                  expiring videos when you connect — one signature renews them all.
+                </p>
+              </div>
+            </aside>
           </div>
         </div>
       </main>

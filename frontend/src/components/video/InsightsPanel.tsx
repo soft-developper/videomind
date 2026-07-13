@@ -1,227 +1,202 @@
 "use client";
 import { useState } from "react";
-import {
-  BookOpen, Zap, FileText, Twitter, AlignLeft,
-  Tag, Clock, Copy, CheckCircle, Play,
-} from "lucide-react";
+import { Copy, Check, Play } from "lucide-react";
 import { clsx } from "clsx";
 import type { VideoRecord } from "@/lib/api";
 import { readableTime } from "@/lib/exports";
 
-type Tab = "summary" | "chapters" | "highlights" | "blog" | "thread";
+type Tab = "summary" | "cuts" | "found" | "blog" | "thread";
 
-const TABS: Array<{ key: Tab; label: string; icon: React.ComponentType<any> }> = [
-  { key: "summary",    label: "Summary",    icon: AlignLeft },
-  { key: "chapters",  label: "Chapters",   icon: BookOpen },
-  { key: "highlights",label: "Highlights", icon: Zap },
-  { key: "blog",      label: "Blog Post",  icon: FileText },
-  { key: "thread",    label: "X Thread",   icon: Twitter },
+const TABS: Array<{ k: Tab; label: string }> = [
+  { k: "summary", label: "Summary" },
+  { k: "cuts",    label: "Cuts" },
+  { k: "found",   label: "Found" },
+  { k: "blog",    label: "Blog" },
+  { k: "thread",  label: "Thread" },
 ];
 
-function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+function Copyable({ text, label }: { text: string; label: string }) {
+  const [done, setDone] = useState(false);
   return (
     <button
-      onClick={copy}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dark-700 border border-white/10 text-xs font-mono text-white/50 hover:text-white hover:border-white/20 transition-all"
+      onClick={() => {
+        navigator.clipboard.writeText(text);
+        setDone(true);
+        setTimeout(() => setDone(false), 1800);
+      }}
+      className="flex items-center gap-1.5 h-7 px-2.5 btn-ghost text-[11px] no-min"
     >
-      {copied
-        ? <><CheckCircle size={11} className="text-volt" /> Copied!</>
-        : <><Copy size={11} /> {label}</>}
+      {done ? <Check size={10} className="text-marker" /> : <Copy size={10} />}
+      {done ? "Copied" : label}
     </button>
   );
 }
 
-interface InsightsPanelProps {
+export function InsightsPanel({
+  video, onSeek,
+}: {
   video: VideoRecord;
-  /** Jump the video player to a timestamp */
-  onSeek?: (seconds: number) => void;
-}
-
-export function InsightsPanel({ video, onSeek }: InsightsPanelProps) {
+  onSeek?: (s: number) => void;
+}) {
   const [tab, setTab] = useState<Tab>("summary");
   const ai = video.ai;
   if (!ai) return null;
-
-  const seekable = typeof onSeek === "function";
+  const canSeek = typeof onSeek === "function";
 
   return (
-    <div className="glass-card rounded-2xl overflow-hidden">
+    <section className="panel">
       {/* Tabs */}
-      <div className="flex overflow-x-auto border-b border-white/[0.06] px-2 scrollbar-hide">
-        {TABS.map(({ key, label, icon: Icon }) => (
+      <div className="flex border-b border-rule overflow-x-auto scrollbar-hide">
+        {TABS.map(({ k, label }) => (
           <button
-            key={key}
-            onClick={() => setTab(key)}
+            key={k}
+            onClick={() => setTab(k)}
             className={clsx(
-              "flex items-center gap-2 px-4 py-3.5 text-xs font-mono whitespace-nowrap border-b-2 transition-all shrink-0",
-              tab === key
-                ? "border-volt text-volt"
-                : "border-transparent text-white/30 hover:text-white/60"
+              "px-4 h-10 text-[12px] font-sans whitespace-nowrap relative transition-colors shrink-0 no-min",
+              tab === k ? "text-paper" : "text-dim hover:text-paper-2"
             )}
           >
-            <Icon size={12} />
             {label}
+            {tab === k && <span className="absolute bottom-0 inset-x-0 h-px bg-signal" />}
           </button>
         ))}
       </div>
 
-      <div className="p-5">
-        {/* ── Summary ── */}
+      <div className="p-4">
+        {/* Summary */}
         {tab === "summary" && (
           <div className="space-y-4">
-            <p className="text-sm text-white/70 font-dm leading-relaxed">
-              {ai.summary ?? "No summary available."}
+            <p className="text-[14px] font-sans text-paper-2 leading-[1.65]">
+              {ai.summary ?? "No summary."}
             </p>
-            {ai.summary && <CopyButton text={ai.summary} label="Copy summary" />}
-            {ai.tags && ai.tags.length > 0 && (
-              <div className="flex items-start gap-2 pt-2 border-t border-white/[0.06]">
-                <Tag size={12} className="text-white/30 mt-1 shrink-0" />
-                <div className="flex flex-wrap gap-1.5">
-                  {ai.tags.map((tag) => (
-                    <span key={tag} className="px-2.5 py-1 rounded-lg bg-dark-700 border border-white/[0.06] text-xs font-mono text-white/40">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
+            {ai.summary && <Copyable text={ai.summary} label="Copy" />}
+            {ai.tags?.length ? (
+              <div className="flex flex-wrap gap-x-3 gap-y-1 pt-3 border-t border-rule">
+                {ai.tags.map((t) => (
+                  <span key={t} className="tc lowercase">{t}</span>
+                ))}
               </div>
-            )}
+            ) : null}
           </div>
         )}
 
-        {/* ── Chapters (clickable) ── */}
-        {tab === "chapters" && (
-          <div className="space-y-1">
+        {/* Cuts */}
+        {tab === "cuts" && (
+          <div className="-mx-4 -my-4">
             {(ai.chapters ?? []).length === 0 && (
-              <p className="text-white/30 text-sm py-4 text-center">No chapters available.</p>
+              <p className="p-4 tc text-center">No cuts detected.</p>
             )}
-            {(ai.chapters ?? []).map((ch, i) => (
+            {(ai.chapters ?? []).map((c, i) => (
               <button
                 key={i}
-                onClick={() => seekable && onSeek!(ch.startSeconds)}
-                disabled={!seekable}
-                className={clsx(
-                  "w-full flex items-start gap-3 p-3.5 rounded-xl text-left transition-all group",
-                  seekable ? "hover:bg-volt/[0.05] cursor-pointer" : "cursor-default"
-                )}
+                onClick={() => canSeek && onSeek!(c.startSeconds)}
+                disabled={!canSeek}
+                className="w-full flex items-start gap-4 px-4 py-3 text-left border-b border-rule last:border-0 hover:bg-slate transition-colors group no-min"
               >
-                <div className="flex items-center gap-2 shrink-0 mt-0.5">
-                  <span className="font-mono text-xs text-white/20 w-5 text-right">{i + 1}</span>
-                  <div className="w-px h-8 chapter-line" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-syne font-semibold text-white group-hover:text-volt transition-colors">
-                      {ch.title}
-                    </p>
-                    <div className="flex items-center gap-1 text-[10px] font-mono text-volt/60">
-                      <Clock size={9} />
-                      {readableTime(ch.startSeconds)}
-                    </div>
-                  </div>
-                  <p className="text-xs text-white/40 font-dm mt-1 leading-relaxed">{ch.summary}</p>
-                </div>
-                {seekable && (
-                  <div className="shrink-0 mt-1 w-6 h-6 rounded-lg bg-volt/10 border border-volt/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Play size={10} className="text-volt ml-0.5" />
-                  </div>
+                <span className="tc tabular-nums shrink-0 pt-0.5 group-hover:tc-signal transition-colors">
+                  {readableTime(c.startSeconds)}
+                </span>
+                <span className="w-px self-stretch bg-rule group-hover:bg-signal transition-colors shrink-0" />
+                <span className="flex-1 min-w-0">
+                  <span className="block font-display text-[16px] text-paper leading-tight group-hover:text-signal transition-colors">
+                    {c.title}
+                  </span>
+                  <span className="block text-[12px] font-sans text-dim mt-1 leading-relaxed">
+                    {c.summary}
+                  </span>
+                </span>
+                {canSeek && (
+                  <Play size={11} className="text-dim-2 group-hover:text-signal shrink-0 mt-1 transition-colors" fill="currentColor" />
                 )}
               </button>
             ))}
           </div>
         )}
 
-        {/* ── Highlights (clickable) ── */}
-        {tab === "highlights" && (
+        {/* Found — teal. this is what the AI thought mattered. */}
+        {tab === "found" && (
           <div className="space-y-3">
             {(ai.highlights ?? []).length === 0 && (
-              <p className="text-white/30 text-sm py-4 text-center">No highlights available.</p>
+              <p className="tc text-center py-4">Nothing flagged.</p>
             )}
-            {(ai.highlights ?? []).map((hl, i) => (
-              <div key={i} className="p-4 rounded-xl bg-volt/[0.04] border border-volt/10 space-y-2.5 group">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    <Zap size={12} className="text-volt" />
-                    <span className="text-xs font-mono text-volt">{hl.reason}</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-white/30">
-                    {readableTime(hl.startSeconds)} – {readableTime(hl.endSeconds)}
+            {(ai.highlights ?? []).map((h, i) => (
+              <article
+                key={i}
+                className="border-l-2 border-marker pl-4 py-1 space-y-2"
+              >
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-[11px] font-mono text-marker uppercase tracking-wider">
+                    {h.reason}
+                  </span>
+                  <span className="tc tabular-nums shrink-0">
+                    {readableTime(h.startSeconds)}–{readableTime(h.endSeconds)}
                   </span>
                 </div>
-                <p className="text-sm text-white/60 font-dm leading-relaxed italic">"{hl.text}"</p>
-                <div className="flex items-center gap-2">
-                  {seekable && (
+                <p className="font-display text-[17px] text-paper leading-[1.4] italic">
+                  “{h.text}”
+                </p>
+                <div className="flex gap-2 pt-1">
+                  {canSeek && (
                     <button
-                      onClick={() => onSeek!(hl.startSeconds)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-volt/10 border border-volt/20 text-xs font-mono text-volt hover:bg-volt/20 transition-all"
+                      onClick={() => onSeek!(h.startSeconds)}
+                      className="flex items-center gap-1.5 h-7 px-2.5 btn-marker text-[11px] no-min"
                     >
-                      <Play size={10} /> Jump to moment
+                      <Play size={9} fill="currentColor" /> Jump
                     </button>
                   )}
-                  <CopyButton text={hl.text} label="Copy quote" />
+                  <Copyable text={h.text} label="Copy quote" />
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}
 
-        {/* ── Blog ── */}
+        {/* Blog */}
         {tab === "blog" && (
-          <div className="space-y-4">
-            {ai.blogPost ? (
-              <>
-                <div className="max-h-96 overflow-y-auto text-sm text-white/70 font-dm leading-relaxed whitespace-pre-wrap pr-1">
-                  {ai.blogPost}
-                </div>
-                <div className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
-                  <CopyButton text={ai.blogPost} label="Copy blog post" />
-                  <span className="text-[10px] font-mono text-white/20">
-                    ~{Math.ceil(ai.blogPost.split(" ").length / 200)} min read · {ai.blogPost.split(" ").length} words
-                  </span>
-                </div>
-              </>
-            ) : (
-              <p className="text-white/30 text-sm py-4 text-center">Blog post not yet generated.</p>
-            )}
-          </div>
+          ai.blogPost ? (
+            <div className="space-y-3">
+              <div className="max-h-80 overflow-y-auto text-[14px] font-sans text-paper-2 leading-[1.7] whitespace-pre-wrap pr-2">
+                {ai.blogPost}
+              </div>
+              <div className="flex items-center gap-3 pt-3 border-t border-rule">
+                <Copyable text={ai.blogPost} label="Copy post" />
+                <span className="tc">
+                  {ai.blogPost.split(/\s+/).length} words
+                </span>
+              </div>
+            </div>
+          ) : <p className="tc text-center py-4">Not generated.</p>
         )}
 
-        {/* ── Thread ── */}
+        {/* Thread */}
         {tab === "thread" && (
-          <div className="space-y-4">
-            {ai.tweetThread ? (
-              <>
-                <div className="space-y-2">
-                  {ai.tweetThread.split(/\n(?=\d+\/)/).filter(Boolean).map((tweet, i) => (
-                    <div key={i} className="group relative p-4 rounded-xl bg-dark-800 border border-white/[0.06] hover:border-white/10 transition-all">
-                      <p className="text-sm text-white/70 font-dm leading-relaxed pr-8">{tweet.trim()}</p>
-                      <button
-                        onClick={() => navigator.clipboard.writeText(tweet.trim())}
-                        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-white/30 hover:text-white"
-                      >
-                        <Copy size={12} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
-                  <CopyButton text={ai.tweetThread} label="Copy full thread" />
-                  <span className="text-[10px] font-mono text-white/20">
-                    {ai.tweetThread.split(/\n(?=\d+\/)/).filter(Boolean).length} tweets
-                  </span>
-                </div>
-              </>
-            ) : (
-              <p className="text-white/30 text-sm py-4 text-center">Thread not yet generated.</p>
-            )}
-          </div>
+          ai.tweetThread ? (
+            <div className="space-y-3">
+              <div className="space-y-px">
+                {ai.tweetThread.split(/\n(?=\d+\/)/).filter(Boolean).map((t, i) => (
+                  <div key={i} className="group relative bg-void border border-rule p-3">
+                    <p className="text-[13px] font-sans text-paper-2 leading-[1.6] pr-6">
+                      {t.trim()}
+                    </p>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(t.trim())}
+                      className="absolute top-2.5 right-2.5 text-dim-2 hover:text-paper opacity-0 group-hover:opacity-100 transition-all no-min"
+                    >
+                      <Copy size={11} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-3 pt-1">
+                <Copyable text={ai.tweetThread} label="Copy thread" />
+                <span className="tc">
+                  {ai.tweetThread.split(/\n(?=\d+\/)/).filter(Boolean).length} posts
+                </span>
+              </div>
+            </div>
+          ) : <p className="tc text-center py-4">Not generated.</p>
         )}
       </div>
-    </div>
+    </section>
   );
 }

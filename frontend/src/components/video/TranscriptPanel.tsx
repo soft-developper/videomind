@@ -1,118 +1,91 @@
 "use client";
-import { useRef, useEffect } from "react";
-import { FileText, Search } from "lucide-react";
+import { useRef, useEffect, useState } from "react";
+import { Search } from "lucide-react";
 import { clsx } from "clsx";
-import { useState } from "react";
 import type { Segment } from "@/lib/exports";
 import { readableTime } from "@/lib/exports";
 
-interface TranscriptPanelProps {
+export function TranscriptPanel({
+  transcript, currentTime, onSeek,
+}: {
   transcript: Segment[];
   currentTime: number;
-  onSeek: (seconds: number) => void;
-}
-
-export function TranscriptPanel({ transcript, currentTime, onSeek }: TranscriptPanelProps) {
-  const [query, setQuery] = useState("");
+  onSeek: (s: number) => void;
+}) {
+  const [q, setQ] = useState("");
+  const [follow, setFollow] = useState(true);
   const activeRef = useRef<HTMLButtonElement>(null);
-  const [autoScroll, setAutoScroll] = useState(true);
 
-  // Index of the segment currently playing
   const activeIdx = transcript.findIndex(
-    (seg) => currentTime >= seg.start && currentTime < seg.end
+    (s) => currentTime >= s.start && currentTime < s.end
   );
 
-  // Keep the active line in view (only when not searching, and if enabled)
   useEffect(() => {
-    if (!autoScroll || query) return;
+    if (!follow || q) return;
     activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [activeIdx, autoScroll, query]);
+  }, [activeIdx, follow, q]);
 
-  const filtered = query.trim()
-    ? transcript
-        .map((seg, i) => ({ seg, i }))
-        .filter(({ seg }) => seg.text.toLowerCase().includes(query.toLowerCase()))
-    : transcript.map((seg, i) => ({ seg, i }));
+  const rows = q.trim()
+    ? transcript.map((s, i) => ({ s, i })).filter(({ s }) =>
+        s.text.toLowerCase().includes(q.toLowerCase()))
+    : transcript.map((s, i) => ({ s, i }));
 
   return (
-    <div className="glass-card rounded-2xl overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-white/[0.06]">
-        <FileText size={14} className="text-white/40 shrink-0" />
-        <p className="text-sm font-syne font-semibold text-white shrink-0">Transcript</p>
+    <section className="panel">
+      <header className="flex items-center gap-3 px-3 h-10 border-b border-rule">
+        <span className="eyebrow">Transcript</span>
 
-        {/* Inline search */}
-        <div className="relative flex-1 max-w-[200px] ml-auto">
-          <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/25" />
+        <div className="relative ml-auto w-40">
+          <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-dim-2" />
           <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search..."
-            className="w-full bg-dark-800 border border-white/[0.06] rounded-lg pl-7 pr-2 py-1.5 text-[11px] text-white placeholder-white/20 font-dm focus:outline-none focus:border-volt/30 transition-all"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Find…"
+            className="w-full h-6 pl-6 pr-2 text-[11px] font-sans bg-void border border-rule"
           />
         </div>
 
-        <span className="font-mono text-[10px] text-white/20 shrink-0">
-          {query ? `${filtered.length} found` : `${transcript.length} lines`}
-        </span>
-      </div>
+        <button
+          onClick={() => setFollow((v) => !v)}
+          className={clsx("tc transition-colors no-min", follow ? "tc-signal" : "text-dim-2 hover:text-dim")}
+        >
+          {follow ? "following" : "free"}
+        </button>
+      </header>
 
-      {/* Auto-scroll toggle */}
-      {!query && (
-        <div className="px-4 py-2 border-b border-white/[0.04] flex items-center justify-between">
-          <p className="text-[10px] font-mono text-white/20">
-            Click any line to jump to that moment
-          </p>
-          <button
-            onClick={() => setAutoScroll((v) => !v)}
-            className={clsx(
-              "text-[10px] font-mono transition-colors",
-              autoScroll ? "text-volt/60 hover:text-volt" : "text-white/20 hover:text-white/40"
-            )}
-          >
-            {autoScroll ? "● Auto-scroll on" : "○ Auto-scroll off"}
-          </button>
-        </div>
-      )}
-
-      {/* Segments */}
-      <div className="max-h-80 overflow-y-auto p-2">
-        {filtered.length === 0 && (
-          <p className="text-center py-8 text-xs text-white/25 font-mono">
-            No lines match "{query}"
-          </p>
+      <div className="max-h-72 overflow-y-auto">
+        {rows.length === 0 && (
+          <p className="px-3 py-8 text-center tc">No match for "{q}"</p>
         )}
 
-        {filtered.map(({ seg, i }) => {
-          const active = i === activeIdx && !query;
+        {rows.map(({ s, i }) => {
+          const on = i === activeIdx && !q;
           return (
             <button
               key={i}
-              ref={active ? activeRef : undefined}
-              onClick={() => onSeek(seg.start)}
+              ref={on ? activeRef : undefined}
+              onClick={() => onSeek(s.start)}
               className={clsx(
-                "w-full flex items-start gap-3 px-3 py-2 rounded-lg text-left transition-all group",
-                active
-                  ? "bg-volt/[0.08] border border-volt/20"
-                  : "border border-transparent hover:bg-white/[0.03]"
+                "w-full flex items-start gap-3 px-3 py-1.5 text-left transition-colors no-min group",
+                on ? "bg-signal-wash" : "hover:bg-slate"
               )}
             >
               <span className={clsx(
-                "font-mono text-[10px] shrink-0 mt-0.5 w-11 text-right tabular-nums transition-colors",
-                active ? "text-volt" : "text-volt/40 group-hover:text-volt/70"
+                "tc tabular-nums shrink-0 pt-0.5 w-10 text-right transition-colors",
+                on ? "tc-signal" : "text-dim-2 group-hover:text-dim"
               )}>
-                {readableTime(seg.start)}
+                {readableTime(s.start)}
               </span>
-              <p className={clsx(
-                "text-sm font-dm leading-relaxed transition-colors",
-                active ? "text-white" : "text-white/50 group-hover:text-white/80"
+              <span className={clsx(
+                "text-[13px] font-sans leading-[1.5] transition-colors",
+                on ? "text-paper" : "text-paper-2/70 group-hover:text-paper-2"
               )}>
-                {seg.text}
-              </p>
+                {s.text}
+              </span>
             </button>
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }
