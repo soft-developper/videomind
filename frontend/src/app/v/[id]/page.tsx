@@ -93,7 +93,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
 
             {video.shelby.accountAddress && (
               <a
-                href={`https://explorer.shelby.xyz/testnet/accounts/${video.shelby.accountAddress}`}
+                href={`https://explorer.shelby.xyz/shelbynet/accounts/${video.shelby.accountAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 mt-4 group"
@@ -208,7 +208,7 @@ function Bar() {
         <div className="flex items-center gap-4">
           <span className="hidden sm:flex items-center gap-2">
             <span className="dot dot-live" />
-            <span className="tc">Shelby testnet</span>
+            <span className="tc">Shelbynet</span>
           </span>
           <Link href="/" className="btn btn-signal h-8 px-3.5 flex items-center gap-1.5">
             Try free <ArrowRight size={11} />

@@ -141,7 +141,7 @@ export default function AboutPage() {
               GitHub <ExternalLink size={11} />
             </a>
             <a
-              href="https://explorer.shelby.xyz/testnet"
+              href="https://explorer.shelby.xyz/shelbynet"
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-marker h-9 px-4 flex items-center gap-1.5"

@@ -108,7 +108,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
 
               {video.shelby.accountAddress && (
                 <a
-                  href={`https://explorer.shelby.xyz/testnet/accounts/${video.shelby.accountAddress}`}
+                  href={`https://explorer.shelby.xyz/shelbynet/accounts/${video.shelby.accountAddress}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 shrink-0 group"

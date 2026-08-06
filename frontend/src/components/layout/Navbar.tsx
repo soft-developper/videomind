@@ -69,7 +69,7 @@ export function Navbar() {
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2">
               <span className="dot dot-live" />
-              <span className="tc">Shelby testnet</span>
+              <span className="tc">Shelbynet</span>
             </div>
             <WalletButton />
             <button
@@ -119,7 +119,7 @@ export function Navbar() {
           })}
           <div className="flex items-center gap-2 px-6 py-3">
             <span className="dot dot-live" />
-            <span className="tc">Shelby testnet</span>
+            <span className="tc">Shelbynet</span>
           </div>
         </div>
       </div>
