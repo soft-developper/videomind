@@ -2,7 +2,7 @@
 import { ShelbyNodeClient } from "@shelby-protocol/sdk/node";
 import { Ed25519Account, Ed25519PrivateKey, Network } from "@aptos-labs/ts-sdk";
 import "dotenv/config";
-import { SHELBYNET } from "./network.js";
+import { SHELBYNET_BLOB_GATEWAY } from "./network.js";
 
 const MAX_EXPIRY_HOURS = 47;
 const MICROS_PER_HOUR = 3_600_000_000;
@@ -26,13 +26,12 @@ export function getShelbyClient(): ShelbyNodeClient {
   const apiKey = process.env.APTOS_API_KEY;
   if (!apiKey) throw new Error("APTOS_API_KEY not set in .env");
 
-  // Shelbynet is not one of Aptos's built-in named networks (mainnet/testnet/
-  // devnet) — it must be passed as a custom network with an explicit fullnode.
+  // Network.SHELBYNET — a real enum member, not a custom network.
+  // The SDK resolves fullnode/faucet/indexer internally.
   _client = new ShelbyNodeClient({
-    network: Network.CUSTOM,
-    fullnode: SHELBYNET.fullnode,
+    network: Network.SHELBYNET,
     apiKey,
-  } as any);
+  });
   return _client;
 }
 
@@ -68,9 +67,11 @@ export async function downloadFromShelby(blobName: string, ownerAddress: string)
 
 /**
  * Direct HTTP URL to stream a blob from shelbynet.
- * Domain is api.shelbynet.shelby.xyz, NOT api.testnet.shelby.xyz.
+ * Verified against @shelby-protocol/sdk's own NetworkToShelbyRPCBaseUrl
+ * constant — the domain is shelby.shelbynet.shelby.xyz, NOT
+ * api.shelbynet.shelby.xyz.
  */
 export function shelbyBlobUrl(blobName: string, ownerAddress: string): string {
   const encodedPath = blobName.split("/").map(encodeURIComponent).join("/");
-  return `${SHELBYNET.blobGateway}/v1/blobs/${ownerAddress}/${encodedPath}`;
+  return `${SHELBYNET_BLOB_GATEWAY}/v1/blobs/${ownerAddress}/${encodedPath}`;
 }

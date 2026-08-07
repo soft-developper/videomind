@@ -1,9 +1,9 @@
 // src/lib/network.ts
-export const SHELBYNET = {
-  name: "shelbynet",
-  fullnode: "https://api.shelbynet.shelby.xyz/v1",
-  faucet: "https://faucet.shelbynet.shelby.xyz",
-  indexer: "https://api.shelbynet.shelby.xyz/v1/graphql",
-  blobGateway: "https://api.shelbynet.shelby.xyz/shelby",
-  explorer: "https://explorer.shelby.xyz/shelbynet",
-} as const;
+import { Network } from "@aptos-labs/ts-sdk";
+
+export const SHELBYNET_NETWORK = Network.SHELBYNET;
+export const SHELBYNET_EXPLORER = "https://explorer.shelby.xyz/shelbynet";
+
+// Blob HTTP gateway — verified from @shelby-protocol/sdk's own constants
+// (NetworkToShelbyRPCBaseUrl[Network.SHELBYNET]).
+export const SHELBYNET_BLOB_GATEWAY = "https://shelby.shelbynet.shelby.xyz/shelby";
