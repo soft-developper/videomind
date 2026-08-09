@@ -19,11 +19,19 @@ export function ExpiryBanner() {
   useEffect(() => { setHid(false); setS("idle"); }, [wallet]);
 
   // shelbynet's blob indexer does not yet expose the `blobs` GraphQL
-  // field (infra gap from the testnet -> shelbynet migration). This is
-  // confirmed unrelated to uploads: useUploadBlobs -> registerBlob()
-  // never touches the indexer. retry: false stops this background
-  // "check for expiring videos" call from hammering a broken endpoint.
-  const { data: raw, isLoading } = useAccountBlobs({ account: wallet ?? "", retry: false } as any);
+  // field (infra gap from the testnet -> shelbynet migration), confirmed
+  // by tracing every call site of getBlobs/getAccountBlobs in the SDK --
+  // only this hook calls it. Uploads (useUploadBlobs -> registerBlob())
+  // never touch the indexer and are completely unaffected.
+  //
+  // enabled: false switches this off entirely until Shelby's indexer
+  // supports the query, so it never fires and never appears in the
+  // console or network tab. Flip back to true once it's fixed.
+  const EXPIRY_CHECK_ENABLED = false;
+  const { data: raw, isLoading } = useAccountBlobs({
+    account: wallet ?? "",
+    enabled: EXPIRY_CHECK_ENABLED && !!wallet && connected,
+  } as any);
   const blobs = (raw ?? []) as Blob[];
 
   const upload = useUploadBlobs({
