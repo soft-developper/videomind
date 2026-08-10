@@ -2,7 +2,7 @@
 import { ShelbyNodeClient } from "@shelby-protocol/sdk/node";
 import { Ed25519Account, Ed25519PrivateKey, Network } from "@aptos-labs/ts-sdk";
 import "dotenv/config";
-import { SHELBYNET_BLOB_GATEWAY } from "./network.js";
+import { SHELBYNET_BLOB_GATEWAY, SHELBYNET_BLOB_INDEXER } from "./network.js";
 
 const MAX_EXPIRY_HOURS = 47;
 const MICROS_PER_HOUR = 3_600_000_000;
@@ -31,7 +31,14 @@ export function getShelbyClient(): ShelbyNodeClient {
   _client = new ShelbyNodeClient({
     network: Network.SHELBYNET,
     apiKey,
-  });
+    // Explicitly target Shelby's own blob indexer -- without this the
+    // SDK falls back to the generic Aptos chain indexer, whose `blobs`
+    // table has a completely different schema.
+    indexer: {
+      baseUrl: SHELBYNET_BLOB_INDEXER,
+      apiKey,
+    },
+  } as any);
   return _client;
 }
 

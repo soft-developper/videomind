@@ -27,7 +27,7 @@ export function ExpiryBanner() {
   // enabled: false switches this off entirely until Shelby's indexer
   // supports the query, so it never fires and never appears in the
   // console or network tab. Flip back to true once it's fixed.
-  const EXPIRY_CHECK_ENABLED = false;
+  const EXPIRY_CHECK_ENABLED = true;
   const { data: raw, isLoading } = useAccountBlobs({
     account: wallet ?? "",
     enabled: EXPIRY_CHECK_ENABLED && !!wallet && connected,

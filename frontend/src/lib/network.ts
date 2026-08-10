@@ -1,27 +1,32 @@
 // src/lib/network.ts
 //
-// Official shelbynet URLs — confirmed live from docs.shelby.xyz on the
-// Networks reference page (docs.shelby.xyz/protocol/architecture/networks).
-// Shelby explicitly documents that shelbynet infra "will be wiped roughly
-// once a week, or faster" -- these are hardcoded from the live docs as
-// the source of truth rather than trusted purely from whatever an npm
-// package bundled, which can drift between shelbynet redeployments.
+// IMPORTANT — there are TWO different indexers in play on shelbynet:
 //
-// Network.SHELBYNET is also a first-class named network in
-// @aptos-labs/ts-sdk (MAINNET | TESTNET | DEVNET | SHELBYNET | NETNA |
-// LOCAL | CUSTOM) -- pass that enum directly to dappConfig, never
-// Network.CUSTOM (that crashes the wallet adapter's bundled AptosConnect
-// plugin with "Error: Network not supported").
+//   1. Generic Aptos chain indexer (what @aptos-labs/ts-sdk resolves
+//      Network.SHELBYNET to by default):
+//        https://api.shelbynet.shelby.xyz/v1/graphql
+//      This has a `blobs` table, but it is NOT Shelby's blob index --
+//      different schema entirely. Querying it for blob_name fails with
+//      "field 'blob_name' not found in type: 'blobs'".
+//
+//   2. Shelby's DEDICATED blob indexer (from @shelby-protocol/sdk's own
+//      constants) -- this is the one with the real blob schema:
+//        https://api.shelbynet.aptoslabs.com/nocode/v1/public/alias/shelby/shelbynet/v1/graphql
+//
+// We pass #2 explicitly so the SDK never falls back to #1.
 import { Network } from "@aptos-labs/ts-sdk";
 
 export const SHELBYNET_NETWORK = Network.SHELBYNET;
 
 export const SHELBYNET_URLS = {
   fullnode: "https://api.shelbynet.shelby.xyz/v1",
-  indexer: "https://api.shelbynet.shelby.xyz/v1/graphql",
   shelbyRpc: "https://api.shelbynet.shelby.xyz/shelby",
   faucet: "https://faucet.shelbynet.shelby.xyz",
   explorer: "https://explorer.shelby.xyz/shelbynet",
+
+  // Shelby's dedicated blob indexer -- NOT the generic Aptos one.
+  blobIndexer:
+    "https://api.shelbynet.aptoslabs.com/nocode/v1/public/alias/shelby/shelbynet/v1/graphql",
 } as const;
 
 export const SHELBYNET_EXPLORER = SHELBYNET_URLS.explorer;
