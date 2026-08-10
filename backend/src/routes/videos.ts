@@ -43,9 +43,6 @@ router.post("/prepare", upload.single("video"), async (req, res) => {
     const namedFilePath = `${req.file.path}${ext}`;
     await fs.rename(req.file.path, namedFilePath);
 
-    const fileBuffer = await fs.readFile(namedFilePath);
-    const base64Data = fileBuffer.toString("base64");
-
     const record: VideoRecord = {
       id,
       title,
@@ -58,7 +55,11 @@ router.post("/prepare", upload.single("video"), async (req, res) => {
     await store.set(id, record);
     pendingFiles.set(id, { filePath: namedFilePath, ext });
 
-    return res.status(200).json({ id, videoBlobName, base64Data, mimeType: req.file.mimetype });
+    // No base64Data here anymore. The browser already has the raw File
+    // object it just uploaded from -- it reads bytes for the Shelby
+    // wallet upload directly via file.arrayBuffer(), instantly, with
+    // no round trip.
+    return res.status(200).json({ id, videoBlobName, mimeType: req.file.mimetype });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

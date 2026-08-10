@@ -83,14 +83,19 @@ export function UploadZone() {
     setErr(null);
 
     try {
+      // Read bytes directly from the File object the user just picked --
+      // instant, no network round trip. The old flow uploaded the file
+      // to the backend, waited for it to be base64-encoded and sent
+      // back down as JSON, then decoded it again here -- slow enough on
+      // real videos that the wallet popup could take minutes or never
+      // appear before the request timed out.
       setStage("sending"); setPct(0);
-      const { id, videoBlobName, base64Data } = await prepareVideo(
-        file, title, desc, (p) => setPct(Math.round(p * 0.5))
-      );
+      const buf = new Uint8Array(await file.arrayBuffer());
+      setPct(30);
 
-      const raw = atob(base64Data);
-      const buf = new Uint8Array(raw.length);
-      for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
+      const { id, videoBlobName } = await prepareVideo(
+        file, title, desc, (p) => setPct(30 + Math.round(p * 0.25))
+      );
 
       setStage("wallet"); setPct(55);
       await new Promise<void>((res, rej) => {

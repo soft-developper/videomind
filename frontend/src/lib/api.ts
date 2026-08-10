@@ -27,7 +27,7 @@ api.interceptors.response.use(
 export async function prepareVideo(
   file: File, title: string, description: string,
   onProgress?: (pct: number) => void
-): Promise<{ id: string; videoBlobName: string; base64Data: string; mimeType: string }> {
+): Promise<{ id: string; videoBlobName: string; mimeType: string }> {
   const form = new FormData();
   form.append("video", file);
   form.append("title", title);
