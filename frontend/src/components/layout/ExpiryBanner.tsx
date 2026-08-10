@@ -65,7 +65,7 @@ export function ExpiryBanner() {
         soon.filter((b) => exp(b) > now).map(async (b) => {
           const name = String(b["name"] ?? b["blobName"] ?? "");
           const r = await fetch(
-            `https://shelby.shelbynet.shelby.xyz/shelby/v1/blobs/${wallet}/${encodeURIComponent(name)}`
+            `https://api.shelbynet.shelby.xyz/shelby/v1/blobs/${wallet}/${encodeURIComponent(name)}`
           );
           if (!r.ok) throw new Error(`Couldn't fetch ${name}`);
           return { blobName: name, blobData: new Uint8Array(await r.arrayBuffer()) };

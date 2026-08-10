@@ -1,20 +1,27 @@
 // src/lib/network.ts
-// Network.SHELBYNET is a first-class named network in @aptos-labs/ts-sdk —
-// verified directly from the SDK's own Network enum:
-//   MAINNET | TESTNET | DEVNET | SHELBYNET | NETNA | LOCAL | CUSTOM
 //
-// The SDK's internal endpoint maps (NetworkToNodeAPI, NetworkToFaucetAPI,
-// NetworkToIndexerAPI) already resolve Network.SHELBYNET to the correct
-// URLs — there is no need to hand-construct an AptosConfig or pass
-// Network.CUSTOM. Doing so is what causes the wallet adapter's bundled
-// AptosConnect plugin to throw "Error: Network not supported" at mount.
+// Official shelbynet URLs — confirmed live from docs.shelby.xyz on the
+// Networks reference page (docs.shelby.xyz/protocol/architecture/networks).
+// Shelby explicitly documents that shelbynet infra "will be wiped roughly
+// once a week, or faster" -- these are hardcoded from the live docs as
+// the source of truth rather than trusted purely from whatever an npm
+// package bundled, which can drift between shelbynet redeployments.
 //
-// Shelby Testnet is retired: @shelby-protocol/sdk's own constants file
-// literally comments "// Shelby Testnet has been retired." next to a
-// disabled Network.TESTNET entry.
+// Network.SHELBYNET is also a first-class named network in
+// @aptos-labs/ts-sdk (MAINNET | TESTNET | DEVNET | SHELBYNET | NETNA |
+// LOCAL | CUSTOM) -- pass that enum directly to dappConfig, never
+// Network.CUSTOM (that crashes the wallet adapter's bundled AptosConnect
+// plugin with "Error: Network not supported").
 import { Network } from "@aptos-labs/ts-sdk";
 
 export const SHELBYNET_NETWORK = Network.SHELBYNET;
 
-// Explorer isn't in the SDK's endpoint maps — construct manually.
-export const SHELBYNET_EXPLORER = "https://explorer.shelby.xyz/shelbynet";
+export const SHELBYNET_URLS = {
+  fullnode: "https://api.shelbynet.shelby.xyz/v1",
+  indexer: "https://api.shelbynet.shelby.xyz/v1/graphql",
+  shelbyRpc: "https://api.shelbynet.shelby.xyz/shelby",
+  faucet: "https://faucet.shelbynet.shelby.xyz",
+  explorer: "https://explorer.shelby.xyz/shelbynet",
+} as const;
+
+export const SHELBYNET_EXPLORER = SHELBYNET_URLS.explorer;

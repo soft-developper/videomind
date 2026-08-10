@@ -67,9 +67,8 @@ export async function downloadFromShelby(blobName: string, ownerAddress: string)
 
 /**
  * Direct HTTP URL to stream a blob from shelbynet.
- * Verified against @shelby-protocol/sdk's own NetworkToShelbyRPCBaseUrl
- * constant — the domain is shelby.shelbynet.shelby.xyz, NOT
- * api.shelbynet.shelby.xyz.
+ * Confirmed live from docs.shelby.xyz/protocol/architecture/networks:
+ * Shelby RPC = https://api.shelbynet.shelby.xyz/shelby
  */
 export function shelbyBlobUrl(blobName: string, ownerAddress: string): string {
   const encodedPath = blobName.split("/").map(encodeURIComponent).join("/");

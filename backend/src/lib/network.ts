@@ -6,4 +6,5 @@ export const SHELBYNET_EXPLORER = "https://explorer.shelby.xyz/shelbynet";
 
 // Blob HTTP gateway — verified from @shelby-protocol/sdk's own constants
 // (NetworkToShelbyRPCBaseUrl[Network.SHELBYNET]).
-export const SHELBYNET_BLOB_GATEWAY = "https://shelby.shelbynet.shelby.xyz/shelby";
+// Confirmed live from docs.shelby.xyz/protocol/architecture/networks
+export const SHELBYNET_BLOB_GATEWAY = "https://api.shelbynet.shelby.xyz/shelby";
