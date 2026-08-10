@@ -133,7 +133,7 @@ export default function AboutPage() {
           </p>
           <div className="flex gap-3 justify-center flex-wrap">
             <a
-              href="https://github.com"
+              href="https://github.com/soft-developper/videomind"
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-ghost h-9 px-4 flex items-center gap-1.5"
