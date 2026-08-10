@@ -4,6 +4,7 @@ import { getVideo } from "@/lib/api";
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
 import { IntelligenceStrip } from "@/components/video/IntelligenceStrip";
 import { InsightsPanel } from "@/components/video/InsightsPanel";
+import { OnChainProof } from "@/components/video/OnChainProof";
 import { TranscriptPanel } from "@/components/video/TranscriptPanel";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { ExportMenu } from "@/components/video/ExportMenu";
@@ -93,7 +94,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
 
             {video.shelby.accountAddress && (
               <a
-                href={`https://explorer.shelby.xyz/shelbynet/accounts/${video.shelby.accountAddress}`}
+                href={`https://explorer.aptoslabs.com/account/${video.shelby.accountAddress}?network=shelbynet`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 mt-4 group"
@@ -130,6 +131,17 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
               />
 
               <InsightsPanel video={video} onSeek={seek} />
+
+              <OnChainProof
+
+
+                owner={video.shelby.accountAddress}
+
+
+                blobName={video.shelby.videoBlobName}
+
+
+              />
 
               {video.ai?.transcript?.length ? (
                 <TranscriptPanel

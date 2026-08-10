@@ -22,7 +22,7 @@ export const SHELBYNET_URLS = {
   fullnode: "https://api.shelbynet.shelby.xyz/v1",
   shelbyRpc: "https://api.shelbynet.shelby.xyz/shelby",
   faucet: "https://faucet.shelbynet.shelby.xyz",
-  explorer: "https://explorer.shelby.xyz/shelbynet",
+  explorer: "https://explorer.aptoslabs.com/?network=shelbynet",
 
   // Shelby's dedicated blob indexer -- NOT the generic Aptos one.
   blobIndexer:
