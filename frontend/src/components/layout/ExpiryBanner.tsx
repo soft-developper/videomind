@@ -76,7 +76,7 @@ export function ExpiryBanner() {
       await new Promise<void>((res, rej) => {
         upload.mutate(
           {
-            signer: { account: account.address.toString() as any, signAndSubmitTransaction },
+            signer: { account: account.accountAddress, signAndSubmitTransaction },
             blobs: payloads,
             expirationMicros: expirationMicros(),
           },

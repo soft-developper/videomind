@@ -17,11 +17,6 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       <AptosWalletAdapterProvider
         autoConnect
         dappConfig={{
-          // Network.SHELBYNET is a real enum member — the SDK already
-          // knows its fullnode, faucet and indexer internally.
-          // Do NOT use Network.CUSTOM here; it crashes the bundled
-          // AptosConnect wallet plugin at mount with
-          // "Error: Network not supported".
           network: Network.SHELBYNET,
           aptosApiKeys: {
             [Network.SHELBYNET]: process.env.NEXT_PUBLIC_APTOS_API_KEY,

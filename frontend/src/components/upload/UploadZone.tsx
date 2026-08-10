@@ -6,7 +6,7 @@ import { clsx } from "clsx";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useUploadBlobs } from "@shelby-protocol/react";
 import { prepareVideo, confirmVideo } from "@/lib/api";
-import { expirationMicros } from "@/lib/shelby";
+import { expirationMicros, shelbyClient } from "@/lib/shelby";
 import { useRouter } from "next/navigation";
 
 function bytes(n: number) {
@@ -44,7 +44,10 @@ export function UploadZone() {
   const [pct, setPct] = useState(0);
   const [err, setErr] = useState<string | null>(null);
 
+  // Docs pass the client explicitly rather than relying only on context:
+  // https://docs.shelby.xyz/sdks/react/guides/dapp-example
   const upload = useUploadBlobs({
+    client: shelbyClient,
     onError: (e) => { setErr(readable(e.message)); setStage("idle"); },
   });
 
@@ -101,7 +104,10 @@ export function UploadZone() {
       await new Promise<void>((res, rej) => {
         upload.mutate(
           {
-            signer: { account: account.address.toString() as any, signAndSubmitTransaction },
+            // Official docs pass account.accountAddress (the AccountAddress
+            // OBJECT), not a stringified address. The SDK feeds this into
+            // AccountAddress.from(..., {maxMissingChars: 63}).
+            signer: { account: account.accountAddress, signAndSubmitTransaction },
             blobs: [{ blobName: videoBlobName, blobData: buf }],
             expirationMicros: expirationMicros(),
           },
@@ -112,7 +118,7 @@ export function UploadZone() {
       setStage("confirming"); setPct(85);
       await confirmVideo({
         id,
-        accountAddress: account.address.toString(),
+        accountAddress: account.accountAddress.toString(),
         txHash: `wallet-${Date.now()}`,
         videoBlobName,
       });

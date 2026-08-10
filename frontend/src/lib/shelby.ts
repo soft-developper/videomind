@@ -1,21 +1,19 @@
 // src/lib/shelby.ts
+// Matches the official Shelby DApp example exactly:
+// https://docs.shelby.xyz/sdks/react/guides/dapp-example
+//
+// The docs create the client with ONLY `network`. Do not add a manual
+// `indexer` override -- that overrides the SDK's own internal resolution
+// and pointed us at the generic Aptos chain indexer instead of Shelby's
+// blob indexer.
 import { ShelbyClient } from "@shelby-protocol/sdk/browser";
 import { Network } from "@aptos-labs/ts-sdk";
-import { SHELBYNET_URLS } from "./network";
 
 export const shelbyClient = new ShelbyClient({
   network: Network.SHELBYNET,
-  apiKey: process.env.NEXT_PUBLIC_APTOS_API_KEY,
-  // Explicitly target Shelby's own blob indexer. Without this the SDK
-  // falls back to the generic Aptos chain indexer, whose `blobs` table
-  // has a different schema and fails with
-  // "field 'blob_name' not found in type: 'blobs'".
-  indexer: {
-    baseUrl: SHELBYNET_URLS.blobIndexer,
-    apiKey: process.env.NEXT_PUBLIC_APTOS_API_KEY,
-  },
-} as any);
+});
 
 export function expirationMicros(): number {
-  return Date.now() * 1000 + 47 * 3_600_000_000;
+  // 47h, staying under shelbynet's 48h cap
+  return Date.now() * 1000 + 47 * 60 * 60 * 1000 * 1000;
 }
