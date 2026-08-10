@@ -31,7 +31,7 @@ export function RenewButton({
       await new Promise<void>((res, rej) => {
         upload.mutate(
           {
-            signer: { account: account.accountAddress, signAndSubmitTransaction },
+            signer: { account: account.address as any, signAndSubmitTransaction },
             blobs: [{ blobName: videoBlobName, blobData: buf }],
             expirationMicros: expirationMicros(),
           },

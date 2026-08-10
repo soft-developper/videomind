@@ -101,24 +101,45 @@ export function UploadZone() {
       );
 
       setStage("wallet"); setPct(55);
+
+      // ── DEBUG: everything the SDK needs, right before we call mutate ──
+      console.log("[VideoMind] about to call uploadBlobs.mutate", {
+        connected,
+        hasAccount: !!account,
+        address: account?.address?.toString(),
+        hasSignFn: typeof signAndSubmitTransaction,
+        blobName: videoBlobName,
+        byteLength: buf.length,
+        expirationMicros: expirationMicros(),
+      });
+
       await new Promise<void>((res, rej) => {
         upload.mutate(
           {
             // Official docs pass account.accountAddress (the AccountAddress
             // OBJECT), not a stringified address. The SDK feeds this into
             // AccountAddress.from(..., {maxMissingChars: 63}).
-            signer: { account: account.accountAddress, signAndSubmitTransaction },
+            signer: { account: account.address as any, signAndSubmitTransaction },
             blobs: [{ blobName: videoBlobName, blobData: buf }],
             expirationMicros: expirationMicros(),
           },
-          { onSuccess: () => res(), onError: (e) => rej(new Error(readable(e.message))) }
+          {
+            onSuccess: () => {
+              console.log("[VideoMind] uploadBlobs SUCCESS");
+              res();
+            },
+            onError: (e) => {
+              console.error("[VideoMind] uploadBlobs FAILED:", e);
+              rej(new Error(readable(e.message)));
+            },
+          }
         );
       });
 
       setStage("confirming"); setPct(85);
       await confirmVideo({
         id,
-        accountAddress: account.accountAddress.toString(),
+        accountAddress: account.address.toString(),
         txHash: `wallet-${Date.now()}`,
         videoBlobName,
       });
@@ -126,6 +147,7 @@ export function UploadZone() {
       setStage("done"); setPct(100);
       router.push(`/video/${id}`);
     } catch (e: any) {
+      console.error("[VideoMind] upload flow threw:", e);
       setErr(readable(e?.message ?? "Upload failed."));
       setStage("idle"); setPct(0);
     }
