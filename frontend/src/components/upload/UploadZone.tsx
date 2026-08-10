@@ -6,7 +6,7 @@ import { clsx } from "clsx";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useUploadBlobs } from "@shelby-protocol/react";
 import { prepareVideo, confirmVideo } from "@/lib/api";
-import { expirationMicros, shelbyClient } from "@/lib/shelby";
+import { expirationMicros, shelbyClient, SHELBY_LOCATION } from "@/lib/shelby";
 import { useRouter } from "next/navigation";
 
 function bytes(n: number) {
@@ -122,6 +122,9 @@ export function UploadZone() {
             signer: { account: account.address as any, signAndSubmitTransaction },
             blobs: [{ blobName: videoBlobName, blobData: buf }],
             expirationMicros: expirationMicros(),
+            // Explicit per-write location. Without a location the Move
+            // contract rejects the write outright.
+            options: { locationHint: SHELBY_LOCATION },
           },
           {
             onSuccess: () => {

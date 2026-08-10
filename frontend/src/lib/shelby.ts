@@ -1,22 +1,28 @@
 // src/lib/shelby.ts
-// Follows the official DApp example, plus the apiKey the docs require:
-//   https://docs.shelby.xyz/sdks/react/guides/dapp-example
-//   https://docs.shelby.xyz/sdks/typescript/acquire-api-keys
 //
-// Do NOT add a manual `indexer` override here -- that overrides the SDK's
-// own resolution and sends queries to the generic Aptos chain indexer,
-// whose `blobs` table has a different schema entirely.
+// locationHint is REQUIRED. Traced through the SDK:
 //
-// The apiKey IS required though. Verified in the SDK source:
-//   const apiKey = indexerApiKey ?? config.apiKey;
-//   headers: { ...apiKey ? { Authorization: `Bearer ${apiKey}` } : {} }
-// Without it no Authorization header is sent and the indexer returns 401.
+//   ShelbyClient constructor:
+//     this.defaultOptions = { locationHint: config.locationHint, ... }
+//   At write time:
+//     selectedLocation: options?.selectedLocation ?? defaultOptions.selectedLocation
+//     locationHint:     options?.locationHint     ?? defaultOptions.locationHint
+//
+// With neither set, the on-chain Move contract rejects the write:
+//   "The account has no preference set and the write supplied no
+//    location input"
+//
+// "us-east-1" is the value that appears in the SDK's own source. If the
+// live-network probe above shows a different location, use that instead.
 import { ShelbyClient } from "@shelby-protocol/sdk/browser";
 import { Network } from "@aptos-labs/ts-sdk";
+
+export const SHELBY_LOCATION = "us-east-1";
 
 export const shelbyClient = new ShelbyClient({
   network: Network.SHELBYNET,
   apiKey: process.env.NEXT_PUBLIC_APTOS_API_KEY,
+  locationHint: SHELBY_LOCATION,
 });
 
 export function expirationMicros(): number {
