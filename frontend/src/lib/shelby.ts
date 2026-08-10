@@ -1,23 +1,22 @@
 // src/lib/shelby.ts
 //
-// locationHint is REQUIRED. Traced through the SDK:
+// SHELBY_LOCATION must be a name registered in the on-chain
+// LocationRegistry. Read directly from the contract:
 //
-//   ShelbyClient constructor:
-//     this.defaultOptions = { locationHint: config.locationHint, ... }
-//   At write time:
-//     selectedLocation: options?.selectedLocation ?? defaultOptions.selectedLocation
-//     locationHint:     options?.locationHint     ?? defaultOptions.locationHint
+//   view 0x85fd...8e6a::location::activated_location_names()
+//     -> [["shelbynet-1"]]
 //
-// With neither set, the on-chain Move contract rejects the write:
-//   "The account has no preference set and the write supplied no
-//    location input"
+// That is currently the ONLY activated location on shelbynet. Verified
+// against a real successful upload, whose placement group resolves to
+// the same location object (0x1a2105f2...369b) held by the registry.
 //
-// "us-east-1" is the value that appears in the SDK's own source. If the
-// live-network probe above shows a different location, use that instead.
+// locationHint is required -- the ShelbyClient constructor stores it as
+// defaultOptions.locationHint, and the Move contract rejects any write
+// that supplies neither a location nor an account preference.
 import { ShelbyClient } from "@shelby-protocol/sdk/browser";
 import { Network } from "@aptos-labs/ts-sdk";
 
-export const SHELBY_LOCATION = "us-east-1";
+export const SHELBY_LOCATION = "shelbynet-1";
 
 export const shelbyClient = new ShelbyClient({
   network: Network.SHELBYNET,
