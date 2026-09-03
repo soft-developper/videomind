@@ -102,7 +102,7 @@ export function OnChainProof({
 
   return (
     <section className="panel">
-      <header className="flex items-center gap-2.5 px-5 h-11 border-b border-rule">
+      <header className="flex items-center gap-2.5 px-4 h-10 border-b border-rule">
         <ShieldCheck size={13} className={data ? "text-marker" : "text-dim"} />
         <span className="eyebrow">On-chain proof</span>
         {data && (
@@ -113,7 +113,7 @@ export function OnChainProof({
         )}
       </header>
 
-      <div className="px-5 py-3">
+      <div className="px-4 py-2">
         {isLoading && (
           <p className="tc py-3">Reading chain state…</p>
         )}
@@ -195,7 +195,7 @@ export function OnChainProof({
       </div>
 
       {data && (
-        <footer className="px-5 py-3 border-t border-rule">
+        <footer className="px-4 py-2 border-t border-rule">
           <p className="tc leading-relaxed">
             Every value above is read live from the shelbynet blob indexer and
             links to the Aptos Explorer. Anyone can independently verify this

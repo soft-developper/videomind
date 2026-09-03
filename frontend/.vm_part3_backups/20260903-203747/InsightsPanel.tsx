@@ -52,7 +52,7 @@ export function InsightsPanel({
             key={k}
             onClick={() => setTab(k)}
             className={clsx(
-              "px-4 h-11 text-[12px] font-sans whitespace-nowrap relative transition-colors shrink-0 no-min",
+              "px-4 h-10 text-[12px] font-sans whitespace-nowrap relative transition-colors shrink-0 no-min",
               tab === k ? "text-paper" : "text-dim hover:text-paper-2"
             )}
           >
@@ -62,7 +62,7 @@ export function InsightsPanel({
         ))}
       </div>
 
-      <div className="p-5">
+      <div className="p-4">
         {/* Summary */}
         {tab === "summary" && (
           <div className="space-y-4">
@@ -82,16 +82,16 @@ export function InsightsPanel({
 
         {/* Cuts */}
         {tab === "cuts" && (
-          <div className="-mx-5 -my-5">
+          <div className="-mx-4 -my-4">
             {(ai.chapters ?? []).length === 0 && (
-              <p className="p-5 tc text-center">No cuts detected.</p>
+              <p className="p-4 tc text-center">No cuts detected.</p>
             )}
             {(ai.chapters ?? []).map((c, i) => (
               <button
                 key={i}
                 onClick={() => canSeek && onSeek!(c.startSeconds)}
                 disabled={!canSeek}
-                className="w-full flex items-start gap-4 px-5 py-3.5 text-left border-b border-rule last:border-0 hover:bg-slate transition-colors group no-min"
+                className="w-full flex items-start gap-4 px-4 py-3 text-left border-b border-rule last:border-0 hover:bg-slate transition-colors group no-min"
               >
                 <span className="tc tabular-nums shrink-0 pt-0.5 group-hover:tc-signal transition-colors">
                   {readableTime(c.startSeconds)}

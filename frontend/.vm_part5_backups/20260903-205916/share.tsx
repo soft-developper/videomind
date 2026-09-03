@@ -209,7 +209,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
 function Bar() {
   return (
     <nav className="fixed top-0 inset-x-0 z-50 h-14 bg-void border-b border-rule">
-      <div className="section h-full flex items-center justify-between">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 group">
           <svg width="14" height="16" viewBox="0 0 14 16" fill="none" aria-hidden>
             <path d="M7 16L0 0h14L7 16z" className="fill-signal" />

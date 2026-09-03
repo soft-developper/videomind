@@ -14,7 +14,7 @@ export default function UploadPage() {
       <Navbar />
       <main className="pt-14">
         <div className="border-b border-rule">
-          <div className="section py-10">
+          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-10">
             <p className="eyebrow mb-4">Upload</p>
             <h1 className="font-display text-[32px] sm:text-[42px] leading-[1.05] text-paper max-w-xl">
               Hand it a recording.
@@ -24,8 +24,8 @@ export default function UploadPage() {
           </div>
         </div>
 
-        <div className="section py-8">
-          <div className="grid lg:grid-cols-[1fr_340px] gap-12 items-start">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
+          <div className="grid lg:grid-cols-[1fr_320px] gap-10 items-start">
             <UploadZone />
 
             <aside className="space-y-0">

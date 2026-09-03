@@ -57,7 +57,7 @@ export default function AboutPage() {
               <Link href="/upload" className="btn btn-signal h-10 px-5 flex items-center gap-2">
                 Upload a video <ArrowRight size={13} />
               </Link>
-              <Link href="/library" className="btn btn-ghost h-10 px-5 flex items-center">
+              <Link href="/" className="btn btn-ghost h-10 px-5 flex items-center">
                 See the library
               </Link>
             </div>

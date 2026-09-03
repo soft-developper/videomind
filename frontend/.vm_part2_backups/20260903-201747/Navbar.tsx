@@ -8,7 +8,7 @@ import { ExpiryBanner } from "./ExpiryBanner";
 import { useState, useEffect } from "react";
 
 const NAV = [
-  { href: "/library",   label: "Library" },
+  { href: "/",          label: "Library" },
   { href: "/upload",    label: "Upload" },
   { href: "/search",    label: "Search" },
   { href: "/assistant", label: "Assistant" },

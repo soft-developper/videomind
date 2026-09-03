@@ -46,7 +46,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
     return (
       <div className="min-h-screen bg-void">
         <Navbar />
-        <main className="section pt-20 pb-16">
+        <main className="pt-20 pb-16 px-4 sm:px-6 max-w-[1400px] mx-auto">
           <SkeletonVideoPage />
         </main>
       </div>
@@ -63,7 +63,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
             <p className="text-[13px] font-sans text-dim">
               This video may have been deleted.
             </p>
-            <Link href="/library" className="inline-block tc tc-signal hover:underline">
+            <Link href="/" className="inline-block tc tc-signal hover:underline">
               ← Library
             </Link>
           </div>
@@ -87,9 +87,9 @@ export default function VideoPage({ params }: { params: { id: string } }) {
 
         {/* ── Slate: the header reads like a film slate ─────────────────── */}
         <div className="border-b border-rule">
-          <div className="section py-5">
+          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
             <Link
-              href="/library"
+              href="/"
               className="inline-flex items-center gap-1.5 tc hover:text-paper transition-colors mb-4"
             >
               <ArrowLeft size={10} /> Library
@@ -148,7 +148,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        <div className="section pt-6">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-6">
 
           {working && (
             <div className="max-w-md mx-auto py-10">
@@ -170,8 +170,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
           )}
 
           {ready && (
-            <div className="grid lg:grid-cols-[1fr_380px] gap-6">
-              <div className="space-y-5">
+            <div className="grid lg:grid-cols-[1fr_360px] gap-5">
+              <div className="space-y-4">
 
                 <VideoPlayer
                   ref={player}
