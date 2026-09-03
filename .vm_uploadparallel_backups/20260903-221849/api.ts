@@ -24,23 +24,14 @@ api.interceptors.response.use(
 );
 
 // ── Upload flow ─────────────────────────────────────────────────────────────
-export async function reserveVideo(
-  filename: string, title: string, description: string, mimeType: string
-): Promise<{ id: string; videoBlobName: string; mimeType: string }> {
-  const res = await api.post("/api/videos/reserve", { filename, title, description, mimeType });
-  return res.data;
-}
-
 export async function prepareVideo(
   file: File, title: string, description: string,
-  onProgress?: (pct: number) => void,
-  reservedId?: string
+  onProgress?: (pct: number) => void
 ): Promise<{ id: string; videoBlobName: string; mimeType: string }> {
   const form = new FormData();
   form.append("video", file);
   form.append("title", title);
   form.append("description", description);
-  if (reservedId) form.append("id", reservedId);
   const res = await api.post("/api/videos/prepare", form, {
     headers: { "Content-Type": "multipart/form-data" },
     onUploadProgress: (e) => { if (e.total) onProgress?.(Math.round((e.loaded / e.total) * 100)); },

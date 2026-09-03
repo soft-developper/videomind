@@ -5,7 +5,7 @@ import { X, AlertTriangle, Check } from "lucide-react";
 import { clsx } from "clsx";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useUploadBlobs } from "@shelby-protocol/react";
-import { reserveVideo, prepareVideo, confirmVideo } from "@/lib/api";
+import { prepareVideo, confirmVideo } from "@/lib/api";
 import { expirationMicros, shelbyClient, SHELBY_LOCATION } from "@/lib/shelby";
 import { useRouter } from "next/navigation";
 
@@ -94,19 +94,13 @@ export function UploadZone() {
       // appear before the request timed out.
       setStage("sending"); setPct(0);
       const buf = new Uint8Array(await file.arrayBuffer());
-      setPct(15);
+      setPct(30);
 
-      // Reserve an id + blob name FIRST (instant, no file). This lets the
-      // backend file upload and the Shelby wallet upload run in parallel
-      // instead of one after the other -- the file is no longer sent twice
-      // in sequence, so wall-clock upload time drops toward the longer of
-      // the two legs rather than their sum.
-      const { id, videoBlobName } = await reserveVideo(
-        file.name, title, desc, file.type || "video/mp4"
+      const { id, videoBlobName } = await prepareVideo(
+        file, title, desc, (p) => setPct(30 + Math.round(p * 0.25))
       );
-      setPct(25);
 
-      setStage("wallet");
+      setStage("wallet"); setPct(55);
 
       // ── DEBUG: everything the SDK needs, right before we call mutate ──
       console.log("[VideoMind] about to call uploadBlobs.mutate", {
@@ -119,17 +113,7 @@ export function UploadZone() {
         expirationMicros: expirationMicros(),
       });
 
-      // Leg 1: the file bytes go to the backend (Whisper reads this copy).
-      // Progress from this leg drives the bar (25 -> 80).
-      const backendUpload = prepareVideo(
-        file, title, desc,
-        (pp) => setPct(25 + Math.round(pp * 0.55)),
-        id
-      );
-
-      // Leg 2: the wallet signs and the blob goes to Shelby. Unchanged
-      // Shelby call -- same signer shape, blobName, expiration, location.
-      const shelbyUpload = new Promise<void>((res, rej) => {
+      await new Promise<void>((res, rej) => {
         upload.mutate(
           {
             // Official docs pass account.accountAddress (the AccountAddress
@@ -154,11 +138,6 @@ export function UploadZone() {
           }
         );
       });
-
-      // confirm only runs after BOTH the backend file upload AND the Shelby
-      // upload have finished -- so the temp file is guaranteed present when
-      // the pipeline kicks off, and the blob is committed on-chain.
-      await Promise.all([backendUpload, shelbyUpload]);
 
       setStage("confirming"); setPct(85);
       await confirmVideo({

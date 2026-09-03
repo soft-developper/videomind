@@ -26,20 +26,22 @@ const upload = multer({
 
 export const pendingFiles = new Map<string, { filePath: string; ext: string }>();
 
-// ── POST /api/videos/reserve ────────────────────────────────────────────────
-// Instant, no file. Reserves an id + blob name so the browser can start the
-// Shelby wallet upload in parallel with the (separate) file upload to /prepare.
-router.post("/reserve", async (req, res) => {
+// ── POST /api/videos/prepare ────────────────────────────────────────────────
+router.post("/prepare", upload.single("video"), async (req, res) => {
   try {
+    if (!req.file) return res.status(400).json({ error: "No video file provided" });
+
     const id = uuidv4();
-    const originalName = (req.body.filename as string) || "video.mp4";
-    const ext = path.extname(originalName) || ".mp4";
+    const ext = path.extname(req.file.originalname) || ".mp4";
     const title =
       (req.body.title as string) ||
-      path.basename(originalName, ext).replace(/[-_]/g, " ");
+      path.basename(req.file.originalname, ext).replace(/[-_]/g, " ");
     const description = (req.body.description as string) || "";
-    const mimeType = (req.body.mimeType as string) || "video/mp4";
     const videoBlobName = `videomind/videos/${id}/raw${ext}`;
+
+    // Rename temp file to include extension (Whisper needs it)
+    const namedFilePath = `${req.file.path}${ext}`;
+    await fs.rename(req.file.path, namedFilePath);
 
     const record: VideoRecord = {
       id,
@@ -48,59 +50,9 @@ router.post("/reserve", async (req, res) => {
       createdAt: Date.now(),
       status: "uploading",
       shelby: { videoBlobName, accountAddress: "", videoTxHash: "" },
-      meta: { sizeBytes: 0, mimeType },
+      meta: { sizeBytes: req.file.size, mimeType: req.file.mimetype },
     };
     await store.set(id, record);
-
-    return res.status(200).json({ id, videoBlobName, mimeType });
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message });
-  }
-});
-
-// ── POST /api/videos/prepare ────────────────────────────────────────────────
-router.post("/prepare", upload.single("video"), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: "No video file provided" });
-
-    const ext = path.extname(req.file.originalname) || ".mp4";
-
-    // Rename temp file to include extension (Whisper needs it)
-    const namedFilePath = `${req.file.path}${ext}`;
-    await fs.rename(req.file.path, namedFilePath);
-
-    // If the browser reserved an id first (parallel-upload flow), reuse it.
-    // Otherwise fall back to the original create-here behaviour (backward
-    // compatible: a direct /prepare call with no reservedId still works).
-    const reservedId = (req.body.id as string) || undefined;
-    let id: string;
-    let videoBlobName: string;
-
-    const existing = reservedId ? await store.get(reservedId) : undefined;
-    if (existing) {
-      id = existing.id;
-      videoBlobName = existing.shelby.videoBlobName;
-      await store.update(id, {
-        meta: { sizeBytes: req.file.size, mimeType: req.file.mimetype },
-      });
-    } else {
-      id = reservedId || uuidv4();
-      const title =
-        (req.body.title as string) ||
-        path.basename(req.file.originalname, ext).replace(/[-_]/g, " ");
-      const description = (req.body.description as string) || "";
-      videoBlobName = `videomind/videos/${id}/raw${ext}`;
-      const record: VideoRecord = {
-        id,
-        title,
-        description,
-        createdAt: Date.now(),
-        status: "uploading",
-        shelby: { videoBlobName, accountAddress: "", videoTxHash: "" },
-        meta: { sizeBytes: req.file.size, mimeType: req.file.mimetype },
-      };
-      await store.set(id, record);
-    }
     pendingFiles.set(id, { filePath: namedFilePath, ext });
 
     // No base64Data here anymore. The browser already has the raw File
