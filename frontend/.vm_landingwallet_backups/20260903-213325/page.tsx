@@ -2,8 +2,6 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import { WalletButton } from "@/components/layout/WalletButton";
 
 const STEPS = [
   { n: "1", title: "Watch",  body: "Reads the entire recording end to end, every word." },
@@ -13,9 +11,6 @@ const STEPS = [
 ];
 
 export default function Home() {
-  const { connected, account } = useWallet();
-  const addr = account?.address?.toString();
-  const short = (a: string) => a.slice(0, 6) + "\u2026" + a.slice(-4);
   return (
     <div className="min-h-screen bg-void">
       <Navbar />
@@ -103,21 +98,11 @@ export default function Home() {
                   </div>
                   <div className="rule-x pt-4 flex items-center justify-between">
                     <span className="eyebrow">Signed by wallet</span>
-                    <span className={connected ? "tc tc-marker" : "tc text-dim"}>
-                      {connected ? "verified" : "not connected"}
-                    </span>
+                    <span className="tc tc-marker">verified</span>
                   </div>
                   <div className="rule-x pt-4">
-                    <p className="eyebrow mb-1.5">
-                      {connected ? "Your wallet" : "Connect to sign"}
-                    </p>
-                    {connected && addr ? (
-                      <p className="tc text-paper-2">{short(addr)}</p>
-                    ) : (
-                      <div className="mt-1">
-                        <WalletButton />
-                      </div>
-                    )}
+                    <p className="eyebrow mb-1.5">Wallet signature</p>
+                    <p className="tc text-paper-2">0x7a3f…9c4e</p>
                   </div>
                 </div>
               </div>
