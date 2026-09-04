@@ -26,11 +26,14 @@ const LABEL: Record<Stage, string> = {
 };
 
 function readable(raw: string): string {
-  if (raw.includes("INSUFFICIENT_BALANCE"))
-    return "Your wallet needs APT and ShelbyUSD. Top up from the testnet faucet, then try again.";
-  if (/reject/i.test(raw))
-    return "You rejected the transaction. Approve the signing request to upload.";
-  return raw;
+  const r = raw || "";
+  if (/reject|cancel|denied|declined/i.test(r))
+    return "You cancelled the signing request. Approve it to upload.";
+  if (/INSUFFICIENT_BALANCE|insufficient.*(balance|fund|gas)|EINSUFFICIENT/i.test(r))
+    return "Your wallet needs testnet APT (for gas) and ShelbyUSD (for storage). Fund it from the Shelby faucet, then try again.";
+  if (/failed to sign and submit|sign and submit|submit.*transaction|transaction.*(failed|rejected by)|simulation/i.test(r))
+    return "The transaction was signed but could not be submitted. This usually means the wallet has no testnet APT or ShelbyUSD yet - fund it from the Shelby faucet (a new Google-login wallet starts empty), then try again.";
+  return r;
 }
 
 export function UploadZone() {
