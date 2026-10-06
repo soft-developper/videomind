@@ -30,3 +30,7 @@ Thumbs.db
 *.db
 *.db-shm
 *.db-wal
+
+# Patch script backups (kept locally for --revert, never committed)
+.vm_*_backups/
+*.bak-*
