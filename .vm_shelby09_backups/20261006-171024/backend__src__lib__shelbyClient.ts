@@ -1,0 +1,83 @@
+// src/lib/shelbyClient.ts
+import { ShelbyNodeClient } from "@shelby-protocol/sdk/node";
+import { Ed25519Account, Ed25519PrivateKey, Network } from "@aptos-labs/ts-sdk";
+import "dotenv/config";
+import { SHELBYNET_BLOB_GATEWAY, SHELBYNET_BLOB_INDEXER } from "./network.js";
+
+const MAX_EXPIRY_HOURS = 47;
+const MICROS_PER_HOUR = 3_600_000_000;
+
+export function expirationMicros(hours = MAX_EXPIRY_HOURS): number {
+  return Date.now() * 1000 + hours * MICROS_PER_HOUR;
+}
+
+let _account: Ed25519Account | null = null;
+export function getShelbyAccount(): Ed25519Account {
+  if (_account) return _account;
+  const rawKey = process.env.APTOS_PRIVATE_KEY;
+  if (!rawKey) throw new Error("APTOS_PRIVATE_KEY not set in .env");
+  _account = new Ed25519Account({ privateKey: new Ed25519PrivateKey(rawKey) });
+  return _account;
+}
+
+let _client: ShelbyNodeClient | null = null;
+export function getShelbyClient(): ShelbyNodeClient {
+  if (_client) return _client;
+  const apiKey = process.env.APTOS_API_KEY;
+  if (!apiKey) throw new Error("APTOS_API_KEY not set in .env");
+
+  // Network.SHELBYNET — a real enum member, not a custom network.
+  // The SDK resolves fullnode/faucet/indexer internally.
+  _client = new ShelbyNodeClient({
+    network: Network.SHELBYNET,
+    apiKey,
+    // Explicitly target Shelby's own blob indexer -- without this the
+    // SDK falls back to the generic Aptos chain indexer, whose `blobs`
+    // table has a completely different schema.
+    indexer: {
+      baseUrl: SHELBYNET_BLOB_INDEXER,
+      apiKey,
+    },
+  } as any);
+  return _client;
+}
+
+export async function uploadToShelby(
+  blobData: Buffer,
+  blobName: string
+): Promise<{ blobName: string; accountAddress: string; txHash: string }> {
+  const client = getShelbyClient();
+  const signer = getShelbyAccount();
+
+  const result = await client.upload({
+    signer,
+    blobData,
+    blobName,
+    expirationMicros: expirationMicros(),
+  }) as { transaction?: { hash: string } } | void;
+
+  const txHash =
+    result && typeof result === "object" && result.transaction
+      ? result.transaction.hash
+      : `upload-${Date.now()}`;
+
+  return { blobName, accountAddress: signer.accountAddress.toString(), txHash };
+}
+
+export async function downloadFromShelby(blobName: string, ownerAddress: string): Promise<Buffer> {
+  const client = getShelbyClient();
+  const blob = await client.download({ account: ownerAddress, blobName });
+  const chunks: Buffer[] = [];
+  for await (const chunk of blob.readable) chunks.push(Buffer.from(chunk));
+  return Buffer.concat(chunks);
+}
+
+/**
+ * Direct HTTP URL to stream a blob from shelbynet.
+ * Confirmed live from docs.shelby.xyz/protocol/architecture/networks:
+ * Shelby RPC = https://api.shelbynet.shelby.xyz/shelby
+ */
+export function shelbyBlobUrl(blobName: string, ownerAddress: string): string {
+  const encodedPath = blobName.split("/").map(encodeURIComponent).join("/");
+  return `${SHELBYNET_BLOB_GATEWAY}/v1/blobs/${ownerAddress}/${encodedPath}`;
+}
