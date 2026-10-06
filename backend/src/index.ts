@@ -2,12 +2,10 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { migrate } from "./lib/db.js";
-import { renewExpiringBlobs } from "./cron/renewBlobs.js";
 import videosRouter from "./routes/videos.js";
 import chatRouter from "./routes/chat.js";
 import statsRouter from "./routes/stats.js";
 import learnRouter from "./routes/learn.js";
-import cron from "node-cron";
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -36,10 +34,8 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "VideoMind API", timestamp: new Date().toISOString() });
 });
 
-cron.schedule("0 */6 * * *", () => {
-  console.log("[Cron] Blob renewal check — wallet-owned blobs renewed via frontend.");
-  renewExpiringBlobs().catch(console.error);
-});
+// vm_shelby09d: the 6-hourly blob renewal cron is gone. Shelby storage is
+// prepaid in payment epochs at registration and the contract has no renew call.
 
 async function main() {
   await migrate();

@@ -84,7 +84,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
             <AlertTriangle size={20} className="text-error" />
             <p className="font-display text-[17px] text-paper">Blob unavailable</p>
             <p className="text-[12px] font-sans text-dim max-w-xs leading-relaxed">
-              This video may have expired on Shelby. Renew it to restore access.
+              This video may no longer be stored on Shelby. Upload it again to restore access.
             </p>
           </div>
         )}
@@ -110,7 +110,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
           onEnded={() => setPlaying(false)}
         />
 
-        {/* Minimal chrome — the Intelligence Strip below is the real interface */}
+        {/* Minimal chrome - the Intelligence Strip below is the real interface */}
         <div className={clsx(
           "absolute inset-x-0 bottom-0 flex items-center gap-3 px-3 h-10 bg-void/80 border-t border-rule transition-all duration-200 z-20",
           show || !playing ? "opacity-100 translate-y-0" : "opacity-0 translate-y-full"

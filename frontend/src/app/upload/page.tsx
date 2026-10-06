@@ -31,7 +31,7 @@ export default function UploadPage() {
             <aside className="space-y-0">
               <p className="eyebrow mb-4">What happens next</p>
 
-              {/* This IS a sequence — order carries real information here. */}
+              {/* This IS a sequence - order carries real information here. */}
               {STEPS.map((s, i) => (
                 <div key={s.n} className="flex gap-4 py-4 border-t border-rule last:border-b">
                   <span className="tc tabular-nums shrink-0 pt-0.5">
@@ -50,8 +50,9 @@ export default function UploadPage() {
 
               <div className="mt-6 pt-4 border-t border-rule">
                 <p className="tc leading-relaxed">
-                  Shelby testnet expires blobs after 48 hours. VideoMind flags
-                  expiring videos when you connect — one signature renews them all.
+                  Storage on Shelby is prepaid when you upload, for a fixed
+                  number of 24-hour payment epochs. Each video's On-chain proof
+                  shows the date it is paid until.
                 </p>
               </div>
             </aside>

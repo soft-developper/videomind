@@ -12,17 +12,17 @@ const SHELBY = [
     d: "Every video lives at videomind/videos/{id}/raw.mp4 under your own account address, retrievable straight from the Shelby gateway.",
   },
   {
-    t: "48-hour expiry, handled",
-    d: "Shelby testnet expires blobs after 48 hours. VideoMind checks on connect and renews everything that's close to lapsing — one signature covers the whole library.",
+    t: "Prepaid storage, shown on chain",
+    d: "Storage is paid at upload for a fixed number of 24-hour payment epochs. Every video page reads its record live from the Shelby contract and shows the date it is paid until.",
   },
   {
     t: "Built on the React SDK",
-    d: "ShelbyClientProvider, useUploadBlobs and useAccountBlobs. Chunked upload and transaction submission run through the wallet adapter, not a server.",
+    d: "ShelbyClientProvider and useUploadBlobs. Chunked upload and transaction submission run through the wallet adapter, not a server.",
   },
 ];
 
 const STACK = [
-  ["@shelby-protocol/react",   "useUploadBlobs, useAccountBlobs"],
+  ["@shelby-protocol/react",   "ShelbyClientProvider, useUploadBlobs"],
   ["@shelby-protocol/sdk",     "server-side Shelby operations"],
   ["@aptos-labs/wallet-adapter-react", "wallet connect and signing"],
   ["Anthropic Claude",         "cuts, highlights, chat, search, curriculum"],
@@ -51,7 +51,7 @@ export default function AboutPage() {
               VideoMind reads a recording end to end, marks where the topic turns,
               flags what's worth knowing, and answers questions with the timecode
               attached. The video itself is stored on Shelby Protocol and signed by
-              your wallet — nobody else can take it down.
+              your wallet - nobody else can take it down.
             </p>
             <div className="flex gap-3 mt-8 flex-wrap">
               <Link href="/upload" className="btn btn-signal h-10 px-5 flex items-center gap-2">
@@ -64,7 +64,7 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Shelby integration — not numbered. this isn't a sequence. */}
+        {/* Shelby integration - not numbered. this isn't a sequence. */}
         <section className="border-b border-rule">
           <div className="max-w-[820px] mx-auto px-4 sm:px-6 py-12">
             <p className="eyebrow mb-8">Shelby integration</p>
@@ -83,7 +83,7 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Pipeline — THIS is a sequence, so it's numbered. */}
+        {/* Pipeline - THIS is a sequence, so it's numbered. */}
         <section className="border-b border-rule">
           <div className="max-w-[820px] mx-auto px-4 sm:px-6 py-12">
             <p className="eyebrow mb-8">What happens to a video</p>

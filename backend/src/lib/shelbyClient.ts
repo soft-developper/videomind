@@ -4,13 +4,6 @@ import { Ed25519Account, Ed25519PrivateKey, Network } from "@aptos-labs/ts-sdk";
 import "dotenv/config";
 import { SHELBYNET_BLOB_GATEWAY, SHELBYNET_BLOB_INDEXER } from "./network.js";
 
-const MAX_EXPIRY_HOURS = 47;
-const MICROS_PER_HOUR = 3_600_000_000;
-
-export function expirationMicros(hours = MAX_EXPIRY_HOURS): number {
-  return Date.now() * 1000 + hours * MICROS_PER_HOUR;
-}
-
 let _account: Ed25519Account | null = null;
 export function getShelbyAccount(): Ed25519Account {
   if (_account) return _account;

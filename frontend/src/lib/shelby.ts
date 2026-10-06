@@ -24,7 +24,6 @@ export const shelbyClient = new ShelbyClient({
   locationHint: SHELBY_LOCATION,
 });
 
-export function expirationMicros(): number {
-  // 47h, under shelbynet's 48h cap
-  return Date.now() * 1000 + 47 * 60 * 60 * 1000 * 1000;
-}
+// vm_shelby09d: no expirationMicros helper any more. Storage is prepaid
+// in payment epochs by the contract at registration; the app neither
+// sets an expiry nor renews. See src/lib/onchain.ts for the paid-until date.

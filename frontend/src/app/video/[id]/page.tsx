@@ -9,7 +9,6 @@ import { TranscriptPanel } from "@/components/video/TranscriptPanel";
 import { IntelligenceStrip } from "@/components/video/IntelligenceStrip";
 import { ProcessingStatus } from "@/components/video/ProcessingStatus";
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
-import { RenewButton } from "@/components/video/RenewButton";
 import { ExportMenu } from "@/components/video/ExportMenu";
 import { ShareButton } from "@/components/video/ShareButton";
 import { SkeletonVideoPage } from "@/components/ui/SkeletonCard";
@@ -134,15 +133,6 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   highlights={video.ai?.highlights}
                   tags={video.ai?.tags}
                 />
-                {video.streamUrl && (
-                  <div className="ml-auto">
-                    <RenewButton
-                      streamUrl={video.streamUrl}
-                      videoBlobName={video.shelby.videoBlobName}
-                      onRenewed={() => refetch()}
-                    />
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -183,7 +173,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   onTimeUpdate={setT}
                 />
 
-                {/* ★ THE SIGNATURE — sits directly under the frame ★ */}
+                {/* ★ THE SIGNATURE - sits directly under the frame ★ */}
                 <IntelligenceStrip
                   duration={duration}
                   currentTime={t}

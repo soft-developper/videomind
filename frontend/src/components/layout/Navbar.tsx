@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { clsx } from "clsx";
 import { WalletButton } from "./WalletButton";
-import { ExpiryBanner } from "./ExpiryBanner";
 import { useState, useEffect } from "react";
 
 const NAV = [
@@ -31,7 +30,7 @@ export function Navbar() {
       <nav className="fixed top-0 inset-x-0 z-50 h-14 bg-void border-b border-rule">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-full flex items-center justify-between gap-4">
 
-          {/* Mark — a playhead triangle. the product IS a playhead. */}
+          {/* Mark - a playhead triangle. the product IS a playhead. */}
           <Link href="/" className="flex items-center gap-2.5 group shrink-0">
             <svg width="14" height="16" viewBox="0 0 14 16" fill="none" aria-hidden>
               <path
@@ -44,7 +43,7 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* Links — text only. no icons. */}
+          {/* Links - text only. no icons. */}
           <div className="hidden md:flex items-center">
             {NAV.map(({ href, label }) => {
               const active = pathname === href;
@@ -82,8 +81,6 @@ export function Navbar() {
           </div>
         </div>
       </nav>
-
-      <ExpiryBanner />
 
       {/* Mobile drawer */}
       <div className={clsx(
