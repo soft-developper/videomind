@@ -18,5 +18,6 @@ export const explorer = {
 export const SHELBY_DEPLOYER =
   "0x85fdb9a176ab8ef1d9d9c1b60d60b3924f0800ac1de1cc2085fb0b8bb4988e6a";
 
-// Shelbynet blob indexer (GraphQL)
-export const SHELBY_INDEXER = "https://api.shelbynet.shelby.xyz/v1/graphql";
+// vm_shelby09c: the old `blobs` indexer table is gone. The object index
+// and fullnode endpoints used by the On-chain proof panel now live in
+// src/lib/onchain.ts (SHELBY_OBJECT_INDEXER, SHELBY_FULLNODE).

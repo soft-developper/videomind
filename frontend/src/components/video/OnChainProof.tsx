@@ -1,5 +1,6 @@
 "use client";
-// On-chain verification panel — proves this specific video is stored on
+// vm_shelby09c: rebuilt for the object index + contract views (sdk 0.8+).
+// On-chain verification panel - proves this specific video is stored on
 // Shelby, with every identifier linking to the Aptos Explorer.
 import { useOnChainBlob, toObjectName } from "@/hooks/useOnChainBlob";
 import { explorer, SHELBY_DEPLOYER } from "@/lib/explorer";
@@ -27,12 +28,21 @@ function whenMicros(us: number) {
   });
 }
 
-function expiresIn(us: number) {
+/** time left until a microsecond timestamp; warns inside the last 3 days */
+function timeLeft(us: number) {
   const ms = us / 1000 - Date.now();
-  if (ms <= 0) return { text: "expired", danger: true };
-  const h = Math.floor(ms / 3_600_000);
+  if (ms <= 0) return { text: "payment period ended", danger: true };
+  const d = Math.floor(ms / 86_400_000);
+  const h = Math.floor((ms % 86_400_000) / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
-  return { text: h > 0 ? `${h}h ${m}m` : `${m}m`, danger: h < 6 };
+  const text = d > 0 ? `${d}d ${h}h left` : h > 0 ? `${h}h ${m}m left` : `${m}m left`;
+  return { text, danger: d < 3 };
+}
+
+/** "CommittedObject" -> "Committed object" */
+function stateLabel(state: string) {
+  const words = state.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 function CopyBtn({ value }: { value: string }) {
@@ -103,9 +113,9 @@ export function OnChainProof({
   return (
     <section className="panel">
       <header className="flex items-center gap-2.5 px-5 h-11 border-b border-rule">
-        <ShieldCheck size={13} className={data ? "text-marker" : "text-dim"} />
+        <ShieldCheck size={13} className={data?.is_committed ? "text-marker" : "text-dim"} />
         <span className="eyebrow">On-chain proof</span>
-        {data && (
+        {data?.is_committed && (
           <span className="ml-auto flex items-center gap-1.5">
             <span className="dot dot-live" />
             <span className="tc tc-marker">Verified on shelbynet</span>
@@ -126,7 +136,7 @@ export function OnChainProof({
 
         {!isLoading && !isError && !data && (
           <p className="tc py-3">
-            Not found on-chain yet — the blob may still be committing, or it expired.
+            Not found on-chain - the blob may still be committing, or it is no longer stored.
           </p>
         )}
 
@@ -143,23 +153,27 @@ export function OnChainProof({
               href={explorer.account(data.owner)}
               copy={data.owner}
             />
-            <Row
-              label="Register txn"
-              value={`v${data.last_transaction_version}`}
-              href={explorer.txnByVersion(data.last_transaction_version)}
-            />
-            <Row
-              label="Storage slice"
-              value={shorten(data.slice_address)}
-              href={explorer.object(data.slice_address)}
-              copy={data.slice_address}
-            />
-            <Row
-              label="Placement group"
-              value={shorten(data.placement_group)}
-              href={explorer.object(data.placement_group)}
-              copy={data.placement_group}
-            />
+            {data.state && (
+              <Row label="State" value={stateLabel(data.state)} mono={false} />
+            )}
+            {data.slice_address && (
+              <Row
+                label="Storage slice"
+                value={shorten(data.slice_address)}
+                href={explorer.object(data.slice_address)}
+                copy={data.slice_address}
+              />
+            )}
+            {data.location_name && (
+              <Row label="Location" value={data.location_name} />
+            )}
+            {data.blob_commitment && (
+              <Row
+                label="Commitment"
+                value={shorten(data.blob_commitment)}
+                copy={data.blob_commitment}
+              />
+            )}
             <Row
               label="Size on chain"
               value={bytes(Number(data.size))}
@@ -167,18 +181,32 @@ export function OnChainProof({
             {data.num_chunksets != null && (
               <Row label="Chunksets" value={String(data.num_chunksets)} />
             )}
-            <Row label="Registered" value={whenMicros(Number(data.created_at))} mono={false} />
-            <Row
-              label="Expires"
-              value={
-                <span className={expiresIn(Number(data.expires_at)).danger ? "text-warn" : ""}>
-                  {whenMicros(Number(data.expires_at))}
-                  {" · "}
-                  {expiresIn(Number(data.expires_at)).text}
-                </span>
-              }
-              mono={false}
-            />
+            {data.created_at != null && (
+              <Row label="Registered" value={whenMicros(data.created_at)} mono={false} />
+            )}
+            {data.committed_at != null && (
+              <Row label="Committed" value={whenMicros(data.committed_at)} mono={false} />
+            )}
+            {data.payment && (
+              <Row
+                label="Storage paid"
+                value={`${data.payment.epochs} payment epochs`}
+                mono={false}
+              />
+            )}
+            {data.payment?.paidUntil != null && (
+              <Row
+                label="Paid until"
+                value={
+                  <span className={timeLeft(data.payment.paidUntil).danger ? "text-warn" : ""}>
+                    {whenMicros(data.payment.paidUntil)}
+                    {" · "}
+                    {timeLeft(data.payment.paidUntil).text}
+                  </span>
+                }
+                mono={false}
+              />
+            )}
             <Row
               label="Contract"
               value={shorten(SHELBY_DEPLOYER)}
@@ -197,9 +225,11 @@ export function OnChainProof({
       {data && (
         <footer className="px-5 py-3 border-t border-rule">
           <p className="tc leading-relaxed">
-            Every value above is read live from the shelbynet blob indexer and
-            links to the Aptos Explorer. Anyone can independently verify this
-            video is stored on Shelby.
+            Every value above is read live from the shelbynet object index and
+            the Shelby contract, and links to the Aptos Explorer. Storage is
+            prepaid in payment epochs at upload; "Paid until" is computed from
+            the epochs paid. Anyone can independently verify this video is
+            stored on Shelby.
           </p>
         </footer>
       )}
