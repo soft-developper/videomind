@@ -6,7 +6,8 @@ import { clsx } from "clsx";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useUploadBlobs } from "@shelby-protocol/react";
 import { reserveVideo, prepareVideo, confirmVideo } from "@/lib/api";
-import { expirationMicros, shelbyClient, SHELBY_LOCATION } from "@/lib/shelby";
+// vm_shelby09: expiration removed from blob registration (sdk >= 0.8.0)
+import { shelbyClient, SHELBY_LOCATION } from "@/lib/shelby";
 import { useRouter } from "next/navigation";
 
 function bytes(n: number) {
@@ -83,7 +84,7 @@ export function UploadZone() {
   const go = async () => {
     if (!file || !title.trim()) return;
     if (!connected || !account || !signAndSubmitTransaction) {
-      setErr("Connect a wallet first — the button is in the top bar.");
+      setErr("Connect a wallet first - the button is in the top bar.");
       return;
     }
     setErr(null);
@@ -119,7 +120,6 @@ export function UploadZone() {
         hasSignFn: typeof signAndSubmitTransaction,
         blobName: videoBlobName,
         byteLength: buf.length,
-        expirationMicros: expirationMicros(),
       });
 
       // Leg 1: the file bytes go to the backend (Whisper reads this copy).
@@ -130,8 +130,9 @@ export function UploadZone() {
         id
       );
 
-      // Leg 2: the wallet signs and the blob goes to Shelby. Unchanged
-      // Shelby call -- same signer shape, blobName, expiration, location.
+      // Leg 2: the wallet signs and the blob goes to Shelby. Same signer
+      // shape, blobName and location. No expiry argument: the Shelbynet
+      // contract no longer takes one at registration (sdk >= 0.8.0).
       const shelbyUpload = new Promise<void>((res, rej) => {
         upload.mutate(
           {
@@ -140,7 +141,6 @@ export function UploadZone() {
             // AccountAddress.from(..., {maxMissingChars: 63}).
             signer: { account: account.address as any, signAndSubmitTransaction },
             blobs: [{ blobName: videoBlobName, blobData: buf }],
-            expirationMicros: expirationMicros(),
             // Explicit per-write location. Without a location the Move
             // contract rejects the write outright.
             options: { locationHint: SHELBY_LOCATION },
@@ -215,7 +215,7 @@ export function UploadZone() {
 
         {file ? (
           <div className="p-8 flex items-center gap-5">
-            {/* Film-strip glyph — the file, as a filmstrip */}
+            {/* Film-strip glyph - the file, as a filmstrip */}
             <svg width="40" height="48" viewBox="0 0 40 48" className="shrink-0" aria-hidden>
               <rect x="0" y="0" width="40" height="48" fill="#0A0A0C" stroke="#26282F" strokeWidth="1"/>
               {[6, 16, 26, 36].map((y) => (
@@ -247,7 +247,7 @@ export function UploadZone() {
               {isDragActive ? "Drop it." : "Drop a video here"}
             </p>
             <p className="tc mt-3">
-              MP4 · WebM · MOV · AVI · MKV — up to 2 GB
+              MP4 · WebM · MOV · AVI · MKV - up to 2 GB
             </p>
             <p className="tc mt-1 text-dim-2">or click to browse</p>
           </div>
@@ -268,7 +268,7 @@ export function UploadZone() {
             />
           </div>
           <div>
-            <label htmlFor="d" className="eyebrow block mb-1.5">Description — optional</label>
+            <label htmlFor="d" className="eyebrow block mb-1.5">Description - optional</label>
             <textarea
               id="d"
               value={desc}
@@ -294,7 +294,7 @@ export function UploadZone() {
         </div>
       )}
 
-      {/* Progress — a bar that fills, in signal red. it's time passing. */}
+      {/* Progress - a bar that fills, in signal red. it's time passing. */}
       {busy && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -313,7 +313,7 @@ export function UploadZone() {
         </div>
       )}
 
-      {/* THE BUTTON — always visible, disabled state is legible */}
+      {/* THE BUTTON - always visible, disabled state is legible */}
       <button
         onClick={go}
         disabled={!canGo}

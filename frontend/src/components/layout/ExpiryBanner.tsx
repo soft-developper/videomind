@@ -1,9 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import { useAccountBlobs, useUploadBlobs } from "@shelby-protocol/react";
+import { useAccountObjects, useUploadBlobs } from "@shelby-protocol/react";
 import { X, RefreshCw, Check } from "lucide-react";
-import { expirationMicros } from "@/lib/shelby";
 
 const WARN_MICROS = 24 * 3_600_000_000;
 type Blob = Record<string, any>;
@@ -27,12 +26,20 @@ export function ExpiryBanner() {
   // enabled: false switches this off entirely until Shelby's indexer
   // supports the query, so it never fires and never appears in the
   // console or network tab. Flip back to true once it's fixed.
-  const EXPIRY_CHECK_ENABLED = true;
-  const { data: raw, isLoading } = useAccountBlobs({
-    account: wallet ?? "",
+  // vm_shelby09: expiration removed from blob registration (sdk >= 0.8.0)
+  // Renewal is switched OFF: the contract no longer takes an expiry, so
+  // the old "re-upload with a fresh expirationMicros" renew has nothing to
+  // map to. Leave false until the renew flow is reworked (Part 2).
+  const EXPIRY_CHECK_ENABLED = false;
+  // vm_shelby09b: useAccountObjects takes `owner` (useAccountBlobs took
+  // `account`). The hook reads owner.toString() for its query key on
+  // every render, including the server prerender, so it must never be
+  // undefined.
+  const { data: raw, isLoading } = useAccountObjects({
+    owner: wallet ?? "",
     enabled: EXPIRY_CHECK_ENABLED && !!wallet && connected,
-  } as any);
-  const blobs = (raw ?? []) as Blob[];
+  });
+  const blobs = (Array.isArray(raw) ? raw : []) as Blob[];
 
   const upload = useUploadBlobs({
     onError: (e) => { setErr(e.message); setS("error"); },
@@ -49,7 +56,7 @@ export function ExpiryBanner() {
     return (
       <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 h-10 bg-void border border-marker-dim">
         <Check size={12} className="text-marker" />
-        <span className="text-[12px] font-sans text-marker">Renewed — good for 47 hours</span>
+        <span className="text-[12px] font-sans text-marker">Renewed - good for 47 hours</span>
       </div>
     );
   }
@@ -78,7 +85,6 @@ export function ExpiryBanner() {
           {
             signer: { account: account.address as any, signAndSubmitTransaction },
             blobs: payloads,
-            expirationMicros: expirationMicros(),
           },
           { onSuccess: () => res(), onError: (e) => rej(e) }
         );

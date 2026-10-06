@@ -3,10 +3,15 @@ import { useState } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useUploadBlobs } from "@shelby-protocol/react";
 import { RefreshCw, Check, AlertTriangle } from "lucide-react";
-import { expirationMicros } from "@/lib/shelby";
 import { clsx } from "clsx";
 
 type S = "idle" | "fetching" | "signing" | "done" | "error";
+
+// vm_shelby09: expiration removed from blob registration (sdk >= 0.8.0)
+// Renewal is switched OFF: the contract no longer takes an expiry, so the
+// old "re-upload with a fresh expirationMicros" renew has nothing to map
+// to. Leave false until the renew flow is reworked (Part 2).
+const RENEW_ENABLED: boolean = false;
 
 export function RenewButton({
   streamUrl, videoBlobName, onRenewed,
@@ -24,7 +29,7 @@ export function RenewButton({
     setS("fetching"); setErr(null);
     try {
       const r = await fetch(streamUrl);
-      if (!r.ok) throw new Error("Blob already expired — re-upload the file.");
+      if (!r.ok) throw new Error("Blob already expired - re-upload the file.");
       const buf = new Uint8Array(await r.arrayBuffer());
 
       setS("signing");
@@ -33,7 +38,6 @@ export function RenewButton({
           {
             signer: { account: account.address as any, signAndSubmitTransaction },
             blobs: [{ blobName: videoBlobName, blobData: buf }],
-            expirationMicros: expirationMicros(),
           },
           { onSuccess: () => res(), onError: (e) => rej(e) }
         );
@@ -46,7 +50,7 @@ export function RenewButton({
     }
   };
 
-  if (!connected) return null;
+  if (!RENEW_ENABLED || !connected) return null;
 
   return (
     <div className="flex flex-col items-end gap-1">

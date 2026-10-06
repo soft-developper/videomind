@@ -26,7 +26,7 @@ export function getShelbyClient(): ShelbyNodeClient {
   const apiKey = process.env.APTOS_API_KEY;
   if (!apiKey) throw new Error("APTOS_API_KEY not set in .env");
 
-  // Network.SHELBYNET — a real enum member, not a custom network.
+  // Network.SHELBYNET - a real enum member, not a custom network.
   // The SDK resolves fullnode/faucet/indexer internally.
   _client = new ShelbyNodeClient({
     network: Network.SHELBYNET,
@@ -53,7 +53,7 @@ export async function uploadToShelby(
     signer,
     blobData,
     blobName,
-    expirationMicros: expirationMicros(),
+    // vm_shelby09: expiration removed from blob registration (sdk >= 0.8.0)
   }) as { transaction?: { hash: string } } | void;
 
   const txHash =
