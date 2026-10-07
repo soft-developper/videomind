@@ -72,6 +72,45 @@ const MIGRATIONS: Migration[] = [
       `ALTER TABLE videos ADD COLUMN source_path TEXT`,
     ],
   },
+  {
+    // vm_storage: where each video's files are kept, and the usage ledger
+    // (see src/lib/assets.ts and src/lib/usage.ts)
+    id: "003_storage_usage",
+    statements: [
+      `CREATE TABLE media_assets (
+        id              TEXT PRIMARY KEY,
+        video_id        TEXT NOT NULL,
+        owner_wallet    TEXT,
+        kind            TEXT NOT NULL,
+        storage_driver  TEXT NOT NULL,
+        storage_key     TEXT NOT NULL,
+        bytes           INTEGER NOT NULL,
+        content_type    TEXT,
+        sha256          TEXT,
+        created_at      INTEGER NOT NULL
+      )`,
+      `CREATE INDEX media_assets_video_idx ON media_assets(video_id, kind)`,
+      // Quantities only, never money. Rows are only ever added.
+      `CREATE TABLE usage_ledger (
+        id               TEXT PRIMARY KEY,
+        created_at       INTEGER NOT NULL,
+        owner_wallet     TEXT,
+        actor_wallet     TEXT,
+        video_id         TEXT,
+        feature          TEXT NOT NULL,
+        metric           TEXT NOT NULL,
+        quantity         REAL NOT NULL,
+        unit             TEXT NOT NULL,
+        provider         TEXT,
+        model            TEXT,
+        job_id           TEXT,
+        idempotency_key  TEXT UNIQUE,
+        meta             TEXT
+      )`,
+      `CREATE INDEX usage_owner_idx ON usage_ledger(owner_wallet, created_at)`,
+      `CREATE INDEX usage_video_idx ON usage_ledger(video_id)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

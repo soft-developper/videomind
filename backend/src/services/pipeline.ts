@@ -1,7 +1,7 @@
 // src/services/pipeline.ts
 // vm_jobs: the processing stages, as job handlers.
 //
-//   transcribe  Whisper reads the uploaded file  -> transcript saved
+//   transcribe  Whisper reads the stored original -> transcript saved
 //   analyze     Claude reads the transcript      -> summary, chapters, highlights
 //
 // Each handler first checks whether its work is already saved and skips
@@ -12,6 +12,10 @@ import { transcribeVideo, analyzeWithClaude } from "./aiPipeline.js";
 import { store } from "../lib/store.js";
 import { enqueueJob, retryJob, type Job } from "../lib/jobs.js";
 import { PermanentJobError, registerHandler, setFinalFailureHook, nudgeRunner } from "../lib/runner.js";
+// vm_storage: the original is read from storage, and AI usage is attributed to the owner
+import { getStorage, ObjectMissingError } from "../lib/storage.js";
+import { getOriginal, deleteOriginal, keepOriginal } from "../lib/assets.js";
+import { withUsage, ownerOf } from "../lib/usage.js";
 import type { TranscriptSegment, VideoAIData } from "../types/video.js";
 
 /** OpenAI's documented limit for one transcription file. */
@@ -50,18 +54,28 @@ export function makeHandlers(deps: PipelineDeps) {
     if (!video) throw new PermanentJobError("video_gone", "The video was deleted.");
 
     if (!video.ai?.transcript?.length) {
-      const filePath = (job.payload.filePath as string | undefined) ?? (await store.getSourcePath(job.videoId)) ?? "";
-      const stat = filePath ? await fs.stat(filePath).catch(() => null) : null;
-      if (!stat) {
-        throw new PermanentJobError("source_missing", "The uploaded file is no longer on the server. Upload the video again.");
-      }
-      if (stat.size > TRANSCRIBE_MAX_BYTES) {
+      // The original lives in storage. A video confirmed before storage
+      // existed may still point at a file on this machine's disk.
+      const original = await getOriginal(job.videoId);
+      const diskPath = original ? "" : ((job.payload.filePath as string | undefined) ?? (await store.getSourcePath(job.videoId)) ?? "");
+      const size = original ? original.bytes : (diskPath ? (await fs.stat(diskPath).catch(() => null))?.size : undefined);
+      const gone = () => new PermanentJobError("source_missing", "The uploaded file is no longer in storage. Upload the video again.");
+      if (size === undefined) throw gone();
+      if (size > TRANSCRIBE_MAX_BYTES) {
         throw new PermanentJobError("too_large",
-          `This file is ${(stat.size / 1024 / 1024).toFixed(1)} MB, which is over the 25 MB transcription limit.`);
+          `This file is ${(size / 1024 / 1024).toFixed(1)} MB, which is over the 25 MB transcription limit.`);
       }
       await store.update(job.videoId, { status: "transcribing" });
+      const run = (filePath: string) => withUsage(
+        { feature: "transcribe", ownerWallet: ownerOf(video), videoId: job.videoId, jobId: job.id },
+        () => deps.transcribe(filePath));
       let transcript: TranscriptSegment[];
-      try { transcript = await deps.transcribe(filePath); } catch (err) { classify(err, "Transcription"); }
+      try {
+        transcript = original ? await getStorage().withLocalFile(original.key, run) : await run(diskPath);
+      } catch (err) {
+        if (err instanceof ObjectMissingError) throw gone();
+        classify(err, "Transcription");
+      }
       await store.update(job.videoId, { ai: { transcript: transcript! } });
     }
 
@@ -84,7 +98,11 @@ export function makeHandlers(deps: PipelineDeps) {
     if (!video.ai?.summary) {
       await store.update(job.videoId, { status: "analyzing" });
       let ai: Omit<VideoAIData, "transcript">;
-      try { ai = await deps.analyze(transcript, video.title ?? "Untitled"); } catch (err) { classify(err, "Analysis"); }
+      try {
+        ai = await withUsage(
+          { feature: "analyze", ownerWallet: ownerOf(video), videoId: job.videoId, jobId: job.id },
+          () => deps.analyze(transcript, video.title ?? "Untitled"));
+      } catch (err) { classify(err, "Analysis"); }
       // The current analyzer hides an unreadable answer behind a
       // placeholder. Treat that as a failure worth another attempt.
       if (!ai!.summary || (ai!.summary === "Analysis pending." && !ai!.chapters?.length)) {
@@ -95,7 +113,12 @@ export function makeHandlers(deps: PipelineDeps) {
 
     await store.update(job.videoId, { status: "ready" });
 
-    // The source file has done its job.
+    // With durable storage the original is kept: it is the copy that
+    // later steps (playback files, clips, anchoring again) are made from.
+    // On local disk it is removed, as before.
+    if (!keepOriginal()) {
+      await deleteOriginal(job.videoId).catch((err) => console.error(`[storage] could not remove the original of ${job.videoId}: ${err?.message ?? err}`));
+    }
     const src = await store.getSourcePath(job.videoId);
     if (src) {
       await fs.unlink(src).catch(() => {});

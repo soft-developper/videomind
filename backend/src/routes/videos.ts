@@ -15,6 +15,10 @@ import type { VideoRecord } from "../types/video.js";
 import { limitUpload, limitPipeline, limitDelete } from "../lib/guard.js";
 // vm_signin: the caller is the signed in wallet, never a value they send
 import { requireAuth, optionalAuth, authOf, sameWallet } from "../lib/auth.js";
+// vm_storage: uploads go into storage, not onto this machine's disk
+import { storageHealth, checkStorage } from "../lib/storage.js";
+import { saveOriginal, getOriginal, deleteAssetsForVideo, isVideoId } from "../lib/assets.js";
+import type { Request, Response, NextFunction } from "express";
 
 const router = Router();
 
@@ -31,11 +35,33 @@ const upload = multer({
   },
 });
 
-/** Remove a video's uploaded file and its jobs. Call before deleting the video. */
+/** Remove a video's stored files and its jobs. Call before deleting the video. */
 async function dropVideoWork(id: string): Promise<void> {
   const src = await store.getSourcePath(id);
   if (src) await fs.unlink(src).catch(() => {});
   await deleteJobsForVideo(id);
+  // If storage cannot be reached the asset rows stay, and the hourly
+  // sweep removes the files later. Deleting the video still succeeds.
+  await deleteAssetsForVideo(id).catch((err) =>
+    console.error(`[storage] could not delete the files of ${id} now, the sweep will retry: ${err?.message ?? err}`));
+}
+
+/**
+ * Refuse an upload BEFORE the file is received when storage is not
+ * working, so nobody waits through a long upload that cannot be kept.
+ * A failed check is tried again at most every 30 seconds.
+ */
+let lastRecheck = 0;
+async function requireStorage(_req: Request, res: Response, next: NextFunction) {
+  if (!storageHealth().ok && Date.now() - lastRecheck > 30_000) {
+    lastRecheck = Date.now();
+    await checkStorage().catch(() => false);
+  }
+  if (storageHealth().ok) return next();
+  return res.status(503).json({
+    error: "Video storage is not available right now. Please try again in a few minutes.",
+    code: "storage_unavailable",
+  });
 }
 
 const STAGE_LABEL: Record<string, string> = { transcribe: "Transcription", analyze: "Analysis" };
@@ -83,16 +109,19 @@ router.post("/reserve", limitUpload, requireAuth, async (req, res) => {
 // ── POST /api/videos/prepare ────────────────────────────────────────────────
 // The limiter and the sign in check run BEFORE multer, so a rejected
 // request never writes the file.
-router.post("/prepare", limitUpload, requireAuth, upload.single("video"), async (req, res) => {
+router.post("/prepare", limitUpload, requireAuth, requireStorage, upload.single("video"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No video file provided" });
     const wallet = authOf(req)!.wallet;
 
     const ext = path.extname(req.file.originalname) || ".mp4";
+    const namedFilePath = req.file.path;
 
-    // Rename temp file to include extension (Whisper needs it)
-    const namedFilePath = `${req.file.path}${ext}`;
-    await fs.rename(req.file.path, namedFilePath);
+    // The id becomes part of a storage key, so it must be a real id.
+    if (req.body.id && !isVideoId(req.body.id)) {
+      await fs.unlink(namedFilePath).catch(() => {});
+      return res.status(400).json({ error: "id is not a valid video id" });
+    }
 
     // If the browser reserved an id first (parallel-upload flow), reuse it.
     // Otherwise fall back to the original create-here behaviour (backward
@@ -105,6 +134,12 @@ router.post("/prepare", limitUpload, requireAuth, upload.single("video"), async 
     if (existing && !ownsVideo(existing, wallet)) {
       await fs.unlink(namedFilePath).catch(() => {});
       return res.status(403).json(NOT_OWNER);
+    }
+    // Once a video is confirmed its original is fixed. The transcript,
+    // the recorded sha256 and the Shelby copy all describe that file.
+    if (existing && existing.status !== "uploading") {
+      await fs.unlink(namedFilePath).catch(() => {});
+      return res.status(409).json({ error: "This video was already uploaded. Start a new upload instead.", code: "already_uploaded" });
     }
     if (existing) {
       id = existing.id;
@@ -131,10 +166,15 @@ router.post("/prepare", limitUpload, requireAuth, upload.single("video"), async 
       };
       await store.set(id, record);
     }
-    // Replace any earlier file sent for the same reservation.
-    const earlier = await store.getSourcePath(id);
-    if (earlier && earlier !== namedFilePath) await fs.unlink(earlier).catch(() => {});
-    await store.setSourcePath(id, namedFilePath);
+    // Move the file into storage as this video's original. A second
+    // upload for the same reservation replaces the first.
+    try {
+      await saveOriginal({ videoId: id, filePath: namedFilePath, ext, contentType: req.file.mimetype, ownerWallet: wallet });
+    } catch (err: any) {
+      console.error(`[storage] could not store the original of ${id}: ${err?.name ?? "Error"}: ${err?.message ?? err}`);
+      await fs.unlink(namedFilePath).catch(() => {});
+      return res.status(502).json({ error: "The video file could not be stored. Please try again.", code: "storage_failed" });
+    }
 
     // No base64Data here anymore. The browser already has the raw File
     // object it just uploaded from -- it reads bytes for the Shelby
@@ -166,8 +206,7 @@ router.post("/confirm", limitPipeline, requireAuth, async (req, res) => {
     if (!video) return res.status(404).json({ error: "Video not found" });
     if (!ownsVideo(video, wallet)) return res.status(403).json(NOT_OWNER);
 
-    const filePath = await store.getSourcePath(id);
-    if (!filePath) {
+    if (!(await getOriginal(id)) && !(await store.getSourcePath(id))) {
       return res.status(400).json({ error: "No pending file found. Did you call /prepare first?" });
     }
 
@@ -176,7 +215,7 @@ router.post("/confirm", limitPipeline, requireAuth, async (req, res) => {
     });
 
     // One transcribe job per video. Confirming twice adds nothing.
-    const { created } = await enqueueJob({ videoId: id, kind: "transcribe", payload: { filePath } });
+    const { created } = await enqueueJob({ videoId: id, kind: "transcribe" });
     if (created) await store.update(id, { status: "transcribing" });
     nudgeRunner();
 

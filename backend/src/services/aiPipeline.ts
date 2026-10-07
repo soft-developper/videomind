@@ -6,6 +6,8 @@ import fsPromises from "fs/promises";
 import path from "path";
 import "dotenv/config";
 import type { VideoAIData, TranscriptSegment, Chapter, Highlight } from "../types/video.js";
+// vm_storage: every provider call reports what it used to the usage ledger
+import { recordClaudeUsage, recordTranscriptionUsage } from "../lib/usage.js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -19,7 +21,7 @@ async function fileToBuffer(filePath: string): Promise<Buffer> {
 export async function transcribeVideo(videoFilePath: string): Promise<TranscriptSegment[]> {
   // Read the file into a Buffer and wrap in a File object so OpenAI SDK
   // sends the correct filename in the multipart upload. Whisper uses the
-  // filename extension to detect format — without it you get a 400 error.
+  // filename extension to detect format. Without it you get a 400 error.
   const buffer = await fileToBuffer(videoFilePath);
   const fileName = path.basename(videoFilePath); // e.g. "abc123.mp4"
   // Copy Buffer into a fresh ArrayBuffer (not SharedArrayBuffer) so TypeScript
@@ -36,6 +38,7 @@ export async function transcribeVideo(videoFilePath: string): Promise<Transcript
     response_format: "verbose_json",
     timestamp_granularities: ["segment"],
   });
+  await recordTranscriptionUsage(response.duration, "whisper-1");
 
   const segments: TranscriptSegment[] = (response.segments ?? []).map((seg) => ({
     start: seg.start,
@@ -55,7 +58,7 @@ export async function analyzeWithClaude(
 
   const systemPrompt = `You are an expert video intelligence analyst for VideoMind, an AI-first video knowledge platform.
 Analyze video transcripts and extract rich, actionable intelligence.
-Always respond with ONLY valid JSON — no markdown, no preamble.`;
+Always respond with ONLY valid JSON: no markdown, no preamble.`;
 
   const userPrompt = `Video Title: "${videoTitle}"
 
@@ -97,6 +100,7 @@ Rules:
     messages: [{ role: "user", content: userPrompt }],
     system: systemPrompt,
   });
+  await recordClaudeUsage(message);
 
   const rawText = message.content[0].type === "text" ? message.content[0].text : "{}";
   const cleaned = rawText.replace(/```json|```/g, "").trim();
@@ -150,6 +154,7 @@ Return JSON:
       },
     ],
   });
+  await recordClaudeUsage(message);
 
   const rawText = message.content[0].type === "text" ? message.content[0].text : "{}";
   const cleaned = rawText.replace(/```json|```/g, "").trim();
@@ -203,6 +208,7 @@ Return JSON:
       },
     ],
   });
+  await recordClaudeUsage(message);
 
   const rawText = message.content[0].type === "text" ? message.content[0].text : "{}";
   try {

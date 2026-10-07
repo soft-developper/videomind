@@ -9,6 +9,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import "dotenv/config";
 import type { VideoRecord } from "../types/video.js";
+// vm_storage: every provider call reports what it used to the usage ledger
+import { recordClaudeUsage } from "../lib/usage.js";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const MODEL = "claude-opus-4-5";
@@ -62,7 +64,7 @@ function textOf(msg: Anthropic.Message): string {
 export async function generateLearningPaths(
   videos: VideoRecord[]
 ): Promise<LearningPath[]> {
-  // Compact catalogue — no transcripts, keeps tokens tiny
+  // Compact catalogue: no transcripts, keeps tokens tiny
   const catalogue = videos.map((v) => ({
     id: v.id,
     title: v.title,
@@ -80,7 +82,7 @@ export async function generateLearningPaths(
     system: `You are a curriculum designer for VideoMind, an AI video knowledge platform.
 Given a library of videos, design ordered learning paths that take someone from
 zero knowledge to advanced mastery of the topics covered.
-Respond with ONLY valid JSON — no markdown fences, no preamble.`,
+Respond with ONLY valid JSON: no markdown fences, no preamble.`,
     messages: [{
       role: "user",
       content: `Here is the user's video library:
@@ -112,6 +114,7 @@ Return JSON:
 }`,
     }],
   });
+  await recordClaudeUsage(msg);
 
   const parsed = parseJson<{ paths: LearningPath[] }>(textOf(msg), { paths: [] });
 
@@ -134,7 +137,7 @@ export async function askLibrary(
     return { answer: "You have no processed videos yet. Upload a video to get started.", citations: [], videosUsed: [] };
   }
 
-  // ── PASS 1: which videos are relevant? (summaries only — cheap) ──────────
+  // ── PASS 1: which videos are relevant? (summaries only, cheap) ──────────
   const catalogue = videos.map((v) => ({
     id: v.id,
     title: v.title,
@@ -159,12 +162,13 @@ If none seem relevant, return an empty array.
 Return JSON: { "videoIds": ["id1", "id2"] }`,
     }],
   });
+  await recordClaudeUsage(routeMsg);
 
   const routed = parseJson<{ videoIds: string[] }>(textOf(routeMsg), { videoIds: [] });
   const validIds = new Set(videos.map((v) => v.id));
   let selectedIds = (routed.videoIds ?? []).filter((id) => validIds.has(id)).slice(0, 4);
 
-  // Fallback — if routing found nothing, use the 3 most recent videos
+  // Fallback: if routing found nothing, use the 3 most recent videos
   if (selectedIds.length === 0) {
     selectedIds = videos.slice(0, 3).map((v) => v.id);
   }
@@ -189,7 +193,7 @@ ${transcript}`;
     max_tokens: 1500,
     system: `You are VideoMind's library assistant. Answer questions using ONLY the
 transcripts provided. Always cite the specific video and timestamp your answer
-comes from. If the transcripts don't contain the answer, say so honestly —
+comes from. If the transcripts don't contain the answer, say so honestly and
 never invent information. Respond with ONLY valid JSON.`,
     messages: [{
       role: "user",
@@ -219,6 +223,7 @@ Rules:
   return an empty citations array.`,
     }],
   });
+  await recordClaudeUsage(answerMsg);
 
   const parsed = parseJson<Omit<LibraryAnswer, "videosUsed">>(
     textOf(answerMsg),

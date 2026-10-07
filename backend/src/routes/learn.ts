@@ -7,6 +7,8 @@ import { generateLearningPaths, askLibrary } from "../services/learningService.j
 import { limitAi, takeBudget, AI_LIMIT } from "../lib/guard.js";
 // vm_signin: the caller is the signed in wallet, never a value they send
 import { requireAuth, authOf } from "../lib/auth.js";
+// vm_storage: AI usage is written to the ledger
+import { withUsage } from "../lib/usage.js";
 
 const router = Router();
 
@@ -50,7 +52,9 @@ router.get("/paths", requireAuth, async (req, res) => {
     // Cache miss, generate fresh. Only this branch calls Claude, so only
     // this branch takes AI budget. Cached page loads are free.
     if (!takeBudget(AI_LIMIT, req, res)) return;
-    const paths = await generateLearningPaths(videos);
+    const paths = await withUsage(
+      { feature: "learn_paths", ownerWallet: wallet, actorWallet: wallet },
+      () => generateLearningPaths(videos));
     const now = Date.now();
 
     await db.execute({
@@ -82,7 +86,9 @@ router.post("/paths/regenerate", limitAi, requireAuth, async (req, res) => {
       });
     }
 
-    const paths = await generateLearningPaths(videos);
+    const paths = await withUsage(
+      { feature: "learn_paths", ownerWallet: wallet, actorWallet: wallet },
+      () => generateLearningPaths(videos));
     const now = Date.now();
     const db = getDb();
 
@@ -120,7 +126,9 @@ router.post("/ask", limitAi, requireAuth, async (req, res) => {
       });
     }
 
-    const result = await askLibrary(question, videos);
+    const result = await withUsage(
+      { feature: "learn_ask", ownerWallet: wallet, actorWallet: wallet },
+      () => askLibrary(question, videos));
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ error: err.message });

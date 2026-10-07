@@ -10,6 +10,10 @@ import authRouter from "./routes/auth.js";
 // vm_jobs: durable processing jobs
 import { startRunner, type Runner } from "./lib/runner.js";
 import { registerPipeline } from "./services/pipeline.js";
+// vm_storage: file storage and the usage ledger
+import usageRouter from "./routes/usage.js";
+import { checkStorage, storageHealth } from "./lib/storage.js";
+import { startHousekeeping } from "./lib/assets.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -35,9 +39,15 @@ app.use("/api/videos", videosRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/shelby", statsRouter);
 app.use("/api/learn", learnRouter);
+app.use("/api/usage", usageRouter);
 
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", service: "VideoMind API", timestamp: new Date().toISOString() });
+  const s = storageHealth();
+  res.json({
+    status: "ok", service: "VideoMind API", timestamp: new Date().toISOString(),
+    // vm_storage: which storage is in use and whether its startup check passed
+    storage: { driver: s.driver, durable: s.durable, ok: s.ok },
+  });
 });
 
 // vm_shelby09d: the 6-hourly blob renewal cron is gone. Shelby storage is
@@ -46,12 +56,18 @@ app.get("/api/health", (_req, res) => {
 async function main() {
   await migrate();
 
-  // vm_jobs: the job runner lives in this service until uploads move to
-  // shared storage. JOBS_RUNNER=off turns it off here (see src/worker.ts).
+  // vm_storage: prove storage works before taking uploads. Wrong or
+  // missing settings stop the start with a clear message. A storage that
+  // cannot be reached is logged and the server still starts.
+  await checkStorage();
+
+  // vm_jobs: the job runner lives in this service by default.
+  // JOBS_RUNNER=off turns it off here (see src/worker.ts).
   let runner: Runner | null = null;
   if (process.env.JOBS_RUNNER !== "off") {
     registerPipeline();
     runner = startRunner();
+    startHousekeeping();
   }
   // On a deploy the platform sends SIGTERM. Hand running jobs back so the
   // next instance resumes them at once.
