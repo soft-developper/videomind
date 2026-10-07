@@ -1,5 +1,10 @@
 import type { Config } from "tailwindcss";
 
+// vm_shell: every colour comes from a CSS variable in globals.css, so the
+// whole app is themed from one place. The names are kept from the first
+// build so existing screens pick up the new look without being rewritten.
+const c = (name: string) => `rgb(var(--${name}-rgb) / <alpha-value>)`;
+
 const config: Config = {
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,31 +14,37 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        display: ["var(--font-instrument)", "Georgia", "serif"],
-        sans:    ["var(--font-inter-tight)", "system-ui", "sans-serif"],
-        mono:    ["var(--font-mono)", "ui-monospace", "monospace"],
+        // One family. Data (timecodes, sizes, addresses) is set narrower
+        // with tabular figures instead of switching to a monospace face.
+        sans:    ["var(--font-ui)", "system-ui", "sans-serif"],
+        display: ["var(--font-ui)", "system-ui", "sans-serif"],
+        mono:    ["var(--font-ui)", "system-ui", "sans-serif"],
       },
       colors: {
-        void:    "#0A0A0C",
-        slate:   { DEFAULT: "#16171B", 2: "#1D1F24" },
-        rule:    { DEFAULT: "#26282F", lit: "#3A3D46" },
-        paper:   { DEFAULT: "#E8E6E1", 2: "#A8A6A1" },
-        dim:     { DEFAULT: "#6E7078", 2: "#45474E" },
-        signal:  { DEFAULT: "#FF4D2E", dim: "#B33520" },
-        marker:  { DEFAULT: "#4DD8B0", dim: "#2E9C7D" },
-        warn:    "#E8B33D",
-        error:   "#FF5A5A",
+        void:    c("void"),                                   // page
+        side:    c("side"),                                   // sidebar
+        screen:  c("screen"),                                 // video surfaces
+        slate:   { DEFAULT: c("slate"), 2: c("slate-2") },    // panel, raised panel
+        rule:    { DEFAULT: c("rule"), lit: c("rule-lit") },  // borders
+        paper:   { DEFAULT: c("paper"), 2: c("paper-2") },    // text, secondary text
+        dim:     { DEFAULT: c("dim"), 2: c("dim-2") },        // muted text, faint
+        signal:  { DEFAULT: c("signal"), dim: c("signal-dim") },  // where you are
+        marker:  { DEFAULT: c("marker"), dim: c("marker-dim") },  // done, verified
+        warn:    c("warn"),
+        error:   c("error"),
       },
       letterSpacing: {
-        tightest: "-0.03em",
-        tc: "0.06em",
+        tightest: "-0.02em",
+        tc: "0",
       },
       borderRadius: {
-        // Edit bays are rectilinear. Almost no radius.
         none: "0",
-        xs: "2px",
-        sm: "3px",
-        DEFAULT: "4px",
+        xs: "3px",
+        sm: "4px",
+        DEFAULT: "6px",
+        md: "8px",
+        lg: "10px",
+        xl: "14px",
       },
     },
   },

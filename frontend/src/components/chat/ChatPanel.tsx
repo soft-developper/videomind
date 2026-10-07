@@ -15,7 +15,7 @@ interface Msg {
 const PROMPTS = [
   "Summarize this",
   "What are the key points?",
-  "What did they get wrong?",
+  "What questions does this leave open?",
   "Find the most useful moment",
 ];
 
@@ -26,7 +26,12 @@ export function ChatPanel({ videoId, videoTitle }: { videoId: string; videoTitle
   const [last, setLast] = useState("");
   const end = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+  // vm_shell: keep the newest message in view by scrolling this list only,
+  // never the page, and only once there is a message.
+  useEffect(() => {
+    const box = end.current?.parentElement;
+    if (box && msgs.length) box.scrollTo({ top: box.scrollHeight, behavior: "smooth" });
+  }, [msgs]);
 
   const ask = async (text: string) => {
     const question = text.trim();
@@ -44,23 +49,22 @@ export function ChatPanel({ videoId, videoTitle }: { videoId: string; videoTitle
 
   return (
     <div className="flex flex-col h-full">
-      <header className="flex items-center px-3 h-10 border-b border-rule shrink-0">
-        <span className="eyebrow">Ask the video</span>
-        <span className="tc ml-auto">Claude</span>
+      <header className="flex items-center px-4 h-12 border-b border-rule shrink-0">
+        <h2 className="text-[14px] font-semibold text-paper">Ask about this video</h2>
       </header>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-4 min-h-0">
         {msgs.length === 0 && (
           <div className="space-y-4 pt-4">
-            <p className="text-[13px] font-sans text-dim leading-relaxed">
-              Every answer comes with the timecode it came from.
+            <p className="text-[13.5px] font-sans text-dim leading-relaxed">
+              Answers point to the moments in the video they came from.
             </p>
-            <div className="space-y-px">
+            <div className="space-y-2">
               {PROMPTS.map((p) => (
                 <button
                   key={p}
                   onClick={() => ask(p)}
-                  className="w-full text-left px-3 py-2.5 text-[13px] font-sans text-paper-2/70 border border-rule hover:border-rule-lit hover:text-paper hover:bg-slate transition-colors no-min"
+                  className="w-full text-left px-3 py-2 rounded-md text-[13.5px] font-sans text-paper-2 border border-rule hover:border-rule-lit hover:text-paper hover:bg-slate-2 transition-colors no-min"
                 >
                   {p}
                 </button>
@@ -122,12 +126,12 @@ export function ChatPanel({ videoId, videoTitle }: { videoId: string; videoTitle
       </div>
 
       <div className="p-3 border-t border-rule shrink-0">
-        <div className="flex gap-px">
+        <div className="flex gap-2">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && ask(q)}
-            placeholder="Ask anything…"
+            placeholder="Ask a question"
             disabled={busy}
             className="flex-1 h-9 px-3 text-[13px] font-sans disabled:opacity-50"
           />
@@ -135,9 +139,9 @@ export function ChatPanel({ videoId, videoTitle }: { videoId: string; videoTitle
             onClick={() => ask(q)}
             disabled={!q.trim() || busy}
             className={clsx(
-              "w-9 h-9 flex items-center justify-center transition-colors shrink-0 no-min",
+              "w-9 h-9 rounded flex items-center justify-center transition-colors shrink-0 no-min",
               q.trim() && !busy
-                ? "bg-signal text-void hover:bg-[#FF6449]"
+                ? "bg-paper text-void hover:bg-white"
                 : "border border-rule text-dim-2 cursor-not-allowed"
             )}
           >

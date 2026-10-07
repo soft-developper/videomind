@@ -1,64 +1,46 @@
-import { Navbar } from "@/components/layout/Navbar";
+import { AppShell } from "@/components/layout/AppShell";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { UploadZone } from "@/components/upload/UploadZone";
 
 const STEPS = [
-  { n: "Store",      d: "Your wallet signs the blob. It lands on Shelby Protocol, owned by you." },
-  { n: "Read",       d: "Whisper transcribes every word with a timecode attached." },
-  { n: "Map",        d: "Claude finds the cuts, flags what matters, and writes the summary." },
-  { n: "Ask",        d: "Question the video in plain language. Every answer cites a timecode." },
+  { n: "Stored",      d: "Your wallet signs the file and it is written to Shelby, owned by you." },
+  { n: "Transcribed", d: "Every sentence is written down with the time it was said." },
+  { n: "Chaptered",   d: "The recording is split where the topic changes, with a summary and key moments." },
+  { n: "Ready",       d: "Search it, ask about it, share it." },
 ];
 
 export default function UploadPage() {
   return (
-    <div className="min-h-screen bg-void">
-      <Navbar />
-      <main className="pt-14">
-        <div className="border-b border-rule">
-          <div className="section py-10">
-            <p className="eyebrow mb-4">Upload</p>
-            <h1 className="font-display text-[32px] sm:text-[42px] leading-[1.05] text-paper max-w-xl">
-              Hand it a recording.
-              <br />
-              <span className="italic text-signal">Get back a map.</span>
-            </h1>
-          </div>
-        </div>
-
-        <div className="section py-8">
-          <div className="grid lg:grid-cols-[1fr_340px] gap-12 items-start">
+    <AppShell>
+      <PageHeader
+        title="Upload a video"
+        description="The file is stored on Shelby and signed by your wallet, then transcribed and split into chapters."
+      />
+      <div className="section pb-16">
+        <div className="grid lg:grid-cols-[minmax(0,640px)_300px] gap-x-14 gap-y-10 items-start">
             <UploadZone />
 
-            <aside className="space-y-0">
-              <p className="eyebrow mb-4">What happens next</p>
-
-              {/* This IS a sequence - order carries real information here. */}
-              {STEPS.map((s, i) => (
-                <div key={s.n} className="flex gap-4 py-4 border-t border-rule last:border-b">
-                  <span className="tc tabular-nums shrink-0 pt-0.5">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-display text-[17px] text-paper leading-none">
-                      {s.n}
-                    </p>
-                    <p className="text-[12px] font-sans text-dim mt-1.5 leading-relaxed">
-                      {s.d}
-                    </p>
-                  </div>
-                </div>
-              ))}
-
-              <div className="mt-6 pt-4 border-t border-rule">
-                <p className="tc leading-relaxed">
-                  Storage on Shelby is prepaid when you upload, for a fixed
-                  number of 24-hour payment epochs. Each video's On-chain proof
-                  shows the date it is paid until.
-                </p>
-              </div>
+            <aside>
+              <h2 className="font-display text-[14px] text-paper mb-1">What happens next</h2>
+              {/* This is a sequence, so it is numbered. */}
+              <ol>
+                {STEPS.map((s, i) => (
+                  <li key={s.n} className="flex gap-3.5 py-3.5 border-b border-rule">
+                    <span className="tc w-4 shrink-0 pt-px">{i + 1}</span>
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-medium text-paper leading-snug">{s.n}</p>
+                      <p className="text-[13px] text-dim mt-0.5 leading-relaxed">{s.d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <p className="text-[13px] text-dim mt-4 leading-relaxed">
+                Storage on Shelby is prepaid when you upload, for a fixed number of 24 hour
+                payment periods. Each video's ownership proof shows the date it is paid until.
+              </p>
             </aside>
-          </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

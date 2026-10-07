@@ -3,7 +3,10 @@ import { useState, useRef, useEffect } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { askLibrary, type LibraryAnswer } from "@/lib/api";
-import { Navbar } from "@/components/layout/Navbar";
+import { AppShell } from "@/components/layout/AppShell";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { WalletButton } from "@/components/layout/WalletButton";
 import { Send, RefreshCw } from "lucide-react";
 import { readableTime } from "@/lib/exports";
 import Link from "next/link";
@@ -34,7 +37,12 @@ export default function AssistantPage() {
   const [last, setLast] = useState("");
   const end = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+  // vm_shell: keep the newest message in view by scrolling this list only,
+  // never the page, and only once there is a message.
+  useEffect(() => {
+    const box = end.current?.parentElement;
+    if (box && msgs.length) box.scrollTo({ top: box.scrollHeight, behavior: "smooth" });
+  }, [msgs]);
 
   const ask = async (text: string) => {
     const question = text.trim();
@@ -56,44 +64,29 @@ export default function AssistantPage() {
   };
 
   return (
-    <div className="min-h-screen bg-void">
-      <Navbar />
-      <main className="pt-14">
-        <div className="border-b border-rule">
-          <div className="max-w-[820px] mx-auto px-4 sm:px-6 py-10">
-            <p className="eyebrow mb-4">Assistant</p>
-            <h1 className="font-display text-[32px] sm:text-[42px] leading-[1.05] text-paper max-w-lg">
-              One question.
-              <br />
-              <span className="italic text-signal">Every video.</span>
-            </h1>
-            <p className="text-[14px] font-sans text-dim mt-4 max-w-md leading-relaxed">
-              Claude picks the relevant videos, reads their transcripts, and answers
-              with the timecode it came from.
-            </p>
-          </div>
-        </div>
-
-        <div className="max-w-[820px] mx-auto px-4 sm:px-6 py-8">
+    <AppShell>
+      <PageHeader
+        title="Ask your library"
+        description="One question across every video. The answer points to the moments it came from."
+      />
+      <div className="section pb-16">
+        <div className="max-w-[820px]">
           {!connected ? (
-            <div className="py-20 text-center">
-              <p className="font-display text-[24px] text-paper mb-3">Connect a wallet</p>
-              <p className="text-[13px] font-sans text-dim">
-                The assistant reads your library, and only yours.
-              </p>
-            </div>
+            <EmptyState title="Connect a wallet to ask your library" action={<WalletButton />}>
+              Questions are answered from your own videos, and only yours.
+            </EmptyState>
           ) : (
             <div className="panel flex flex-col h-[62vh] min-h-[440px]">
               <div className="flex-1 overflow-y-auto p-4 space-y-5 min-h-0">
                 {msgs.length === 0 && (
                   <div className="space-y-3 pt-6">
-                    <p className="eyebrow">Try</p>
-                    <div className="space-y-px">
+                    <p className="text-[13px] text-dim">Try one of these</p>
+                    <div className="space-y-2">
                       {PROMPTS.map((p) => (
                         <button
                           key={p}
                           onClick={() => ask(p)}
-                          className="w-full text-left px-3 py-2.5 border border-rule text-[13px] font-sans text-dim hover:text-paper hover:border-rule-lit hover:bg-slate transition-colors no-min"
+                          className="w-full text-left px-3.5 py-2.5 rounded-md border border-rule text-[13.5px] font-sans text-paper-2 hover:text-paper hover:border-rule-lit hover:bg-slate-2 transition-colors no-min"
                         >
                           {p}
                         </button>
@@ -128,18 +121,18 @@ export default function AssistantPage() {
                     )}
 
                     {m.cites && m.cites.length > 0 && (
-                      <div className="space-y-px">
-                        <p className="eyebrow mb-1.5">
+                      <div className="space-y-2">
+                        <p className="text-[13px] text-dim">
                           {m.cites.length} source{m.cites.length !== 1 ? "s" : ""}
                         </p>
                         {m.cites.map((c, j) => (
                           <Link
                             key={j}
                             href={`/video/${c.videoId}`}
-                            className="block px-3 py-2.5 border border-rule hover:border-rule-lit hover:bg-slate transition-colors group"
+                            className="block px-3.5 py-2.5 rounded-md border border-rule hover:border-rule-lit hover:bg-slate-2 transition-colors group"
                           >
                             <div className="flex items-baseline justify-between gap-3 mb-1">
-                              <span className="text-[12px] font-sans text-paper-2 group-hover:text-signal transition-colors truncate">
+                              <span className="text-[13px] font-sans font-medium text-paper truncate">
                                 {c.videoTitle}
                               </span>
                               <span className="tc tc-signal tabular-nums shrink-0">
@@ -167,12 +160,12 @@ export default function AssistantPage() {
               </div>
 
               <div className="p-3 border-t border-rule shrink-0">
-                <div className="flex gap-px">
+                <div className="flex gap-2">
                   <input
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && ask(q)}
-                    placeholder="Ask across everything…"
+                    placeholder="Ask a question about your videos"
                     disabled={busy}
                     className="flex-1 h-10 px-3 text-[14px] font-sans disabled:opacity-50"
                   />
@@ -180,9 +173,9 @@ export default function AssistantPage() {
                     onClick={() => ask(q)}
                     disabled={!q.trim() || busy}
                     className={clsx(
-                      "w-10 h-10 flex items-center justify-center transition-colors shrink-0 no-min",
+                      "w-10 h-10 rounded flex items-center justify-center transition-colors shrink-0 no-min",
                       q.trim() && !busy
-                        ? "bg-signal text-void hover:bg-[#FF6449]"
+                        ? "bg-paper text-void hover:bg-white"
                         : "border border-rule text-dim-2 cursor-not-allowed"
                     )}
                   >
@@ -193,7 +186,7 @@ export default function AssistantPage() {
             </div>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

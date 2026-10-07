@@ -9,10 +9,10 @@ type Tab = "summary" | "cuts" | "found" | "blog" | "thread";
 
 const TABS: Array<{ k: Tab; label: string }> = [
   { k: "summary", label: "Summary" },
-  { k: "cuts",    label: "Cuts" },
-  { k: "found",   label: "Found" },
-  { k: "blog",    label: "Blog" },
-  { k: "thread",  label: "Thread" },
+  { k: "cuts",    label: "Chapters" },
+  { k: "found",   label: "Key moments" },
+  { k: "blog",    label: "Article" },
+  { k: "thread",  label: "Social thread" },
 ];
 
 function Copyable({ text, label }: { text: string; label: string }) {
@@ -57,7 +57,7 @@ export function InsightsPanel({
             )}
           >
             {label}
-            {tab === k && <span className="absolute bottom-0 inset-x-0 h-px bg-signal" />}
+            {tab === k && <span className="absolute bottom-0 inset-x-0 h-[2px] bg-signal" />}
           </button>
         ))}
       </div>
@@ -84,7 +84,7 @@ export function InsightsPanel({
         {tab === "cuts" && (
           <div className="-mx-5 -my-5">
             {(ai.chapters ?? []).length === 0 && (
-              <p className="p-5 tc text-center">No cuts detected.</p>
+              <p className="p-5 text-[13.5px] text-dim">No chapters were found in this video.</p>
             )}
             {(ai.chapters ?? []).map((c, i) => (
               <button
@@ -113,11 +113,11 @@ export function InsightsPanel({
           </div>
         )}
 
-        {/* Found — teal. this is what the AI thought mattered. */}
+        {/* Key moments, in green. */}
         {tab === "found" && (
           <div className="space-y-3">
             {(ai.highlights ?? []).length === 0 && (
-              <p className="tc text-center py-4">Nothing flagged.</p>
+              <p className="text-[13.5px] text-dim py-4">No key moments were picked out.</p>
             )}
             {(ai.highlights ?? []).map((h, i) => (
               <article
@@ -132,7 +132,7 @@ export function InsightsPanel({
                     {readableTime(h.startSeconds)}–{readableTime(h.endSeconds)}
                   </span>
                 </div>
-                <p className="font-display text-[17px] text-paper leading-[1.4] italic">
+                <p className="text-[15px] font-medium text-paper leading-[1.45]">
                   “{h.text}”
                 </p>
                 <div className="flex gap-2 pt-1">
@@ -165,7 +165,7 @@ export function InsightsPanel({
                 </span>
               </div>
             </div>
-          ) : <p className="tc text-center py-4">Not generated.</p>
+          ) : <p className="text-[13.5px] text-dim py-4">This was not written for this video.</p>
         )}
 
         {/* Thread */}
@@ -194,7 +194,7 @@ export function InsightsPanel({
                 </span>
               </div>
             </div>
-          ) : <p className="tc text-center py-4">Not generated.</p>
+          ) : <p className="text-[13.5px] text-dim py-4">This was not written for this video.</p>
         )}
       </div>
     </section>

@@ -58,7 +58,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
 
     if (!streamUrl) {
       return (
-        <div className="aspect-video bg-void border border-rule flex items-center justify-center">
+        <div className="aspect-video rounded-md bg-screen border border-rule flex items-center justify-center">
           <span className="tc">No stream</span>
         </div>
       );
@@ -66,12 +66,12 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
 
     return (
       <div
-        className="relative aspect-video bg-void border border-rule group overflow-hidden"
+        className="relative aspect-video rounded-md bg-screen border border-rule group overflow-hidden"
         onMouseMove={bump}
         onMouseLeave={() => playing && setShow(false)}
       >
         {loading && !error && (
-          <div className="absolute inset-0 flex items-center justify-center z-10 bg-void">
+          <div className="absolute inset-0 flex items-center justify-center z-10 bg-screen">
             <div className="flex items-center gap-2.5">
               <span className="dot dot-work" />
               <span className="tc">Loading from Shelby</span>
@@ -80,11 +80,11 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
         )}
 
         {error && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10 bg-void px-6 text-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10 bg-screen px-6 text-center">
             <AlertTriangle size={20} className="text-error" />
-            <p className="font-display text-[17px] text-paper">Blob unavailable</p>
+            <p className="font-display text-[17px] text-paper">This video could not be loaded from Shelby</p>
             <p className="text-[12px] font-sans text-dim max-w-xs leading-relaxed">
-              This video may no longer be stored on Shelby. Upload it again to restore access.
+              The network may be unreachable right now, or the paid storage period may have ended.
             </p>
           </div>
         )}
@@ -115,7 +115,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
           "absolute inset-x-0 bottom-0 flex items-center gap-3 px-3 h-10 bg-void/80 border-t border-rule transition-all duration-200 z-20",
           show || !playing ? "opacity-100 translate-y-0" : "opacity-0 translate-y-full"
         )}>
-          <button onClick={toggle} className="text-paper hover:text-signal transition-colors no-min">
+          <button onClick={toggle} aria-label={playing ? "Pause" : "Play"} className="text-paper-2 hover:text-paper transition-colors no-min">
             {playing ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
           </button>
           <button
@@ -127,7 +127,8 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
           >
             {muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
           </button>
-          <span className="tc ml-auto">Scrub on the strip below</span>
+          <span className="tc ml-auto truncate hidden sm:block">Use the timeline below to move through the video</span>
+          <span className="ml-auto sm:hidden" />
           <button
             onClick={() => {
               const el = v.current; if (!el) return;
@@ -142,7 +143,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
         {/* Big play */}
         {!playing && !loading && !error && (
           <button onClick={toggle} className="absolute inset-0 flex items-center justify-center z-10">
-            <span className="w-14 h-14 bg-signal flex items-center justify-center">
+            <span className="w-14 h-14 rounded-full bg-paper/95 flex items-center justify-center">
               <Play size={20} className="text-void ml-1" fill="currentColor" />
             </span>
           </button>

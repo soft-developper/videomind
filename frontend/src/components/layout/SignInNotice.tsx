@@ -11,10 +11,10 @@ export function SignInNotice() {
   if (!connected || !account || signedIn) return null;
 
   return (
-    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
-      <div className="bg-void border border-rule-lit">
+    <div className="fixed bottom-5 left-1/2 lg:left-[calc(50%+118px)] -translate-x-1/2 z-30 w-full max-w-md px-4">
+      <div className="popover">
         <div className="flex items-center gap-3 p-3">
-          <span className={signing ? "dot dot-work" : "dot dot-dead"} />
+          <span className={signing ? "dot dot-work" : "dot dot-off"} />
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-sans text-paper">
               {signing ? "Check your wallet" : "Sign in to open your library"}
@@ -26,7 +26,7 @@ export function SignInNotice() {
           <button
             onClick={() => void signIn()}
             disabled={signing}
-            className="btn btn-signal px-3.5 h-8 shrink-0 disabled:opacity-50"
+            className="btn btn-signal px-3.5 h-9 shrink-0"
           >
             {signing ? "Waiting" : error ? "Try again" : "Sign in"}
           </button>

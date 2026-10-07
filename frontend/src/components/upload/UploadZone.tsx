@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { X, AlertTriangle, Check } from "lucide-react";
+import { X, AlertTriangle, Check, FileVideo } from "lucide-react";
 import { clsx } from "clsx";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
@@ -24,7 +24,7 @@ const LABEL: Record<Stage, string> = {
   sending:    "Sending to server…",
   wallet:     "Waiting for wallet…",
   confirming: "Confirming on Shelby…",
-  done:       "Starting AI pipeline…",
+  done:       "Starting processing…",
 };
 
 function readable(raw: string): string {
@@ -195,17 +195,20 @@ export function UploadZone() {
 
       {/* Wallet state */}
       {!connected ? (
-        <div className="flex items-center gap-3 px-3 h-10 border border-signal-dim bg-signal-wash">
-          <span className="dot dot-dead" />
-          <p className="text-[12px] font-sans text-signal">
-            Connect a wallet to upload. Your wallet signs the blob.
+        <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-md border border-rule bg-slate">
+          <span className="dot dot-off" />
+          <p className="text-[13.5px] text-paper-2">
+            Connect a wallet to upload. Your wallet signs the file.
           </p>
         </div>
       ) : (
-        <div className="flex items-center gap-3 px-3 h-10 border border-rule">
+        <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-md border border-rule">
           <span className="dot dot-live" />
-          <p className="tc">
-            {account?.address?.toString().slice(0, 6)}…{account?.address?.toString().slice(-4)} will sign
+          <p className="text-[13.5px] text-paper-2">
+            Signing wallet{" "}
+            <span className="tc text-[13px] text-paper-2">
+              {account?.address?.toString().slice(0, 6)}…{account?.address?.toString().slice(-4)}
+            </span>
           </p>
         </div>
       )}
@@ -214,28 +217,20 @@ export function UploadZone() {
       <div
         {...getRootProps()}
         className={clsx(
-          "relative border border-dashed cursor-pointer transition-colors",
-          isDragActive ? "drop-live" : "border-rule hover:border-rule-lit bg-slate"
+          "relative rounded-lg border border-dashed cursor-pointer transition-colors",
+          isDragActive ? "drop-live" : "border-rule-lit hover:border-dim hover:bg-slate/60"
         )}
       >
         <input {...getInputProps()} />
 
         {file ? (
-          <div className="p-8 flex items-center gap-5">
-            {/* Film-strip glyph - the file, as a filmstrip */}
-            <svg width="40" height="48" viewBox="0 0 40 48" className="shrink-0" aria-hidden>
-              <rect x="0" y="0" width="40" height="48" fill="#0A0A0C" stroke="#26282F" strokeWidth="1"/>
-              {[6, 16, 26, 36].map((y) => (
-                <g key={y}>
-                  <rect x="3" y={y} width="4" height="6" fill="#26282F"/>
-                  <rect x="33" y={y} width="4" height="6" fill="#26282F"/>
-                </g>
-              ))}
-              <rect x="11" y="6" width="18" height="36" fill="#FF4D2E" opacity="0.9"/>
-            </svg>
+          <div className="p-6 flex items-center gap-4">
+            <span className="w-11 h-11 shrink-0 rounded-md bg-slate-2 flex items-center justify-center text-paper-2">
+              <FileVideo size={20} strokeWidth={1.6} />
+            </span>
 
             <div className="min-w-0 flex-1">
-              <p className="font-display text-[19px] text-paper leading-tight truncate">
+              <p className="text-[15px] font-medium text-paper leading-tight truncate">
                 {file.name}
               </p>
               <p className="tc mt-1">{bytes(file.size)}</p>
@@ -243,20 +238,18 @@ export function UploadZone() {
 
             <button
               onClick={(e) => { e.stopPropagation(); reset(); }}
-              className="flex items-center gap-1.5 tc hover:text-error transition-colors shrink-0 no-min"
+              className="flex items-center gap-1.5 text-[13px] text-dim hover:text-error transition-colors shrink-0 no-min"
             >
-              <X size={11} /> Remove
+              <X size={13} /> Remove
             </button>
           </div>
         ) : (
-          <div className="p-12 text-center">
-            <p className="font-display text-[24px] text-paper leading-tight">
-              {isDragActive ? "Drop it." : "Drop a video here"}
+          <div className="px-6 py-14 text-center">
+            <p className="font-display text-[18px] text-paper leading-tight">
+              {isDragActive ? "Drop it here" : "Drag a video here"}
             </p>
-            <p className="tc mt-3">
-              MP4 · WebM · MOV · AVI · MKV - up to 2 GB
-            </p>
-            <p className="tc mt-1 text-dim-2">or click to browse</p>
+            <p className="text-[13.5px] text-dim mt-2">or click to choose a file</p>
+            <p className="tc mt-4">MP4, WebM, MOV, AVI or MKV, up to 2 GB</p>
           </div>
         )}
       </div>
@@ -265,7 +258,7 @@ export function UploadZone() {
       {file && (
         <div className="space-y-3">
           <div>
-            <label htmlFor="t" className="eyebrow block mb-1.5">Title</label>
+            <label htmlFor="t" className="block text-[13px] font-medium text-paper-2 mb-1.5">Title</label>
             <input
               id="t"
               value={title}
@@ -275,7 +268,7 @@ export function UploadZone() {
             />
           </div>
           <div>
-            <label htmlFor="d" className="eyebrow block mb-1.5">Description - optional</label>
+            <label htmlFor="d" className="block text-[13px] font-medium text-paper-2 mb-1.5">Description <span className="font-normal text-dim">(optional)</span></label>
             <textarea
               id="d"
               value={desc}
@@ -290,10 +283,10 @@ export function UploadZone() {
 
       {/* Error */}
       {err && (
-        <div className="border border-error/40 bg-error/5">
-          <div className="flex items-start gap-3 p-3">
-            <AlertTriangle size={13} className="text-error shrink-0 mt-0.5" />
-            <p className="text-[13px] font-sans text-error leading-relaxed flex-1">{err}</p>
+        <div role="alert" className="rounded-md border border-error/50 bg-error/5">
+          <div className="flex items-start gap-3 p-3.5">
+            <AlertTriangle size={15} className="text-error shrink-0 mt-0.5" />
+            <p className="text-[13.5px] font-sans text-error leading-relaxed flex-1">{err}</p>
             <button onClick={() => setErr(null)} className="text-dim hover:text-paper shrink-0 no-min">
               <X size={12} />
             </button>
@@ -301,21 +294,21 @@ export function UploadZone() {
         </div>
       )}
 
-      {/* Progress - a bar that fills, in signal red. it's time passing. */}
+      {/* Progress. The bar is in the accent: it shows how far along you are. */}
       {busy && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="tc">{LABEL[stage]}</span>
-            <span className="tc tc-signal tabular-nums">{pct}%</span>
+            <span className="text-[13.5px] text-paper-2">{LABEL[stage]}</span>
+            <span className="tc text-paper-2">{pct}%</span>
           </div>
-          <div className="h-px bg-rule">
+          <div className="h-1 rounded-full bg-rule overflow-hidden">
             <div
-              className="h-full bg-signal transition-all duration-500"
+              className="h-full rounded-full bg-signal transition-all duration-500"
               style={{ width: `${pct}%` }}
             />
           </div>
           {stage === "wallet" && (
-            <p className="tc tc-signal">Approve the signing request in your wallet</p>
+            <p className="text-[13.5px] text-paper">Approve the signing request in your wallet</p>
           )}
         </div>
       )}
@@ -325,9 +318,9 @@ export function UploadZone() {
         onClick={go}
         disabled={!canGo}
         className={clsx(
-          "w-full h-11 text-[14px] font-sans font-medium transition-colors border",
+          "w-full h-11 rounded text-[14px] font-sans font-medium transition-colors border",
           canGo
-            ? "bg-signal border-signal text-void hover:bg-[#FF6449]"
+            ? "bg-paper border-paper text-void hover:bg-white"
             : "bg-transparent border-rule text-dim cursor-not-allowed"
         )}
       >
@@ -335,7 +328,7 @@ export function UploadZone() {
           !file      ? "Choose a video first"
           : !title.trim() ? "Add a title"
           : !connected    ? "Connect a wallet"
-          : "Upload and analyze"
+          : "Upload"
         )}
       </button>
     </div>

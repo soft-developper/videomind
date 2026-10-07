@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { getVideo, setVideoDuration } from "@/lib/api";
-import { Navbar } from "@/components/layout/Navbar";
+import { AppShell } from "@/components/layout/AppShell";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { InsightsPanel } from "@/components/video/InsightsPanel";
 import { OnChainProof } from "@/components/video/OnChainProof";
@@ -43,31 +43,25 @@ export default function VideoPage({ params }: { params: { id: string } }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-void">
-        <Navbar />
-        <main className="section pt-20 pb-16">
+      <AppShell>
+        <div className="section pt-8 pb-16">
           <SkeletonVideoPage />
-        </main>
-      </div>
+        </div>
+      </AppShell>
     );
   }
 
   if (!video) {
     return (
-      <div className="min-h-screen bg-void">
-        <Navbar />
-        <div className="flex items-center justify-center min-h-[70vh] px-4">
-          <div className="text-center space-y-3">
-            <p className="font-display text-[22px] text-paper">Not found</p>
-            <p className="text-[13px] font-sans text-dim">
-              This video may have been deleted.
-            </p>
-            <Link href="/library" className="inline-block tc tc-signal hover:underline">
-              ← Library
-            </Link>
-          </div>
+      <AppShell>
+        <div className="section pt-10">
+          <h1 className="font-display text-[20px] text-paper">This video was not found</h1>
+          <p className="text-[14px] text-dim mt-1.5">It may have been deleted.</p>
+          <Link href="/library" className="btn btn-ghost h-9 px-3.5 inline-flex items-center mt-5">
+            Back to the library
+          </Link>
         </div>
-      </div>
+      </AppShell>
     );
   }
 
@@ -79,24 +73,21 @@ export default function VideoPage({ params }: { params: { id: string } }) {
   const duration = video.meta.durationSeconds ?? dur;
 
   return (
-    <div className="min-h-screen bg-void">
-      <Navbar />
+    <AppShell>
+      <div className="pb-20 lg:pb-10">
 
-      <main className="pt-14 pb-20 lg:pb-10">
-
-        {/* ── Slate: the header reads like a film slate ─────────────────── */}
-        <div className="border-b border-rule">
-          <div className="section py-5">
+        <div>
+          <div className="section pt-6 lg:pt-8 pb-1">
             <Link
               href="/library"
-              className="inline-flex items-center gap-1.5 tc hover:text-paper transition-colors mb-4"
+              className="inline-flex items-center gap-1 -ml-1 mb-3 text-[13px] text-dim hover:text-paper transition-colors"
             >
-              <ArrowLeft size={10} /> Library
+              <ArrowLeft size={13} /> Library
             </Link>
 
             <div className="flex items-start justify-between gap-6 flex-wrap">
               <div className="min-w-0 flex-1">
-                <h1 className="font-display text-[26px] sm:text-[34px] leading-[1.1] text-paper">
+                <h1 className="font-display text-[22px] sm:text-[24px] leading-[1.2] text-paper">
                   {video.title}
                 </h1>
                 {video.description && (
@@ -113,17 +104,16 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 shrink-0 group"
                 >
-                  <span className="dot dot-live" />
                   <span className="tc group-hover:text-paper transition-colors">
-                    Shelby · {video.shelby.accountAddress.slice(0, 6)}…{video.shelby.accountAddress.slice(-4)}
+                    Owner {video.shelby.accountAddress.slice(0, 6)}…{video.shelby.accountAddress.slice(-4)}
                   </span>
-                  <ExternalLink size={9} className="text-dim-2" />
+                  <ExternalLink size={11} className="text-dim" />
                 </a>
               )}
             </div>
 
             {ready && (
-              <div className="flex items-center gap-2 mt-5 flex-wrap">
+              <div className="flex items-center gap-2 mt-4 flex-wrap">
                 <ShareButton videoId={params.id} />
                 <ExportMenu
                   title={video.title}
@@ -143,14 +133,14 @@ export default function VideoPage({ params }: { params: { id: string } }) {
           {/* vm_jobs: one panel for both states. When a step fails it shows
               which step, why, and a retry for the owner. */}
           {(working || failed) && (
-            <div className="max-w-md mx-auto py-10">
+            <div className="max-w-[480px]">
               <ProcessingStatus videoId={params.id} onReady={() => refetch()} />
             </div>
           )}
 
           {ready && (
             <div className="grid lg:grid-cols-[1fr_380px] gap-6">
-              <div className="space-y-5">
+              <div className="space-y-5 min-w-0">
 
                 <VideoPlayer
                   ref={player}
@@ -194,7 +184,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 ) : null}
               </div>
 
-              <aside className="hidden lg:block lg:sticky lg:top-[72px] lg:h-[calc(100vh-88px)]">
+              <aside className="hidden lg:block lg:sticky lg:top-6 lg:h-[calc(100vh-48px)]">
                 <div className="panel h-full flex flex-col overflow-hidden">
                   <ChatPanel videoId={params.id} videoTitle={video.title} />
                 </div>
@@ -202,7 +192,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       {/* Mobile chat */}
       {ready && (
@@ -230,7 +220,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
               chatOpen ? "translate-y-0" : "translate-y-full"
             )}>
               <div className="flex items-center justify-between px-4 h-12 border-b border-rule shrink-0">
-                <span className="eyebrow">Ask the video</span>
+                <span className="text-[14px] font-medium text-paper">Ask about this video</span>
                 <button onClick={() => setChatOpen(false)} className="text-dim hover:text-paper no-min">
                   <X size={15} />
                 </button>
@@ -242,6 +232,6 @@ export default function VideoPage({ params }: { params: { id: string } }) {
           </div>
         </>
       )}
-    </div>
+    </AppShell>
   );
 }

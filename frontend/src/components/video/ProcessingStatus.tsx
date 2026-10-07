@@ -7,10 +7,10 @@ import Link from "next/link";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 
 const STEPS = [
-  { k: "uploading",    n: "Store", d: "Blob landing on Shelby" },
-  { k: "transcribing", n: "Read",  d: "Whisper transcribing audio" },
-  { k: "analyzing",    n: "Map",   d: "Claude finding cuts and highlights" },
-  { k: "ready",        n: "Ask",   d: "Intelligence ready" },
+  { k: "uploading",    n: "Store",      d: "Writing the file to Shelby" },
+  { k: "transcribing", n: "Transcribe", d: "Writing down every sentence with its time" },
+  { k: "analyzing",    n: "Chapters",   d: "Finding chapters, a summary and key moments" },
+  { k: "ready",        n: "Ready",      d: "Searchable and ready to share" },
 ];
 
 const ORDER = ["uploading", "processing", "transcribing", "analyzing", "ready"];
@@ -67,25 +67,25 @@ export function ProcessingStatus({
 
   if (status === "error") {
     return (
-      <div className="panel p-6 text-center space-y-4">
-        <p className="font-display text-[22px] text-paper">
+      <div className="panel p-5 space-y-3">
+        <p className="font-display text-[18px] text-paper">
           {failed ? `${failed.label} failed` : "Processing failed"}
         </p>
-        <p className="text-[13px] font-sans text-dim leading-relaxed">
+        <p className="text-[14px] font-sans text-paper-2 leading-relaxed">
           {failed?.error
             ?? (failed
               ? "This step could not finish. The video's owner can see why and run it again."
               : "This video could not be processed.")}
         </p>
         {failed?.canRetry && (
-          <p className="tc">
+          <p className="text-[13px] text-dim">
             Steps that already finished are kept. Only this step runs again.
           </p>
         )}
-        {retryErr && <p className="text-[12px] font-sans text-error">{retryErr}</p>}
-        <div className="flex gap-2 justify-center pt-1">
+        {retryErr && <p role="alert" className="text-[13px] font-sans text-error">{retryErr}</p>}
+        <div className="flex gap-2 pt-2">
           {failed?.canRetry ? (
-            <button onClick={retry} disabled={retrying} className="btn btn-signal h-9 px-4 flex items-center disabled:opacity-50">
+            <button onClick={retry} disabled={retrying} className="btn btn-signal h-9 px-4 flex items-center">
               {retrying ? "Starting" : `Retry ${failed.label.toLowerCase()}`}
             </button>
           ) : (
@@ -102,10 +102,10 @@ export function ProcessingStatus({
   }
 
   return (
-    <div className="panel">
-      <header className="flex items-center gap-2.5 px-4 h-10 border-b border-rule">
+    <div className="panel overflow-hidden">
+      <header className="flex items-center gap-2.5 px-4 h-11 border-b border-rule">
         <span className="dot dot-work" />
-        <span className="eyebrow">Processing</span>
+        <span className="text-[14px] font-semibold text-paper">Processing</span>
       </header>
 
       <div>
@@ -118,36 +118,36 @@ export function ProcessingStatus({
               key={s.k}
               className={clsx(
                 "flex items-start gap-4 px-4 py-3.5 border-b border-rule last:border-0 transition-colors",
-                on && "bg-signal-wash",
-                !on && !done && "opacity-35"
+                on && "bg-signal/[0.10] shadow-[inset_2px_0_0_var(--signal)]",
+                !on && !done && "opacity-45"
               )}
             >
               <span className={clsx(
-                "tc tabular-nums shrink-0 pt-0.5",
-                on ? "tc-signal" : done ? "tc-marker" : ""
+                "tc w-9 shrink-0 pt-px",
+                on ? "text-paper" : done ? "tc-marker" : ""
               )}>
-                {done ? "done" : String(i + 1).padStart(2, "0")}
+                {done ? "Done" : i + 1}
               </span>
               <div className="min-w-0">
                 <p className={clsx(
-                  "font-display text-[17px] leading-none",
-                  on ? "text-paper" : done ? "text-dim" : "text-dim-2"
+                  "text-[14px] font-medium leading-snug",
+                  on ? "text-paper" : done ? "text-paper-2" : "text-dim"
                 )}>
                   {s.n}
                 </p>
-                <p className="text-[12px] font-sans text-dim mt-1.5">{s.d}</p>
+                <p className="text-[13px] font-sans text-dim mt-0.5">{s.d}</p>
               </div>
-              {on && <span className="dot dot-work ml-auto mt-1.5" />}
+              {on && <span className="dot dot-work ml-auto mt-2" />}
             </div>
           );
         })}
       </div>
 
       <footer className="px-4 py-2.5 border-t border-rule">
-        <p className="tc">
+        <p className="text-[13px] text-dim">
           {waiting
             ? `${waiting.label} hit a problem. Trying again, attempt ${waiting.attempts + 1} of ${waiting.maxAttempts}`
-            : "Updates automatically · long videos take a few minutes"}
+            : "This updates by itself. Long videos take a few minutes."}
         </p>
       </footer>
     </div>

@@ -2,7 +2,7 @@
 /**
  * THE INTELLIGENCE STRIP
  *
- * Three lanes over one timeline. Not a progress bar — a map.
+ * Three lanes over one timeline. Not a progress bar   a map.
  *
  *   SPEECH   ░▓█▓░░░░▓███▓░░░░░▓█▓░░░░  ← density from transcript. gaps = silence.
  *   CUTS     ┃      ┃        ┃     ┃    ← chapter boundaries
@@ -100,7 +100,7 @@ export function IntelligenceStrip({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-rule">
         <div className="flex items-center gap-3">
-          <span className="eyebrow">Intelligence strip</span>
+          <span className="text-[13px] font-semibold text-paper">Timeline</span>
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-[3px] bg-paper-2" />
@@ -108,11 +108,11 @@ export function IntelligenceStrip({
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-[1px] h-2.5 bg-paper-2" />
-              <span className="strip-lane-label">Cuts</span>
+              <span className="strip-lane-label">Chapters</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 bg-marker rotate-45" />
-              <span className="strip-lane-label">Found</span>
+              <span className="strip-lane-label">Key moments</span>
             </span>
           </div>
         </div>
@@ -193,7 +193,7 @@ export function IntelligenceStrip({
           ))}
         </div>
 
-        {/* Playhead — the one thing that moves */}
+        {/* Playhead   the one thing that moves */}
         <div className="playhead" style={{ left: `${pct(currentTime)}%` }} />
 
         {/* Hover scrub line */}
@@ -233,15 +233,15 @@ export function IntelligenceStrip({
         )}
       </div>
 
-      {/* Footer — the ruler */}
+      {/* Footer   the ruler */}
       <div className="flex items-center justify-between px-3 py-1.5 border-t border-rule">
         <span className="tc tabular-nums">0:00</span>
         <div className="flex items-center gap-4">
           {(chapters?.length ?? 0) > 0 && (
-            <span className="tc">{chapters!.length} cuts</span>
+            <span className="tc">{chapters!.length} chapters</span>
           )}
           {(highlights?.length ?? 0) > 0 && (
-            <span className="tc tc-marker">{highlights!.length} found</span>
+            <span className="tc tc-marker">{highlights!.length} key moments</span>
           )}
         </div>
         <span className="tc tabular-nums">{tc(duration)}</span>

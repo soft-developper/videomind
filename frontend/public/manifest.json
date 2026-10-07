@@ -1,11 +1,11 @@
 {
   "name": "VideoMind",
   "short_name": "VideoMind",
-  "description": "See the shape of any video.",
+  "description": "A library for long videos.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0A0A0C",
-  "theme_color": "#0A0A0C",
+  "background_color": "#171A18",
+  "theme_color": "#171A18",
   "icons": [
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }
   ]

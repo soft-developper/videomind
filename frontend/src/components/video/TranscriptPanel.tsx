@@ -1,10 +1,13 @@
 "use client";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { Search } from "lucide-react";
 import { clsx } from "clsx";
 import type { Segment } from "@/lib/exports";
 import { readableTime } from "@/lib/exports";
 
+// vm_shell: following the video scrolls this list only, never the page.
+// The moment the reader scrolls the list by hand, following stops, and a
+// button brings it back. Nothing moves under someone who is reading.
 export function TranscriptPanel({
   transcript, currentTime, onSeek,
 }: {
@@ -14,6 +17,7 @@ export function TranscriptPanel({
 }) {
   const [q, setQ] = useState("");
   const [follow, setFollow] = useState(true);
+  const listRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLButtonElement>(null);
 
   const activeIdx = transcript.findIndex(
@@ -21,9 +25,21 @@ export function TranscriptPanel({
   );
 
   useEffect(() => {
-    if (!follow || q) return;
-    activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const list = listRef.current, row = activeRef.current;
+    if (!follow || q || !list || !row) return;
+    const top = row.offsetTop, bottom = top + row.offsetHeight;
+    const visible = top >= list.scrollTop && bottom <= list.scrollTop + list.clientHeight;
+    if (!visible) {
+      list.scrollTo({ top: top - (list.clientHeight - row.offsetHeight) / 2, behavior: "smooth" });
+    }
   }, [activeIdx, follow, q]);
+
+  // Wheel, touch and keys only come from a person. The list's own
+  // scrolling above does not fire them.
+  const handScroll = useCallback(() => setFollow(false), []);
+  const onKey = useCallback((e: React.KeyboardEvent) => {
+    if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(e.key)) setFollow(false);
+  }, []);
 
   const rows = q.trim()
     ? transcript.map((s, i) => ({ s, i })).filter(({ s }) =>
@@ -31,31 +47,42 @@ export function TranscriptPanel({
     : transcript.map((s, i) => ({ s, i }));
 
   return (
-    <section className="panel">
-      <header className="flex items-center gap-3 px-3 h-10 border-b border-rule">
-        <span className="eyebrow">Transcript</span>
+    <section className="panel overflow-hidden" aria-label="Transcript">
+      <header className="flex items-center gap-3 px-4 h-12 border-b border-rule">
+        <h2 className="text-[14px] font-semibold text-paper">Transcript</h2>
 
-        <div className="relative ml-auto w-40">
-          <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-dim-2" />
+        <label className="relative ml-auto w-48">
+          <span className="sr-only">Find in transcript</span>
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-dim pointer-events-none" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Find…"
-            className="w-full h-6 pl-6 pr-2 text-[11px] font-sans bg-void border border-rule"
+            placeholder="Find in transcript"
+            className="w-full h-8 pl-8 pr-2 text-[13px] font-sans"
           />
-        </div>
+        </label>
 
         <button
           onClick={() => setFollow((v) => !v)}
-          className={clsx("tc transition-colors no-min", follow ? "tc-signal" : "text-dim-2 hover:text-dim")}
+          aria-pressed={follow}
+          className={clsx(
+            "h-8 px-2.5 rounded text-[13px] border transition-colors no-min",
+            follow ? "border-rule text-paper-2 hover:text-paper" : "border-rule-lit text-paper bg-slate-2 hover:bg-rule"
+          )}
         >
-          {follow ? "following" : "free"}
+          {follow ? "Following" : "Follow the video"}
         </button>
       </header>
 
-      <div className="max-h-72 overflow-y-auto">
+      <div
+        ref={listRef}
+        onWheel={handScroll}
+        onTouchMove={handScroll}
+        onKeyDown={onKey}
+        className="relative max-h-80 overflow-y-auto py-1.5"
+      >
         {rows.length === 0 && (
-          <p className="px-3 py-8 text-center tc">No match for "{q}"</p>
+          <p className="px-4 py-8 text-[13.5px] text-dim">Nothing in the transcript contains "{q}".</p>
         )}
 
         {rows.map(({ s, i }) => {
@@ -65,20 +92,21 @@ export function TranscriptPanel({
               key={i}
               ref={on ? activeRef : undefined}
               onClick={() => onSeek(s.start)}
+              aria-current={on ? "true" : undefined}
               className={clsx(
-                "w-full flex items-start gap-3 px-3 py-1.5 text-left transition-colors no-min group",
-                on ? "bg-signal-wash" : "hover:bg-slate"
+                "w-full flex items-start gap-3 px-4 py-1.5 text-left transition-colors no-min group",
+                on ? "bg-signal/[0.13] shadow-[inset_2px_0_0_var(--signal)]" : "hover:bg-slate-2"
               )}
             >
               <span className={clsx(
-                "tc tabular-nums shrink-0 pt-0.5 w-10 text-right transition-colors",
-                on ? "tc-signal" : "text-dim-2 group-hover:text-dim"
+                "tc shrink-0 pt-[3px] w-11 transition-colors",
+                on ? "text-paper" : "text-dim group-hover:text-paper-2"
               )}>
                 {readableTime(s.start)}
               </span>
               <span className={clsx(
-                "text-[13px] font-sans leading-[1.5] transition-colors",
-                on ? "text-paper" : "text-paper-2/70 group-hover:text-paper-2"
+                "text-[14px] font-sans leading-[1.55] transition-colors",
+                on ? "text-paper" : "text-paper-2 group-hover:text-paper"
               )}>
                 {s.text}
               </span>

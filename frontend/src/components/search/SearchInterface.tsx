@@ -6,13 +6,8 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { readableTime } from "@/lib/exports";
 import Link from "next/link";
-
-const EXAMPLES = [
-  "What did they say about expiration?",
-  "Explain how blobs get renewed",
-  "The part about wallet signing",
-  "Anything on decentralised storage",
-];
+import { EmptyState } from "@/components/ui/EmptyState";
+import { WalletButton } from "@/components/layout/WalletButton";
 
 export function SearchInterface() {
   const { connected } = useWallet();
@@ -39,21 +34,16 @@ export function SearchInterface() {
 
   if (!connected) {
     return (
-      <div className="py-20 text-center">
-        <p className="font-display text-[24px] text-paper mb-3">
-          Connect a wallet to search
-        </p>
-        <p className="text-[13px] font-sans text-dim">
-          Search runs across your library only.
-        </p>
-      </div>
+      <EmptyState title="Connect a wallet to search" action={<WalletButton />}>
+        Search looks through your own library, so it needs to know which library is yours.
+      </EmptyState>
     );
   }
 
   return (
     <div className="space-y-8">
       {/* Query bar */}
-      <div className="flex items-center border border-rule focus-within:border-rule-lit transition-colors">
+      <div className="flex items-center rounded-md border border-rule bg-side focus-within:border-dim transition-colors overflow-hidden">
         <span className="pl-3 shrink-0">
           {busy ? <span className="dot dot-work" /> : <Search size={14} className="text-dim" />}
         </span>
@@ -61,14 +51,14 @@ export function SearchInterface() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && run(q)}
-          placeholder="Describe what you're looking for…"
+          placeholder="Describe what you are looking for"
           disabled={busy}
-          className="flex-1 h-12 px-3 text-[15px] font-sans bg-transparent border-0 focus:border-0"
+          className="flex-1 h-12 px-3 text-[15px] font-sans bg-transparent border-0 rounded-none focus:border-0"
         />
         <button
           onClick={() => run(q)}
           disabled={busy || !q.trim()}
-          className="h-12 px-5 bg-signal text-void text-[13px] font-sans font-medium hover:bg-[#FF6449] transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0 no-min"
+          className="h-9 mr-1.5 px-4 rounded bg-paper text-void text-[13.5px] font-sans font-medium hover:bg-white transition-colors disabled:bg-rule disabled:text-dim disabled:cursor-not-allowed shrink-0 no-min"
         >
           Search
         </button>
@@ -76,25 +66,15 @@ export function SearchInterface() {
 
       {/* Idle */}
       {hits === null && !busy && !err && (
-        <div>
-          <p className="eyebrow mb-3">Try</p>
-          <div className="grid sm:grid-cols-2 gap-px">
-            {EXAMPLES.map((e) => (
-              <button
-                key={e}
-                onClick={() => run(e)}
-                className="text-left px-4 py-3 border border-rule text-[13px] font-sans text-dim hover:text-paper hover:border-rule-lit hover:bg-slate transition-colors no-min"
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-        </div>
+        <p className="text-[13.5px] text-dim leading-relaxed max-w-[60ch]">
+          Describe it the way you remember it, in your own words. For example: the part where
+          the trade off between consistency and availability is explained.
+        </p>
       )}
 
       {/* Error */}
       {err && (
-        <div className="border border-error/40 bg-error/5 p-3 flex items-start gap-3">
+        <div role="alert" className="rounded-md border border-error/50 bg-error/5 p-3.5 flex items-start gap-3">
           <p className="text-[13px] font-sans text-error flex-1">{err}</p>
           <button onClick={() => run(last)} className="tc text-error/70 hover:text-error no-min">
             <RefreshCw size={11} />
@@ -106,8 +86,8 @@ export function SearchInterface() {
       {hits !== null && !busy && !err && (
         <div className="space-y-5">
           <div className="flex items-center justify-between pb-3 border-b border-rule">
-            <p className="eyebrow">
-              {hits.length === 0 ? "No match" : `${hits.length} video${hits.length !== 1 ? "s" : ""}`}
+            <p className="text-[13.5px] text-paper-2">
+              {hits.length === 0 ? "Nothing found" : `Found in ${hits.length} video${hits.length !== 1 ? "s" : ""}`}
             </p>
             <button
               onClick={() => { setHits(null); setQ(""); }}
@@ -118,15 +98,15 @@ export function SearchInterface() {
           </div>
 
           {hits.length === 0 && (
-            <p className="py-16 text-center text-[13px] font-sans text-dim">
-              Nothing in your library matches that. Try different words.
+            <p className="py-6 text-[14px] font-sans text-dim">
+              Nothing in your library matches that. Try describing it in different words.
             </p>
           )}
 
           {hits.map((r) => (
             <Link key={r.videoId} href={`/video/${r.videoId}`} className="block panel-hover group">
               <header className="flex items-baseline justify-between gap-4 px-4 py-3 border-b border-rule">
-                <h3 className="font-display text-[19px] text-paper group-hover:text-signal transition-colors truncate">
+                <h3 className="text-[15px] font-semibold text-paper truncate">
                   {r.title}
                 </h3>
                 <span className="tc shrink-0">
@@ -140,7 +120,7 @@ export function SearchInterface() {
                     <span className="tc tc-signal tabular-nums shrink-0 pt-0.5">
                       {readableTime(m.time)}
                     </span>
-                    <p className="text-[13px] font-sans text-paper-2/70 leading-relaxed line-clamp-2">
+                    <p className="text-[13.5px] font-sans text-paper-2 leading-relaxed line-clamp-2">
                       {m.text}
                     </p>
                   </div>

@@ -9,7 +9,7 @@ import { TranscriptPanel } from "@/components/video/TranscriptPanel";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { ExportMenu } from "@/components/video/ExportMenu";
 import { SkeletonVideoPage } from "@/components/ui/SkeletonCard";
-import { ArrowRight, ExternalLink, MessageSquare, X } from "lucide-react";
+import { ExternalLink, MessageSquare, X } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, useCallback } from "react";
 import { clsx } from "clsx";
@@ -45,16 +45,16 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
         <Bar />
         <div className="flex items-center justify-center min-h-[70vh] px-4">
           <div className="text-center space-y-3 max-w-sm">
-            <p className="font-display text-[24px] text-paper">
-              {!video ? "Not found" : "Still processing"}
+            <p className="font-display text-[20px] text-paper">
+              {!video ? "This video was not found" : "This video is still being processed"}
             </p>
             <p className="text-[13px] font-sans text-dim leading-relaxed">
               {!video
                 ? "This video may have been deleted, or the link is wrong."
-                : "The AI is still reading it. Check back shortly."}
+                : "Check back in a few minutes."}
             </p>
-            <Link href="/" className="inline-flex items-center gap-1.5 tc tc-signal hover:underline pt-2">
-              Go to VideoMind <ArrowRight size={10} />
+            <Link href="/" className="btn btn-ghost h-9 px-3.5 inline-flex items-center mt-2">
+              Open VideoMind
             </Link>
           </div>
         </div>
@@ -73,7 +73,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
           <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
             <div className="flex items-start justify-between gap-6 flex-wrap">
               <div className="min-w-0 flex-1">
-                <h1 className="font-display text-[26px] sm:text-[34px] leading-[1.1] text-paper">
+                <h1 className="font-display text-[22px] sm:text-[26px] leading-[1.2] text-paper">
                   {video.title}
                 </h1>
                 {video.description && (
@@ -99,11 +99,10 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 mt-4 group"
               >
-                <span className="dot dot-live" />
                 <span className="tc group-hover:text-paper transition-colors">
-                  Stored on Shelby · {video.shelby.accountAddress.slice(0, 6)}…{video.shelby.accountAddress.slice(-4)}
+                  Stored on Shelby, owner {video.shelby.accountAddress.slice(0, 6)}…{video.shelby.accountAddress.slice(-4)}
                 </span>
-                <ExternalLink size={9} className="text-dim-2" />
+                <ExternalLink size={11} className="text-dim" />
               </a>
             )}
           </div>
@@ -111,7 +110,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
 
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-6">
           <div className="grid lg:grid-cols-[1fr_360px] gap-5">
-            <div className="space-y-4">
+            <div className="space-y-4 min-w-0">
               <VideoPlayer
                 ref={player}
                 streamUrl={video.streamUrl ?? null}
@@ -160,15 +159,15 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
           </div>
 
           {/* CTA */}
-          <div className="mt-16 py-12 border-t border-rule text-center">
-            <p className="font-display text-[28px] text-paper leading-tight max-w-md mx-auto">
-              Your videos could work this hard too.
+          <div className="mt-16 py-10 border-t border-rule">
+            <p className="font-display text-[18px] text-paper leading-tight">
+              Made with VideoMind
             </p>
-            <p className="text-[13px] font-sans text-dim mt-3 max-w-sm mx-auto leading-relaxed">
-              Upload a recording, get a map. Stored on Shelby, signed by your wallet.
+            <p className="text-[14px] font-sans text-dim mt-1.5 max-w-[52ch] leading-relaxed">
+              Upload a lecture, a seminar or a talk and it comes back transcribed, chaptered and searchable like this one.
             </p>
-            <Link href="/" className="btn btn-signal h-10 px-5 inline-flex items-center gap-2 mt-6">
-              Try VideoMind <ArrowRight size={13} />
+            <Link href="/" className="btn btn-ghost h-9 px-3.5 inline-flex items-center mt-5">
+              Open VideoMind
             </Link>
           </div>
         </div>
@@ -192,7 +191,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
           chat ? "translate-y-0" : "translate-y-full"
         )}>
           <div className="flex items-center justify-between px-4 h-12 border-b border-rule shrink-0">
-            <span className="eyebrow">Ask the video</span>
+            <span className="text-[14px] font-medium text-paper">Ask about this video</span>
             <button onClick={() => setChat(false)} className="text-dim hover:text-paper no-min">
               <X size={15} />
             </button>
@@ -208,24 +207,18 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
 
 function Bar() {
   return (
-    <nav className="fixed top-0 inset-x-0 z-50 h-14 bg-void border-b border-rule">
+    <nav className="fixed top-0 inset-x-0 z-50 h-14 bg-side border-b border-rule">
       <div className="section h-full flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <svg width="14" height="16" viewBox="0 0 14 16" fill="none" aria-hidden>
-            <path d="M7 16L0 0h14L7 16z" className="fill-signal" />
+          <svg width="13" height="15" viewBox="0 0 14 16" fill="none" aria-hidden>
+            <path d="M7 15.2 0.6 1.6A1 1 0 0 1 1.5 0.2h11a1 1 0 0 1 0.9 1.4L7 15.2z" className="fill-signal" />
           </svg>
-          <span className="font-display text-[19px] leading-none text-paper">VideoMind</span>
+          <span className="text-[15px] font-semibold tracking-tight leading-none text-paper">VideoMind</span>
         </Link>
 
-        <div className="flex items-center gap-4">
-          <span className="hidden sm:flex items-center gap-2">
-            <span className="dot dot-live" />
-            <span className="tc">Shelbynet</span>
-          </span>
-          <Link href="/" className="btn btn-signal h-8 px-3.5 flex items-center gap-1.5">
-            Try free <ArrowRight size={11} />
-          </Link>
-        </div>
+        <Link href="/" className="btn btn-ghost h-9 px-3.5 flex items-center">
+          Open VideoMind
+        </Link>
       </div>
     </nav>
   );

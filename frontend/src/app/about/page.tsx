@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/layout/Navbar";
+import { AppShell } from "@/components/layout/AppShell";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
@@ -34,18 +34,17 @@ const STACK = [
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-void">
-      <Navbar />
-      <main className="pt-14">
+    <AppShell>
+      <div>
 
         {/* Hero */}
         <section className="border-b border-rule">
-          <div className="max-w-[820px] mx-auto px-4 sm:px-6 py-16 sm:py-20">
+          <div className="section [&>*]:max-w-[760px] py-16 sm:py-20">
             <p className="eyebrow mb-6">Built on Shelby Protocol</p>
             <h1 className="font-display text-[38px] sm:text-[50px] leading-[1.02] text-paper">
               A video is a timeline.
               <br />
-              <span className="italic text-signal">We give it a map.</span>
+              VideoMind gives it a map.
             </h1>
             <p className="text-[15px] font-sans text-paper-2/80 mt-6 max-w-xl leading-[1.65]">
               VideoMind reads a recording end to end, marks where the topic turns,
@@ -66,7 +65,7 @@ export default function AboutPage() {
 
         {/* Shelby integration - not numbered. this isn't a sequence. */}
         <section className="border-b border-rule">
-          <div className="max-w-[820px] mx-auto px-4 sm:px-6 py-12">
+          <div className="section [&>*]:max-w-[760px] py-12">
             <p className="eyebrow mb-8">Shelby integration</p>
             <div className="space-y-0">
               {SHELBY.map((s) => (
@@ -85,7 +84,7 @@ export default function AboutPage() {
 
         {/* Pipeline - THIS is a sequence, so it's numbered. */}
         <section className="border-b border-rule">
-          <div className="max-w-[820px] mx-auto px-4 sm:px-6 py-12">
+          <div className="section [&>*]:max-w-[760px] py-12">
             <p className="eyebrow mb-8">What happens to a video</p>
             <div className="space-y-0">
               {[
@@ -110,7 +109,7 @@ export default function AboutPage() {
 
         {/* Stack */}
         <section className="border-b border-rule">
-          <div className="max-w-[820px] mx-auto px-4 sm:px-6 py-12">
+          <div className="section [&>*]:max-w-[760px] py-12">
             <p className="eyebrow mb-8">Stack</p>
             <div>
               {STACK.map(([lib, note]) => (
@@ -127,11 +126,11 @@ export default function AboutPage() {
         </section>
 
         {/* Footer */}
-        <section className="max-w-[820px] mx-auto px-4 sm:px-6 py-16 text-center">
+        <section className="section [&>*]:max-w-[760px] py-16">
           <p className="font-display text-[26px] text-paper mb-6">
             Open source. Testnet. Yours.
           </p>
-          <div className="flex gap-3 justify-center flex-wrap">
+          <div className="flex gap-3 flex-wrap">
             <a
               href="https://github.com/soft-developper/videomind"
               target="_blank"
@@ -150,7 +149,7 @@ export default function AboutPage() {
             </a>
           </div>
         </section>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

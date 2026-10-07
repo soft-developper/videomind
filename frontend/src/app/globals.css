@@ -3,33 +3,53 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   EDIT BAY — the colour of a colourist's monitor, not a crypto dashboard.
-   Two accents, and each one MEANS something:
-     signal (red)  = time. where you are. the playhead.
-     marker (teal) = intelligence. what the AI found.
+   vm_shell: VideoMind workspace theme
+
+   A quiet graphite workspace. The video is the darkest thing on screen,
+   the interface steps back from it.
+
+   Two rules carry the whole palette:
+     white acts     the primary button is the lightest thing on the page
+     yellow locates the one accent marks where you are: the playhead, the
+                    current page, the sentence being spoken, keyboard focus
+   Green means done or verified. Red means failed. Nothing else is coloured.
+
+   Each colour has a hex value (for plain CSS) and an RGB triplet (so
+   Tailwind classes such as bg-void/90 can set opacity).
    ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-  --void:    #0A0A0C;   /* warm-shifted near-black. not blue. */
-  --slate:   #16171B;   /* panel */
-  --slate-2: #1D1F24;   /* raised panel */
-  --rule:    #26282F;   /* hairline */
-  --rule-lit:#3A3D46;   /* hairline, hover */
+  --void:       #171A18;  --void-rgb:       23 26 24;     /* page */
+  --side:       #121513;  --side-rgb:       18 21 19;     /* sidebar */
+  --screen:     #0A0B0A;  --screen-rgb:     10 11 10;     /* video surfaces */
+  --slate:      #1E2220;  --slate-rgb:      30 34 32;     /* panel */
+  --slate-2:    #272C29;  --slate-2-rgb:    39 44 41;     /* raised, hover */
+  --rule:       #2D332F;  --rule-rgb:       45 51 47;     /* border */
+  --rule-lit:   #454D48;  --rule-lit-rgb:   69 77 72;     /* border, hover */
 
-  --paper:   #E8E6E1;   /* off-white. screens don't glow pure white. */
-  --paper-2: #A8A6A1;   /* secondary text */
-  --dim:     #6E7078;   /* metadata */
-  --dim-2:   #45474E;   /* faintest */
+  --paper:      #ECEEEA;  --paper-rgb:      236 238 234;  /* text */
+  --paper-2:    #B6BBB5;  --paper-2-rgb:    182 187 181;  /* secondary text */
+  --dim:        #8A918A;  --dim-rgb:        138 145 138;  /* muted text */
+  --dim-2:      #5D645E;  --dim-2-rgb:      93 100 94;    /* faint, disabled */
 
-  --signal:    #FF4D2E; /* scrub-head red — TIME */
-  --signal-dim:#B33520;
-  --signal-wash:rgba(255, 77, 46, 0.08);
+  --signal:     #F2CF4A;  --signal-rgb:     242 207 74;   /* where you are */
+  --signal-dim: #B0942B;  --signal-dim-rgb: 176 148 43;
+  --signal-wash: rgb(242 207 74 / 0.10);
 
-  --marker:    #4DD8B0; /* teal — INTELLIGENCE */
-  --marker-dim:#2E9C7D;
-  --marker-wash:rgba(77, 216, 176, 0.08);
+  --marker:     #63C690;  --marker-rgb:     99 198 144;   /* done, verified */
+  --marker-dim: #3C8A62;  --marker-dim-rgb: 60 138 98;
+  --marker-wash: rgb(99 198 144 / 0.10);
 
-  --warn:    #E8B33D;
-  --error:   #FF5A5A;
+  --warn:       #E89B4C;  --warn-rgb:       232 155 76;
+  --error:      #F06A66;  --error-rgb:      240 106 102;
+
+  --radius-control: 6px;
+  --radius-panel:   8px;
+
+  /* Spacing rhythm, shared by every screen */
+  --space-section: 4rem;
+  --space-block:   2rem;
+  --space-panel:   1.25rem;
+  --space-tight:   1rem;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -39,37 +59,51 @@ html { scroll-behavior: smooth; }
 body {
   background: var(--void);
   color: var(--paper);
-  font-family: var(--font-inter-tight), system-ui, sans-serif;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings: same family, heavier and slightly tighter. */
+.font-display {
+  font-weight: 600;
+  letter-spacing: -0.015em;
 }
 
 /* ─── Scrollbar ──────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--rule-lit); }
-::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+::-webkit-scrollbar-thumb {
+  background: var(--rule);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--rule-lit); background-clip: content-box; }
 
-::selection { background: var(--signal); color: var(--void); }
+::selection { background: var(--signal); color: #1B1A12; }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   PANELS — flat, hairline-ruled. no glass, no blur.
-   Blur is decoration. Rules are structure.
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ─── Panels ─────────────────────────────────────────────────────────────── */
 .panel {
   background: var(--slate);
   border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
 }
 
 .panel-raised {
   background: var(--slate-2);
   border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
 }
 
 .panel-hover {
   background: var(--slate);
   border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
   transition: border-color 140ms ease, background 140ms ease;
 }
 .panel-hover:hover {
@@ -77,81 +111,73 @@ body {
   background: var(--slate-2);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   TIMECODE — the most repeated element in the product.
-   It should look designed, not incidental.
-   ═══════════════════════════════════════════════════════════════════════════ */
-.tc {
-  font-family: var(--font-mono), ui-monospace, monospace;
+/* ─── Data: timecodes, durations, sizes, addresses ───────────────────────
+   Narrower setting and tabular figures, so columns of numbers line up
+   and read as data without a second typeface. */
+.tc, .font-mono {
+  font-family: var(--font-ui), system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.06em;
-  font-size: 11px;
+  font-stretch: 86%;
+  letter-spacing: 0;
+}
+.tc {
+  font-size: 12.5px;
   color: var(--dim);
 }
 .tc-signal { color: var(--signal); }
 .tc-marker { color: var(--marker); }
 
-/* ─── Eyebrow label ──────────────────────────────────────────────────────── */
+/* ─── Small label above a group of content ───────────────────────────────── */
 .eyebrow {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--dim-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--dim);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   INTELLIGENCE STRIP — the signature.
-   Three lanes over one timeline: speech density, chapter cuts, AI highlights.
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ─── Timeline strip on the video page ───────────────────────────────────── */
 .strip {
-  background: var(--void);
+  background: var(--screen);
   border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
   position: relative;
   user-select: none;
 }
 
 .strip-lane-label {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--dim-2);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--dim);
 }
 
-/* Playhead — the one thing that moves */
+/* Playhead: the one thing that moves, in the one accent */
 .playhead {
   position: absolute;
   top: 0; bottom: 0;
-  width: 1px;
+  width: 2px;
+  margin-left: -1px;
   background: var(--signal);
   pointer-events: none;
   z-index: 3;
-  box-shadow: 0 0 6px rgba(255, 77, 46, 0.6);
 }
 .playhead::before {
   content: "";
   position: absolute;
   top: -3px; left: 50%;
   transform: translateX(-50%);
-  width: 7px; height: 7px;
+  width: 8px; height: 8px;
   background: var(--signal);
   clip-path: polygon(50% 100%, 0 0, 100% 0);
 }
 
-/* Highlight diamond */
+/* Key moment marker */
 .diamond {
   width: 7px; height: 7px;
   background: var(--marker);
   transform: rotate(45deg);
-  transition: transform 120ms ease, box-shadow 120ms ease;
+  transition: transform 120ms ease;
   cursor: pointer;
 }
-.diamond:hover {
-  transform: rotate(45deg) scale(1.5);
-  box-shadow: 0 0 8px var(--marker);
-}
-/* Ticks as the playhead passes */
+.diamond:hover { transform: rotate(45deg) scale(1.5); }
 @keyframes diamond-tick {
   0%   { transform: rotate(45deg) scale(1); }
   40%  { transform: rotate(45deg) scale(1.7); }
@@ -161,23 +187,28 @@ body {
 
 /* ─── Buttons ────────────────────────────────────────────────────────────── */
 .btn {
-  font-family: var(--font-inter-tight), sans-serif;
+  font-family: var(--font-ui), sans-serif;
   font-weight: 500;
-  font-size: 13px;
-  letter-spacing: -0.01em;
-  transition: all 140ms ease;
+  font-size: 13.5px;
+  letter-spacing: 0;
   border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+  white-space: nowrap;
 }
 
+/* Primary. White acts. */
 .btn-signal {
-  background: var(--signal);
+  background: var(--paper);
   color: var(--void);
 }
-.btn-signal:hover { background: #FF6449; }
+.btn-signal:hover { background: #FFFFFF; }
+.btn-signal:disabled { background: var(--rule-lit); color: var(--dim); }
 
 .btn-ghost {
   background: transparent;
-  border-color: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
   color: var(--paper-2);
 }
 .btn-ghost:hover {
@@ -188,41 +219,38 @@ body {
 
 .btn-marker {
   background: transparent;
-  border-color: var(--marker-dim);
-  color: var(--marker);
+  border-color: var(--rule-lit);
+  color: var(--paper);
 }
-.btn-marker:hover { background: var(--marker-wash); }
+.btn-marker:hover { background: var(--slate); }
 
 /* ─── Inputs ─────────────────────────────────────────────────────────────── */
-input, textarea {
-  font-family: var(--font-inter-tight), sans-serif;
-  background: var(--void);
+input, textarea, select {
+  font-family: var(--font-ui), sans-serif;
+  background: var(--side);
   border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
   color: var(--paper);
   transition: border-color 140ms ease;
 }
-input:focus, textarea:focus {
+input:focus, textarea:focus, select:focus {
   outline: none;
-  border-color: var(--rule-lit);
+  border-color: var(--dim);
 }
 input::placeholder, textarea::placeholder { color: var(--dim-2); }
 
-/* ─── Loading: a scanning line, not a spinner ────────────────────────────── */
+/* ─── Loading placeholder ────────────────────────────────────────────────── */
 .scan {
   position: relative;
   overflow: hidden;
   background: var(--slate);
+  border-radius: var(--radius-control);
 }
 .scan::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(232, 230, 225, 0.04),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgb(236 238 234 / 0.05), transparent);
   animation: scan-sweep 1.4s ease-in-out infinite;
 }
 @keyframes scan-sweep {
@@ -232,29 +260,31 @@ input::placeholder, textarea::placeholder { color: var(--dim-2); }
 
 /* ─── Status dot ─────────────────────────────────────────────────────────── */
 .dot {
-  width: 5px; height: 5px;
+  width: 6px; height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-.dot-live { background: var(--marker); animation: dot-pulse 2s ease-in-out infinite; }
-.dot-work { background: var(--warn);   animation: dot-pulse 1.2s ease-in-out infinite; }
+.dot-live { background: var(--marker); }
+.dot-work { background: var(--paper-2); animation: dot-pulse 1.2s ease-in-out infinite; }
 .dot-dead { background: var(--error); }
+.dot-off  { background: var(--dim-2); }
 @keyframes dot-pulse {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.25; }
 }
 
-/* ─── Chat bubbles ───────────────────────────────────────────────────────── */
+/* ─── Question and answer ────────────────────────────────────────────────── */
 .bubble-you {
-  background: var(--signal-wash);
-  border-left: 2px solid var(--signal);
+  background: var(--slate-2);
+  border-radius: var(--radius-panel);
 }
 .bubble-ai {
   background: var(--slate);
-  border-left: 2px solid var(--rule-lit);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
 }
 
-/* ─── Drop zone ──────────────────────────────────────────────────────────── */
+/* ─── Drop zone, while a file is held over it ────────────────────────────── */
 .drop-live {
   border-color: var(--signal) !important;
   background: var(--signal-wash) !important;
@@ -267,7 +297,7 @@ input::placeholder, textarea::placeholder { color: var(--dim-2); }
 .rule-x { border-top: 1px solid var(--rule); }
 .rule-y { border-left: 1px solid var(--rule); }
 
-/* Keyboard focus — visible, never removed */
+/* Keyboard focus: visible, never removed. Yellow locates. */
 :focus-visible {
   outline: 2px solid var(--signal);
   outline-offset: 2px;
@@ -289,34 +319,16 @@ input::placeholder, textarea::placeholder { color: var(--dim-2); }
   .no-min { min-height: unset; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   PART 1 · FOUNDATION — shared primitives + open spacing
-   Additive only. Nothing above this line is modified.
-   Marker guard: VM_PART1_FOUNDATION
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* ─── Spacing rhythm ─── open, mockup-matched. Screens use these vars so the
-   whole app breathes from one place instead of per-screen magic numbers. */
-:root {
-  --space-section: 5rem;   /* between major page sections (was ~4rem ad-hoc) */
-  --space-block:   2rem;   /* between blocks within a section */
-  --space-panel:   1.5rem; /* internal panel padding (was 0.75rem-ish) */
-  --space-tight:   1rem;
-}
-
-/* ─── Section shell ─── consistent max width + generous gutters everywhere. */
+/* ─── Page width and gutters ─────────────────────────────────────────────── */
 .section {
   max-width: 1400px;
   margin-inline: auto;
-  padding-inline: 1.5rem;
+  padding-inline: 1.25rem;
 }
 @media (min-width: 640px) { .section { padding-inline: 2rem; } }
 
-/* ─── Panel padding ─── an opt-in roomier interior for flat panels. */
 .panel-pad { padding: var(--space-panel); }
 
-/* ─── Panel header ─── the mockup gives every panel a titled header with a
-   hairline under it. Currently hand-rolled per screen. One class instead. */
 .panel-head {
   display: flex;
   align-items: center;
@@ -327,44 +339,45 @@ input::placeholder, textarea::placeholder { color: var(--dim-2); }
   border-bottom: 1px solid var(--rule);
 }
 .panel-head-title {
-  font-family: var(--font-inter-tight), sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--paper);
 }
 
-/* ─── Badge / pill ─── the "verified on shelby" chip, standardised.
-   Meaning stays in the colour: marker = intelligence/verified. */
+/* ─── Tag ────────────────────────────────────────────────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
   border: 1px solid var(--rule);
+  border-radius: 999px;
   color: var(--paper-2);
 }
 .badge-marker { border-color: var(--marker-dim); color: var(--marker); }
-.badge-signal { border-color: var(--signal-dim); color: var(--signal); }
+.badge-signal { border-color: var(--rule-lit); color: var(--paper); }
 
-/* ─── Stat ─── metric readouts (library counts, blob totals) shown ad-hoc. */
+/* ─── Figures ────────────────────────────────────────────────────────────── */
 .stat-value {
-  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 24px;
-  font-weight: 500;
+  font-size: 22px;
+  font-weight: 600;
   color: var(--paper);
-  line-height: 1;
+  line-height: 1.1;
 }
 .stat-label {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--dim-2);
-  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--dim);
+  margin-top: 4px;
+}
+
+/* ─── Popover (menus) ────────────────────────────────────────────────────── */
+.popover {
+  background: var(--slate);
+  border: 1px solid var(--rule-lit);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.4);
+  overflow: hidden;
 }

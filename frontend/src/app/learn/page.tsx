@@ -3,15 +3,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { getLearningPaths, regenerateLearningPaths, type LearningPath } from "@/lib/api";
-import { Navbar } from "@/components/layout/Navbar";
+import { AppShell } from "@/components/layout/AppShell";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { WalletButton } from "@/components/layout/WalletButton";
 import { RefreshCw, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { clsx } from "clsx";
 
 const LEVEL: Record<string, string> = {
-  Beginner:     "text-marker",
-  Intermediate: "text-warn",
-  Advanced:     "text-signal",
+  Beginner:     "text-dim",
+  Intermediate: "text-dim",
+  Advanced:     "text-dim",
 };
 
 export default function LearnPage() {
@@ -33,92 +36,77 @@ export default function LearnPage() {
   });
 
   return (
-    <div className="min-h-screen bg-void">
-      <Navbar />
-      <main className="pt-14">
-        <div className="border-b border-rule">
-          <div className="max-w-[900px] mx-auto px-4 sm:px-6 py-10">
-            <p className="eyebrow mb-4">Curriculum</p>
-            <h1 className="font-display text-[32px] sm:text-[42px] leading-[1.05] text-paper max-w-lg">
-              Your library,
-              <br />
-              <span className="italic text-signal">in the right order.</span>
-            </h1>
-            <p className="text-[14px] font-sans text-dim mt-4 max-w-md leading-relaxed">
-              Claude reads everything you've uploaded and works out what to watch first,
-              and why.
-            </p>
-          </div>
-        </div>
-
-        <div className="max-w-[900px] mx-auto px-4 sm:px-6 py-8">
+    <AppShell>
+      <PageHeader
+        title="Knowledge"
+        description="Your videos arranged as learning paths: what to watch first, and why."
+      />
+      <div className="section pb-16">
+        <div className="max-w-[860px]">
 
           {!connected && (
-            <div className="py-20 text-center">
-              <p className="font-display text-[24px] text-paper mb-3">Connect a wallet</p>
-              <p className="text-[13px] font-sans text-dim">
-                Paths are built from your own library.
-              </p>
-            </div>
+            <EmptyState title="Connect a wallet to see your paths" action={<WalletButton />}>
+              Paths are built from your own library.
+            </EmptyState>
           )}
 
           {/* vm_signin: connected but not signed in */}
           {connected && !wallet && (
-            <div className="py-20 text-center">
-              <p className="font-display text-[24px] text-paper mb-3">Sign in to see your paths</p>
-              <p className="text-[13px] font-sans text-dim">
-                The prompt is at the bottom of the page.
-              </p>
-            </div>
+            <EmptyState title="Sign in to see your paths">
+              Your wallet is connected. One signature proves it is yours. The prompt is at the bottom of the page.
+            </EmptyState>
           )}
 
           {connected && isLoading && (
-            <div className="space-y-4">
-              {[0, 1].map((i) => (
-                <div key={i} className="panel">
-                  <div className="h-16 scan border-b border-rule" />
-                  <div className="h-40 scan" />
-                </div>
-              ))}
-              <p className="tc text-center pt-4">Claude is reading your library…</p>
+            <div className="space-y-4" aria-busy="true">
+              <p className="text-[13.5px] text-dim">Reading your library. This can take a minute.</p>
+              {[0, 1].map((i) => <div key={i} className="h-44 scan rounded-md" />)}
             </div>
           )}
 
           {connected && isError && (
-            <div className="py-16 text-center space-y-3">
-              <p className="font-display text-[22px] text-paper">Couldn't build paths</p>
-              <p className="text-[13px] font-sans text-dim">{(error as Error)?.message}</p>
-            </div>
+            <EmptyState title="The paths could not be built">
+              {(error as Error)?.message}
+            </EmptyState>
           )}
 
           {connected && data && data.paths.length === 0 && (data.minRequired ?? 0) > 0 && (
-            <div className="py-20 text-center space-y-4">
-              <p className="font-display text-[24px] text-paper">
-                Not enough to work with yet
-              </p>
-              <p className="text-[13px] font-sans text-dim max-w-sm mx-auto leading-relaxed">
-                You have {data.videoCount} processed video{data.videoCount !== 1 ? "s" : ""}.
-                Paths need at least {data.minRequired} so there's an actual sequence to build.
-              </p>
-              <Link href="/upload" className="btn btn-signal h-10 px-5 inline-flex items-center gap-2 mt-2">
-                Upload another <ArrowRight size={13} />
-              </Link>
-            </div>
+            <EmptyState
+              title="Not enough videos yet"
+              action={<Link href="/upload" className="btn btn-signal h-9 px-3.5 inline-flex items-center">Upload a video</Link>}
+            >
+              You have {data.videoCount} processed video{data.videoCount !== 1 ? "s" : ""}.
+              A path needs at least {data.minRequired}, so there is an order to put them in.
+            </EmptyState>
+          )}
+
+          {/* vm_shell: enough videos, but no path came back. Say so and offer another try. */}
+          {connected && data && data.paths.length === 0 && !((data.minRequired ?? 0) > 0) && (
+            <EmptyState
+              title="No paths were built this time"
+              action={
+                <button onClick={() => regen.mutate()} disabled={regen.isPending} className="btn btn-signal h-9 px-3.5">
+                  {regen.isPending ? "Building" : "Build paths again"}
+                </button>
+              }
+            >
+              Your {data.videoCount} videos were read, but nothing usable came back. Building again usually fixes it.
+            </EmptyState>
           )}
 
           {connected && data && data.paths.length > 0 && (
             <div className="space-y-6">
               <div className="flex items-center justify-between pb-3 border-b border-rule">
-                <span className="tc">
-                  From {data.videoCount} videos{data.cached && " · cached"}
+                <span className="text-[13.5px] text-paper-2">
+                  Built from {data.videoCount} videos
                 </span>
                 <button
                   onClick={() => regen.mutate()}
                   disabled={regen.isPending}
-                  className="flex items-center gap-1.5 tc hover:text-paper transition-colors disabled:opacity-50 no-min"
+                  className="flex items-center gap-1.5 text-[13px] text-dim hover:text-paper transition-colors disabled:opacity-50 no-min"
                 >
-                  <RefreshCw size={10} className={clsx(regen.isPending && "animate-spin")} />
-                  {regen.isPending ? "Rebuilding…" : "Rebuild"}
+                  <RefreshCw size={12} className={clsx(regen.isPending && "animate-spin")} />
+                  {regen.isPending ? "Building" : "Build again"}
                 </button>
               </div>
 
@@ -126,8 +114,8 @@ export default function LearnPage() {
             </div>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }
 
@@ -137,7 +125,7 @@ function Path({ p }: { p: LearningPath }) {
       <header className="px-4 py-4 border-b border-rule">
         <div className="flex items-baseline justify-between gap-4">
           <div className="min-w-0">
-            <p className={clsx("eyebrow mb-1.5", LEVEL[p.level] ?? "text-marker")}>
+            <p className={clsx("eyebrow mb-1.5", LEVEL[p.level] ?? "text-dim")}>
               {p.level}
             </p>
             <h2 className="font-display text-[22px] text-paper leading-tight">

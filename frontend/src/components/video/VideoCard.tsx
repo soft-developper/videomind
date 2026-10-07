@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Trash2, X, Play } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -8,66 +8,68 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { api } from "@/lib/api";
 import type { VideoRecord } from "@/lib/api";
 
-const STATUS: Record<string, { label: string; dot: string }> = {
-  uploading:    { label: "Uploading",    dot: "dot-work" },
-  processing:   { label: "Processing",   dot: "dot-work" },
-  transcribing: { label: "Transcribing", dot: "dot-work" },
-  analyzing:    { label: "Analyzing",    dot: "dot-work" },
-  ready:        { label: "Ready",        dot: "dot-live" },
-  error:        { label: "Failed",       dot: "dot-dead" },
+// vm_shell: the card shows what is known about the video instead of a
+// thumbnail it does not have yet: its first chapters as a small table of
+// contents, and under it a ruler cut at the chapter boundaries. Once
+// thumbnails exist they take the place of the table of contents.
+
+/** The grid every list of video cards uses. */
+export const VIDEO_GRID = "grid gap-x-5 gap-y-9 grid-cols-[repeat(auto-fill,minmax(248px,1fr))]";
+
+const WORKING: Record<string, string> = {
+  uploading:    "Uploading",
+  processing:   "Processing",
+  transcribing: "Transcribing",
+  analyzing:    "Finding chapters",
 };
 
-function tc(sec?: number) {
-  if (!sec || !isFinite(sec)) return null;
+export function clock(sec?: number | null): string | null {
+  if (sec == null || !isFinite(sec) || sec < 0) return null;
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = Math.floor(sec % 60);
   if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  return `${m}:${String(s).padStart(2, "0")}`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-function when(ms: number) {
+function length(sec?: number): string | null {
+  if (!sec || !isFinite(sec)) return null;
+  const min = Math.round(sec / 60);
+  if (min < 1) return "Under a minute";
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60), m = min % 60;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+
+export function when(ms: number): string {
   const d = Date.now() - ms;
   const min = Math.floor(d / 60000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min}m ago`;
+  if (min < 1) return "Just now";
+  if (min < 60) return `${min} min ago`;
   const h = Math.floor(min / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return `${h} hour${h === 1 ? "" : "s"} ago`;
   const days = Math.floor(h / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(ms));
 }
 
-/** Mini density preview — the card carries a fingerprint of the video's shape. */
-function MiniStrip({ transcript, duration }: { transcript?: any[]; duration?: number }) {
-  const bars = useMemo(() => {
-    if (!transcript?.length || !duration) return [];
-    const N = 48;
-    const lane = new Array(N).fill(0);
-    const bd = duration / N;
-    for (const seg of transcript) {
-      const dur = Math.max(seg.end - seg.start, 0.1);
-      const cps = seg.text.length / dur;
-      const a = Math.max(0, Math.floor(seg.start / bd));
-      const b = Math.min(N, Math.ceil(seg.end / bd));
-      for (let i = a; i < b; i++) lane[i] = Math.max(lane[i], cps);
-    }
-    const max = Math.max(...lane, 1);
-    return lane.map((v) => v / max);
-  }, [transcript, duration]);
+/** One segment per chapter, as wide as the chapter is long. */
+function ChapterRuler({ starts, duration }: { starts: number[]; duration?: number }) {
+  const parts = useMemo(() => {
+    if (!duration || !isFinite(duration) || starts.length === 0) return [];
+    const s = [...starts].filter((x) => x >= 0 && x < duration).sort((a, b) => a - b);
+    if (s[0] !== 0) s.unshift(0);
+    return s.map((start, i) => Math.max(((s[i + 1] ?? duration) - start) / duration, 0.01));
+  }, [starts, duration]);
 
-  if (!bars.length) return null;
-
+  if (!parts.length) return <div className="h-[3px] mt-2 rounded-full bg-rule" />;
   return (
-    <div className="flex items-end gap-px h-5 px-3 pb-2">
-      {bars.map((v, i) => (
-        <div
+    <div className="flex gap-[3px] h-[3px] mt-2" aria-hidden>
+      {parts.map((w, i) => (
+        <span
           key={i}
-          className="flex-1 min-w-0"
-          style={{
-            height: v === 0 ? "1px" : `${Math.max(v * 100, 15)}%`,
-            background: v === 0 ? "var(--dim-2)" : `rgba(232,230,225,${0.1 + v * 0.35})`,
-          }}
+          style={{ flexGrow: w, flexBasis: 0 }}
+          className="rounded-full bg-rule-lit group-hover:bg-dim transition-colors"
         />
       ))}
     </div>
@@ -75,10 +77,11 @@ function MiniStrip({ transcript, duration }: { transcript?: any[]; duration?: nu
 }
 
 export function VideoCard({ video }: { video: VideoRecord }) {
-  const st = STATUS[video.status] ?? STATUS.ready;
-  const isError = video.status === "error";
-  const isWorking = !["ready", "error"].includes(video.status);
-  const dur = tc(video.meta.durationSeconds);
+  const failed = video.status === "error";
+  const working = !failed && video.status !== "ready";
+  const chapters = video.ai?.chapters ?? [];
+  const duration = video.meta.durationSeconds;
+  const runtime = clock(duration);
 
   const { account } = useWallet();
   const qc = useQueryClient();
@@ -103,118 +106,112 @@ export function VideoCard({ video }: { video: VideoRecord }) {
 
   if (gone) return null;
 
+  const meta = failed
+    ? []
+    : [
+        chapters.length ? `${chapters.length} chapter${chapters.length === 1 ? "" : "s"}` : null,
+        length(duration),
+      ].filter(Boolean) as string[];
+
   return (
     <div className="relative group">
-      <Link href={`/video/${video.id}`} className="block">
-        <article className={clsx(
-          "panel-hover",
-          isError && "border-error/25",
-          confirm && "border-error"
-        )}>
-          {/* Frame */}
-          <div className="relative aspect-video bg-void overflow-hidden border-b border-rule">
-            {isWorking && <div className="absolute inset-0 scan" />}
+      <Link href={`/video/${video.id}`} className="block rounded-md focus-visible:outline-offset-4">
+        <article>
+          <div className={clsx(
+            "relative aspect-video overflow-hidden rounded-md bg-screen border transition-colors",
+            failed ? "border-error/40" : "border-rule group-hover:border-rule-lit"
+          )}>
+            {working && <div className="absolute inset-0 scan rounded-none opacity-60" />}
 
-            {/* Slate — like a film clapper board */}
-            <div className="absolute inset-0 flex flex-col justify-between p-3">
-              <div className="flex items-start justify-between">
-                <span className="eyebrow">{video.id.slice(0, 8)}</span>
-                <span className="flex items-center gap-1.5">
-                  <span className={clsx("dot", st.dot)} />
-                  <span className="tc">{st.label}</span>
-                </span>
-              </div>
+            {/* Table of contents */}
+            {!working && !failed && (
+              <ol className="absolute inset-0 p-3.5 pr-10 flex flex-col gap-[5px] text-[12.5px] leading-snug">
+                {chapters.slice(0, 4).map((c, i) => (
+                  <li key={i} className="flex gap-2.5 min-w-0">
+                    <span className="tc w-[38px] shrink-0 text-dim-2 group-hover:text-dim transition-colors">{clock(c.startSeconds)}</span>
+                    <span className="truncate text-dim group-hover:text-paper-2 transition-colors">{c.title}</span>
+                  </li>
+                ))}
+                {chapters.length > 4 && (
+                  <li className="pl-[48px] text-dim-2">{chapters.length - 4} more</li>
+                )}
+                {chapters.length === 0 && <li className="text-dim-2">No chapters yet</li>}
+              </ol>
+            )}
 
-              {video.status === "ready" && (
-                <div className="flex items-end justify-between">
-                  <span className="tc">Shelby</span>
-                  {dur && <span className="tc tabular-nums text-paper-2">{dur}</span>}
-                </div>
-              )}
-            </div>
-
-            {/* Play on hover */}
-            {video.status === "ready" && (
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <span className="w-9 h-9 bg-signal flex items-center justify-center">
-                  <Play size={13} className="text-void ml-0.5" fill="currentColor" />
-                </span>
+            {working && (
+              <div className="absolute inset-0 p-3.5 flex items-start gap-2">
+                <span className="dot dot-work mt-[7px]" />
+                <span className="text-[13px] text-paper-2">{WORKING[video.status] ?? "Processing"}</span>
               </div>
             )}
 
-            {/* Delete */}
-            {!confirm && (
-              <button
-                onClick={del}
-                className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center text-dim-2 hover:text-error opacity-0 group-hover:opacity-100 transition-all no-min"
-                aria-label="Delete"
-              >
-                <Trash2 size={11} />
-              </button>
+            {failed && (
+              <div className="absolute inset-0 p-3.5">
+                <p className="text-[13px] text-error">Processing stopped</p>
+                <p className="text-[12.5px] text-dim mt-0.5">Open it to see which step, and retry.</p>
+              </div>
+            )}
+
+            {runtime && !working && !failed && (
+              <span className="absolute bottom-2 right-2 tc text-[12px] text-paper px-1.5 py-px rounded-xs bg-screen/85 border border-rule">
+                {runtime}
+              </span>
             )}
           </div>
 
-          {/* Density fingerprint */}
-          {video.status === "ready" && (
-            <MiniStrip
-              transcript={video.ai?.transcript}
-              duration={video.meta.durationSeconds}
-            />
-          )}
+          <ChapterRuler starts={chapters.map((c) => c.startSeconds)} duration={working || failed ? undefined : duration} />
 
-          {/* Meta */}
-          <div className="px-3 pb-3 pt-1 space-y-2">
+          <div className="pt-2.5">
             <h3 className={clsx(
-              "font-display text-[17px] leading-[1.2] line-clamp-2 transition-colors",
-              isError ? "text-dim" : "text-paper group-hover:text-signal"
+              "text-[14px] font-medium leading-snug line-clamp-2 transition-colors",
+              failed ? "text-paper-2" : "text-paper"
             )}>
               {video.title}
             </h3>
-
-            {!isError && video.ai?.tags && video.ai.tags.length > 0 && (
-              <div className="flex flex-wrap gap-x-2 gap-y-1">
-                {video.ai.tags.slice(0, 3).map((t) => (
-                  <span key={t} className="tc lowercase">{t}</span>
-                ))}
-              </div>
-            )}
-
-            {isError && (
-              <p className="text-[12px] font-sans text-error/60">
-                Processing failed — open to retry
-              </p>
-            )}
-
-            <p className="tc">{when(video.createdAt)}</p>
+            <p className="tc mt-1 flex flex-wrap gap-x-3">
+              {meta.map((m) => <span key={m}>{m}</span>)}
+              <span>{when(video.createdAt)}</span>
+            </p>
           </div>
         </article>
       </Link>
 
-      {/* Confirm */}
+      {/* Delete. Always visible on touch screens, where nothing can hover. */}
+      {!confirm && (
+        <button
+          onClick={del}
+          aria-label={`Delete ${video.title}`}
+          className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-sm bg-screen/85 border border-rule text-dim hover:text-error hover:border-error/50 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(pointer:coarse)]:opacity-100 transition no-min"
+        >
+          <Trash2 size={13} />
+        </button>
+      )}
+
       {confirm && (
         <div
-          className="absolute inset-0 bg-void/95 flex flex-col items-center justify-center gap-4 p-4 z-10 border border-error"
+          className="absolute inset-x-0 top-0 aspect-video rounded-md bg-slate border border-error/60 flex flex-col justify-between p-3.5 z-10"
           onClick={(e) => e.preventDefault()}
         >
-          <p className="font-display text-[16px] text-paper text-center leading-tight">
-            Delete this video?
-          </p>
-          <p className="text-[12px] font-sans text-dim text-center leading-relaxed">
-            Removed from your library. The blob expires on Shelby naturally.
-          </p>
-          <div className="flex gap-2 w-full">
+          <div>
+            <p className="text-[13.5px] font-medium text-paper">Delete this video?</p>
+            <p className="text-[12.5px] text-dim mt-0.5 leading-snug">
+              It leaves your library. The copy on Shelby stays until its paid period ends.
+            </p>
+          </div>
+          <div className="flex gap-2">
             <button
               onClick={del}
               disabled={deleting}
-              className="flex-1 h-8 text-[12px] font-sans bg-error/15 border border-error/40 text-error hover:bg-error/25 transition-colors disabled:opacity-50"
+              className="h-8 px-3 rounded text-[13px] font-medium bg-error/15 border border-error/50 text-error hover:bg-error/25 transition-colors disabled:opacity-50 no-min"
             >
-              {deleting ? "Deleting…" : "Delete"}
+              {deleting ? "Deleting" : "Delete"}
             </button>
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirm(false); }}
-              className="flex-1 h-8 text-[12px] font-sans btn-ghost flex items-center justify-center gap-1"
+              className="h-8 px-3 btn-ghost text-[13px] no-min"
             >
-              <X size={11} /> Cancel
+              Cancel
             </button>
           </div>
         </div>
