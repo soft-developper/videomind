@@ -140,22 +140,11 @@ export default function VideoPage({ params }: { params: { id: string } }) {
 
         <div className="section pt-6">
 
-          {working && (
+          {/* vm_jobs: one panel for both states. When a step fails it shows
+              which step, why, and a retry for the owner. */}
+          {(working || failed) && (
             <div className="max-w-md mx-auto py-10">
               <ProcessingStatus videoId={params.id} onReady={() => refetch()} />
-            </div>
-          )}
-
-          {failed && (
-            <div className="max-w-md mx-auto py-16 text-center space-y-4">
-              <p className="font-display text-[22px] text-paper">Processing failed</p>
-              <p className="text-[13px] font-sans text-dim leading-relaxed">
-                The AI pipeline couldn't read this file. This usually means an
-                unsupported audio track.
-              </p>
-              <Link href="/upload" className="inline-flex items-center h-9 px-4 btn btn-signal">
-                Upload again
-              </Link>
             </div>
           )}
 

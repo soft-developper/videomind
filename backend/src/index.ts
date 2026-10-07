@@ -7,6 +7,9 @@ import chatRouter from "./routes/chat.js";
 import statsRouter from "./routes/stats.js";
 import learnRouter from "./routes/learn.js";
 import authRouter from "./routes/auth.js";
+// vm_jobs: durable processing jobs
+import { startRunner, type Runner } from "./lib/runner.js";
+import { registerPipeline } from "./services/pipeline.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -42,6 +45,23 @@ app.get("/api/health", (_req, res) => {
 
 async function main() {
   await migrate();
+
+  // vm_jobs: the job runner lives in this service until uploads move to
+  // shared storage. JOBS_RUNNER=off turns it off here (see src/worker.ts).
+  let runner: Runner | null = null;
+  if (process.env.JOBS_RUNNER !== "off") {
+    registerPipeline();
+    runner = startRunner();
+  }
+  // On a deploy the platform sends SIGTERM. Hand running jobs back so the
+  // next instance resumes them at once.
+  const shutdown = async () => {
+    if (runner) await runner.stop().catch(() => {});
+    process.exit(0);
+  };
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+
   app.listen(PORT, () => {
     console.log(`
 ╔══════════════════════════════════════════╗

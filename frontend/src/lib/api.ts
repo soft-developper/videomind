@@ -83,6 +83,33 @@ export async function getVideoStatus(id: string) {
   return res.data as { id: string; status: string };
 }
 
+// vm_jobs: the processing stages of one video and where each stands.
+export interface VideoJob {
+  kind: string;
+  /** e.g. "Transcription" */
+  label: string;
+  status: "queued" | "running" | "succeeded" | "failed";
+  attempts: number;
+  maxAttempts: number;
+  /** unix ms of the next automatic attempt, when one is scheduled */
+  nextAttemptAt: number | null;
+  /** why it failed. Only sent to the video's owner. */
+  error: string | null;
+  /** true only for the owner, and only when a retry can help */
+  canRetry: boolean;
+}
+
+export async function getVideoJobs(id: string) {
+  const res = await api.get(`/api/videos/${id}/jobs`);
+  return res.data as { id: string; status: string; jobs: VideoJob[] };
+}
+
+/** Run one failed stage again. Finished stages are not repeated. */
+export async function retryVideoJob(id: string, kind: string) {
+  const res = await api.post(`/api/videos/${id}/jobs/${kind}/retry`);
+  return res.data as { id: string; status: string };
+}
+
 /** Persist the video duration once it's known from the player. */
 export async function setVideoDuration(id: string, seconds: number) {
   const res = await api.patch(`/api/videos/${id}/duration`, { durationSeconds: seconds });

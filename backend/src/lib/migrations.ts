@@ -42,6 +42,36 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX videos_owner_idx ON videos(owner_wallet)`,
     ],
   },
+  {
+    // vm_jobs: the durable job queue (see src/lib/jobs.ts)
+    id: "002_jobs",
+    statements: [
+      `CREATE TABLE jobs (
+        id               TEXT PRIMARY KEY,
+        video_id         TEXT NOT NULL,
+        kind             TEXT NOT NULL,
+        status           TEXT NOT NULL DEFAULT 'queued',
+        attempts         INTEGER NOT NULL DEFAULT 0,
+        max_attempts     INTEGER NOT NULL DEFAULT 3,
+        run_after        INTEGER NOT NULL,
+        locked_by        TEXT,
+        locked_until     INTEGER,
+        idempotency_key  TEXT NOT NULL UNIQUE,
+        payload          TEXT,
+        error            TEXT,
+        error_code       TEXT,
+        created_at       INTEGER NOT NULL,
+        updated_at       INTEGER NOT NULL,
+        started_at       INTEGER,
+        finished_at      INTEGER
+      )`,
+      `CREATE INDEX jobs_due_idx ON jobs(status, run_after)`,
+      `CREATE INDEX jobs_video_idx ON jobs(video_id)`,
+      // Where the uploaded file sits until processing is done. This used
+      // to be an in memory map, lost on every restart.
+      `ALTER TABLE videos ADD COLUMN source_path TEXT`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

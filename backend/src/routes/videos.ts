@@ -5,13 +5,16 @@ import path from "path";
 import fs from "fs/promises";
 import { v4 as uuidv4 } from "uuid";
 import { store } from "../lib/store.js";
-import { processVideoAI } from "../services/videoProcessor.js";
+// vm_jobs: processing runs as durable jobs, not inside the request
+import { enqueueJob, listJobs, retryJob, deleteJobsForVideo } from "../lib/jobs.js";
+import { nudgeRunner } from "../lib/runner.js";
+import { NOT_RETRYABLE, statusForStage } from "../services/pipeline.js";
 import { shelbyBlobUrl } from "../lib/shelbyClient.js";
 import type { VideoRecord } from "../types/video.js";
 // vm_apiguard: wallet checks and rate limits, see src/lib/guard.ts
 import { limitUpload, limitPipeline, limitDelete } from "../lib/guard.js";
 // vm_signin: the caller is the signed in wallet, never a value they send
-import { requireAuth, authOf, sameWallet } from "../lib/auth.js";
+import { requireAuth, optionalAuth, authOf, sameWallet } from "../lib/auth.js";
 
 const router = Router();
 
@@ -28,7 +31,14 @@ const upload = multer({
   },
 });
 
-export const pendingFiles = new Map<string, { filePath: string; ext: string }>();
+/** Remove a video's uploaded file and its jobs. Call before deleting the video. */
+async function dropVideoWork(id: string): Promise<void> {
+  const src = await store.getSourcePath(id);
+  if (src) await fs.unlink(src).catch(() => {});
+  await deleteJobsForVideo(id);
+}
+
+const STAGE_LABEL: Record<string, string> = { transcribe: "Transcription", analyze: "Analysis" };
 
 /** True if this wallet reserved the video or its Shelby blob belongs to it. */
 function ownsVideo(video: VideoRecord, wallet: string): boolean {
@@ -121,7 +131,10 @@ router.post("/prepare", limitUpload, requireAuth, upload.single("video"), async 
       };
       await store.set(id, record);
     }
-    pendingFiles.set(id, { filePath: namedFilePath, ext });
+    // Replace any earlier file sent for the same reservation.
+    const earlier = await store.getSourcePath(id);
+    if (earlier && earlier !== namedFilePath) await fs.unlink(earlier).catch(() => {});
+    await store.setSourcePath(id, namedFilePath);
 
     // No base64Data here anymore. The browser already has the raw File
     // object it just uploaded from -- it reads bytes for the Shelby
@@ -153,17 +166,19 @@ router.post("/confirm", limitPipeline, requireAuth, async (req, res) => {
     if (!video) return res.status(404).json({ error: "Video not found" });
     if (!ownsVideo(video, wallet)) return res.status(403).json(NOT_OWNER);
 
-    const pending = pendingFiles.get(id);
-    if (!pending) {
+    const filePath = await store.getSourcePath(id);
+    if (!filePath) {
       return res.status(400).json({ error: "No pending file found. Did you call /prepare first?" });
     }
 
     await store.update(id, {
-      status: "transcribing",
       shelby: { videoBlobName, accountAddress: wallet, videoTxHash: txHash },
     });
 
-    processVideoAI(id, pending.filePath, wallet).catch(console.error);
+    // One transcribe job per video. Confirming twice adds nothing.
+    const { created } = await enqueueJob({ videoId: id, kind: "transcribe", payload: { filePath } });
+    if (created) await store.update(id, { status: "transcribing" });
+    nudgeRunner();
 
     return res.status(202).json({ id, status: "transcribing" });
   } catch (err: any) {
@@ -210,6 +225,57 @@ router.get("/:id/status", async (req, res) => {
   }
 });
 
+// ── GET /api/videos/:id/jobs ──────────────────────────────────────────────────
+// vm_jobs: the processing stages of one video and where each stands.
+// Anyone with the link sees the stages. Only the owner sees the failure
+// text and is offered a retry.
+router.get("/:id/jobs", optionalAuth, async (req, res) => {
+  try {
+    const video = await store.get(req.params.id);
+    if (!video) return res.status(404).json({ error: "Video not found" });
+    const wallet = authOf(req)?.wallet;
+    const owner = !!wallet && ownsVideo(video, wallet);
+    const jobs = (await listJobs(req.params.id)).map((j) => ({
+      kind: j.kind,
+      label: STAGE_LABEL[j.kind] ?? j.kind,
+      status: j.status,
+      attempts: j.attempts,
+      maxAttempts: j.maxAttempts,
+      nextAttemptAt: j.status === "queued" && j.attempts > 0 ? j.runAfter : null,
+      error: owner ? j.error : null,
+      canRetry: owner && j.status === "failed" && !NOT_RETRYABLE.has(j.errorCode ?? ""),
+    }));
+    return res.json({ id: video.id, status: video.status, jobs });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/videos/:id/jobs/:kind/retry ──────────────────────────────────────
+// vm_jobs: run one failed stage again. Stages that already finished are
+// not repeated.
+router.post("/:id/jobs/:kind/retry", limitPipeline, requireAuth, async (req, res) => {
+  try {
+    const video = await store.get(req.params.id);
+    if (!video) return res.status(404).json({ error: "Video not found" });
+    if (!ownsVideo(video, authOf(req)!.wallet)) return res.status(403).json(NOT_OWNER);
+
+    const failed = (await listJobs(video.id)).find((j) => j.kind === req.params.kind && j.status === "failed");
+    if (!failed) return res.status(409).json({ error: "That step is not in a failed state." });
+    if (NOT_RETRYABLE.has(failed.errorCode ?? "")) {
+      return res.status(409).json({ error: failed.error ?? "That step cannot be retried." });
+    }
+
+    const job = await retryJob(video.id, req.params.kind);
+    if (!job) return res.status(409).json({ error: "That step is not in a failed state." });
+    await store.update(video.id, { status: statusForStage(job.kind) });
+    nudgeRunner();
+    return res.status(202).json({ id: video.id, status: statusForStage(job.kind) });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ── PATCH /api/videos/:id/duration ───────────────────────────────────────────
 // Called once by the frontend player when video metadata loads.
 router.patch("/:id/duration", requireAuth, async (req, res) => {
@@ -239,6 +305,7 @@ router.patch("/:id/duration", requireAuth, async (req, res) => {
 router.delete("/all", limitDelete, requireAuth, async (req, res) => {
   try {
     const wallet = authOf(req)!.wallet;
+    for (const v of await store.getAll(wallet)) await dropVideoWork(v.id);
     const count = await store.deleteAll(wallet);
     return res.json({
       success: true,
@@ -256,12 +323,8 @@ router.delete("/:id", limitDelete, requireAuth, async (req, res) => {
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
     if (!ownsVideo(video, authOf(req)!.wallet)) return res.status(403).json(NOT_OWNER);
+    await dropVideoWork(req.params.id);
     await store.delete(req.params.id);
-    const pending = pendingFiles.get(req.params.id);
-    if (pending) {
-      await fs.unlink(pending.filePath).catch(() => {});
-      pendingFiles.delete(req.params.id);
-    }
     return res.json({ success: true });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });

@@ -91,6 +91,17 @@ export const store = {
     ], "write");
   },
 
+  /** vm_jobs: where the uploaded file sits until processing is done. */
+  async setSourcePath(id: string, filePath: string | null): Promise<void> {
+    await getDb().execute({ sql: "UPDATE videos SET source_path = ? WHERE id = ?", args: [filePath, id] });
+  },
+
+  async getSourcePath(id: string): Promise<string | null> {
+    const r = await getDb().execute({ sql: "SELECT source_path FROM videos WHERE id = ?", args: [id] });
+    const v = (r.rows[0] as Record<string, unknown> | undefined)?.source_path;
+    return v ? String(v) : null;
+  },
+
   /** Fetch a single video by ID. Returns undefined if not found. */
   async get(id: string): Promise<VideoRecord | undefined> {
     const db = getDb();

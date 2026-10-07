@@ -1,8 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
-import { getVideoStatus } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+// vm_jobs: stage by stage status, the reason a stage failed, and retry
+import { getVideoJobs, retryVideoJob, type VideoJob } from "@/lib/api";
 import { clsx } from "clsx";
 import Link from "next/link";
+import { useSessionWallet } from "@/components/layout/AuthProvider";
 
 const STEPS = [
   { k: "uploading",    n: "Store", d: "Blob landing on Shelby" },
@@ -17,34 +19,81 @@ export function ProcessingStatus({
   videoId, onReady,
 }: { videoId: string; onReady: () => void }) {
   const [status, setStatus] = useState("uploading");
+  // Signing in changes what the server shows (the reason, the retry), so reload then.
+  const sessionWallet = useSessionWallet();
+  const [jobs, setJobs] = useState<VideoJob[]>([]);
+  const [retrying, setRetrying] = useState(false);
+  const [retryErr, setRetryErr] = useState<string | null>(null);
+  // Kept in a ref so a new function from the parent does not restart polling.
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   useEffect(() => {
-    if (status === "ready" || status === "error") return;
-    const t = setInterval(async () => {
+    let alive = true;
+    const load = async () => {
       try {
-        const d = await getVideoStatus(videoId);
+        const d = await getVideoJobs(videoId);
+        if (!alive) return;
+        setJobs(d.jobs);
         setStatus(d.status);
-        if (d.status === "ready") { clearInterval(t); onReady(); }
-        if (d.status === "error") clearInterval(t);
+        if (d.status === "ready") onReadyRef.current();
       } catch {}
-    }, 3000);
-    return () => clearInterval(t);
-  }, [videoId, status, onReady]);
+    };
+    // One read straight away, so a failure shows its reason without a wait.
+    void load();
+    if (status === "ready" || status === "error") return () => { alive = false; };
+    const t = setInterval(load, 3000);
+    return () => { alive = false; clearInterval(t); };
+  }, [videoId, status, sessionWallet]);
 
   const idx = ORDER.indexOf(status);
+  const failed = jobs.find((j) => j.status === "failed");
+  // A stage that failed but will be tried again by itself.
+  const waiting = jobs.find((j) => j.status === "queued" && j.attempts > 0);
+
+  const retry = async () => {
+    if (!failed || retrying) return;
+    setRetrying(true); setRetryErr(null);
+    try {
+      const d = await retryVideoJob(videoId, failed.kind);
+      setJobs([]);
+      setStatus(d.status);
+    } catch (e: any) {
+      setRetryErr(e.message ?? "Could not retry.");
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   if (status === "error") {
     return (
       <div className="panel p-6 text-center space-y-4">
-        <p className="font-display text-[22px] text-paper">Processing failed</p>
-        <p className="text-[13px] font-sans text-dim leading-relaxed">
-          The pipeline couldn't read this file. Usually an unsupported audio track.
+        <p className="font-display text-[22px] text-paper">
+          {failed ? `${failed.label} failed` : "Processing failed"}
         </p>
+        <p className="text-[13px] font-sans text-dim leading-relaxed">
+          {failed?.error
+            ?? (failed
+              ? "This step could not finish. The video's owner can see why and run it again."
+              : "This video could not be processed.")}
+        </p>
+        {failed?.canRetry && (
+          <p className="tc">
+            Steps that already finished are kept. Only this step runs again.
+          </p>
+        )}
+        {retryErr && <p className="text-[12px] font-sans text-error">{retryErr}</p>}
         <div className="flex gap-2 justify-center pt-1">
-          <Link href="/upload" className="btn btn-signal h-9 px-4 flex items-center">
-            Upload again
-          </Link>
-          <Link href="/" className="btn btn-ghost h-9 px-4 flex items-center">
+          {failed?.canRetry ? (
+            <button onClick={retry} disabled={retrying} className="btn btn-signal h-9 px-4 flex items-center disabled:opacity-50">
+              {retrying ? "Starting" : `Retry ${failed.label.toLowerCase()}`}
+            </button>
+          ) : (
+            <Link href="/upload" className="btn btn-signal h-9 px-4 flex items-center">
+              Upload again
+            </Link>
+          )}
+          <Link href="/library" className="btn btn-ghost h-9 px-4 flex items-center">
             Library
           </Link>
         </div>
@@ -95,7 +144,11 @@ export function ProcessingStatus({
       </div>
 
       <footer className="px-4 py-2.5 border-t border-rule">
-        <p className="tc">Updates automatically · long videos take a few minutes</p>
+        <p className="tc">
+          {waiting
+            ? `${waiting.label} hit a problem. Trying again, attempt ${waiting.attempts + 1} of ${waiting.maxAttempts}`
+            : "Updates automatically · long videos take a few minutes"}
+        </p>
       </footer>
     </div>
   );
