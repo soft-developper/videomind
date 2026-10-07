@@ -8,6 +8,8 @@ import { store } from "../lib/store.js";
 import { processVideoAI } from "../services/videoProcessor.js";
 import { shelbyBlobUrl } from "../lib/shelbyClient.js";
 import type { VideoRecord } from "../types/video.js";
+// vm_apiguard: wallet checks and rate limits, see src/lib/guard.ts
+import { isWalletAddress, limitUpload, limitPipeline, limitDelete } from "../lib/guard.js";
 
 const router = Router();
 
@@ -29,7 +31,7 @@ export const pendingFiles = new Map<string, { filePath: string; ext: string }>()
 // ── POST /api/videos/reserve ────────────────────────────────────────────────
 // Instant, no file. Reserves an id + blob name so the browser can start the
 // Shelby wallet upload in parallel with the (separate) file upload to /prepare.
-router.post("/reserve", async (req, res) => {
+router.post("/reserve", limitUpload, async (req, res) => {
   try {
     const id = uuidv4();
     const originalName = (req.body.filename as string) || "video.mp4";
@@ -59,7 +61,8 @@ router.post("/reserve", async (req, res) => {
 });
 
 // ── POST /api/videos/prepare ────────────────────────────────────────────────
-router.post("/prepare", upload.single("video"), async (req, res) => {
+// The limiter runs BEFORE multer, so a rejected request never writes the file.
+router.post("/prepare", limitUpload, upload.single("video"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No video file provided" });
 
@@ -114,7 +117,7 @@ router.post("/prepare", upload.single("video"), async (req, res) => {
 });
 
 // ── POST /api/videos/confirm ────────────────────────────────────────────────
-router.post("/confirm", async (req, res) => {
+router.post("/confirm", limitPipeline, async (req, res) => {
   try {
     const { id, accountAddress, txHash, videoBlobName } = req.body as {
       id: string; accountAddress: string; txHash: string; videoBlobName: string;
@@ -122,6 +125,9 @@ router.post("/confirm", async (req, res) => {
 
     if (!id || !accountAddress || !txHash) {
       return res.status(400).json({ error: "id, accountAddress, and txHash are required" });
+    }
+    if (!isWalletAddress(accountAddress)) {
+      return res.status(400).json({ error: "accountAddress is not a valid wallet address" });
     }
 
     const video = await store.get(id);
@@ -147,10 +153,14 @@ router.post("/confirm", async (req, res) => {
 
 // ── GET /api/videos?wallet=0x... ─────────────────────────────────────────────
 // Returns only videos uploaded by the given wallet address.
-// If no wallet param, returns all (admin use only).
+// A wallet is REQUIRED. This route used to return every video on the
+// platform when no wallet was sent.
 router.get("/", async (req, res) => {
   try {
-    const wallet = req.query.wallet as string | undefined;
+    const wallet = req.query.wallet;
+    if (!isWalletAddress(wallet)) {
+      return res.status(400).json({ error: "A valid wallet address is required" });
+    }
     const videos = await store.getAll(wallet);
     return res.json({ videos });
   } catch (err: any) {
@@ -208,16 +218,19 @@ router.patch("/:id/duration", async (req, res) => {
 });
 
 // ── DELETE /api/videos/all?wallet=0x... ─────────────────────────────────────
-// Deletes all videos for a wallet (or all videos if no wallet param).
-// Used for cleanup of test uploads.
-router.delete("/all", async (req, res) => {
+// Deletes all videos for ONE wallet. A wallet is REQUIRED. This route
+// used to delete every video on the platform when no wallet was sent.
+router.delete("/all", limitDelete, async (req, res) => {
   try {
-    const wallet = req.query.wallet as string | undefined;
+    const wallet = req.query.wallet;
+    if (!isWalletAddress(wallet)) {
+      return res.status(400).json({ error: "A valid wallet address is required" });
+    }
     const count = await store.deleteAll(wallet);
     return res.json({
       success: true,
       deleted: count,
-      message: `Deleted ${count} video(s)${wallet ? ` for wallet ${wallet.slice(0, 8)}...` : ""}`,
+      message: `Deleted ${count} video(s) for wallet ${wallet.slice(0, 8)}...`,
     });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
@@ -225,7 +238,7 @@ router.delete("/all", async (req, res) => {
 });
 
 // ── DELETE /api/videos/:id ───────────────────────────────────────────────────
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", limitDelete, async (req, res) => {
   try {
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });

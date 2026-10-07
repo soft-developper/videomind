@@ -3,6 +3,8 @@ import { Router } from "express";
 import { store } from "../lib/store.js";
 import { getDb } from "../lib/db.js";
 import { generateLearningPaths, askLibrary } from "../services/learningService.js";
+// vm_apiguard: wallet checks and rate limits, see src/lib/guard.ts
+import { isWalletAddress, limitAi, takeBudget, AI_LIMIT } from "../lib/guard.js";
 
 const router = Router();
 
@@ -12,8 +14,8 @@ const MIN_VIDEOS_FOR_PATHS = 3;
 // Returns cached paths if the video count hasn't changed since generation.
 router.get("/paths", async (req, res) => {
   try {
-    const wallet = req.query.wallet as string | undefined;
-    if (!wallet) return res.status(400).json({ error: "wallet is required" });
+    const wallet = req.query.wallet;
+    if (!isWalletAddress(wallet)) return res.status(400).json({ error: "wallet is required" });
 
     const videos = (await store.getReady(wallet)).filter((v) => v.ai?.summary);
 
@@ -34,7 +36,7 @@ router.get("/paths", async (req, res) => {
 
     const cached = cachedRes.rows[0] as Record<string, unknown> | undefined;
 
-    // Cache hit — same number of videos as when generated
+    // Cache hit, same number of videos as when generated
     if (cached && Number(cached.video_count) === videos.length) {
       return res.json({
         paths: JSON.parse(cached.paths_json as string),
@@ -44,7 +46,9 @@ router.get("/paths", async (req, res) => {
       });
     }
 
-    // Cache miss — generate fresh
+    // Cache miss, generate fresh. Only this branch calls Claude, so only
+    // this branch takes AI budget. Cached page loads are free.
+    if (!takeBudget(AI_LIMIT, req, res)) return;
     const paths = await generateLearningPaths(videos);
     const now = Date.now();
 
@@ -66,10 +70,10 @@ router.get("/paths", async (req, res) => {
 
 // ── POST /api/learn/paths/regenerate ─────────────────────────────────────────
 // Force a fresh generation, bypassing the cache.
-router.post("/paths/regenerate", async (req, res) => {
+router.post("/paths/regenerate", limitAi, async (req, res) => {
   try {
     const { wallet } = req.body as { wallet: string };
-    if (!wallet) return res.status(400).json({ error: "wallet is required" });
+    if (!isWalletAddress(wallet)) return res.status(400).json({ error: "wallet is required" });
 
     const videos = (await store.getReady(wallet)).filter((v) => v.ai?.summary);
     if (videos.length < MIN_VIDEOS_FOR_PATHS) {
@@ -100,11 +104,11 @@ router.post("/paths/regenerate", async (req, res) => {
 
 // ── POST /api/learn/ask ──────────────────────────────────────────────────────
 // Cross-video library assistant.
-router.post("/ask", async (req, res) => {
+router.post("/ask", limitAi, async (req, res) => {
   try {
     const { question, wallet } = req.body as { question: string; wallet: string };
     if (!question?.trim()) return res.status(400).json({ error: "question is required" });
-    if (!wallet) return res.status(400).json({ error: "wallet is required" });
+    if (!isWalletAddress(wallet)) return res.status(400).json({ error: "wallet is required" });
 
     const videos = (await store.getReady(wallet)).filter((v) => v.ai?.transcript?.length);
 

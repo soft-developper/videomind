@@ -1,13 +1,17 @@
 import { Router } from "express";
 import { store } from "../lib/store.js";
+// vm_apiguard: wallet check, see src/lib/guard.ts
+import { isWalletAddress } from "../lib/guard.js";
 
 const router = Router();
 
 // GET /api/shelby/stats?wallet=0x...
 router.get("/stats", async (req, res) => {
   try {
-    const wallet = req.query.wallet as string | undefined;
-    const videos = await store.getAll(wallet);
+    // Without a wallet (nobody connected) the counts are zero. This route
+    // used to count every wallet's videos when no wallet was sent.
+    const wallet = req.query.wallet;
+    const videos = isWalletAddress(wallet) ? await store.getAll(wallet) : [];
     const ready = videos.filter((v) => v.status === "ready");
 
     return res.json({
