@@ -35,36 +35,58 @@ api.interceptors.response.use(
 );
 
 // ── Upload flow ─────────────────────────────────────────────────────────────
-export async function reserveVideo(
-  filename: string, title: string, description: string, mimeType: string
-): Promise<{ id: string; videoBlobName: string; mimeType: string }> {
-  const res = await api.post("/api/videos/reserve", { filename, title, description, mimeType });
-  return res.data;
+// vm_upload: the file goes to storage in parts, straight from the browser.
+// See src/lib/uploader.ts for the part that does the sending.
+export interface UploadInfo {
+  videoId: string;
+  filename: string;
+  size: number;
+  partSize: number;
+  partCount: number;
+  status: "open" | "completed" | "aborted";
+  /** part numbers that have arrived whole */
+  done?: number[];
+  uploadedBytes: number;
+  title?: string;
+  /** the name reserved for this file on Shelby */
+  videoBlobName?: string;
+  createdAt?: number;
 }
 
-export async function prepareVideo(
-  file: File, title: string, description: string,
-  onProgress?: (pct: number) => void,
-  reservedId?: string
-): Promise<{ id: string; videoBlobName: string; mimeType: string }> {
-  const form = new FormData();
-  form.append("video", file);
-  form.append("title", title);
-  form.append("description", description);
-  if (reservedId) form.append("id", reservedId);
-  const res = await api.post("/api/videos/prepare", form, {
-    headers: { "Content-Type": "multipart/form-data" },
-    onUploadProgress: (e) => { if (e.total) onProgress?.(Math.round((e.loaded / e.total) * 100)); },
-  });
-  return res.data;
+/** An API error that keeps the server's code and any extra fields. */
+export class ApiError extends Error {
+  constructor(message: string, public status: number, public code?: string, public data?: any) { super(message); }
 }
+async function call<T>(fn: () => Promise<{ data: T }>): Promise<T> {
+  try { return (await fn()).data; }
+  catch (e: any) {
+    const r = e?.response;
+    throw new ApiError(r?.data?.error ?? e?.message ?? "Request failed.", r?.status ?? 0, r?.data?.code, r?.data);
+  }
+}
+// Upload calls bypass the shared error wrapper so the uploader can tell
+// "no network" (status 0) from an answer by the server.
+const raw = axios.create({ baseURL: BASE, timeout: 60_000 });
+raw.interceptors.request.use((config) => {
+  const s = getSession();
+  if (s) config.headers.set("Authorization", `Bearer ${s.token}`);
+  return config;
+});
 
-export async function confirmVideo(payload: {
-  id: string; accountAddress: string; txHash: string; videoBlobName: string;
-}): Promise<{ id: string; status: string }> {
-  const res = await api.post("/api/videos/confirm", payload);
-  return res.data;
-}
+export const createUpload = (b: { filename: string; size: number; contentType: string; title: string; description: string }) =>
+  call<UploadInfo>(() => raw.post("/api/uploads", b));
+export const getUpload = (id: string) => call<UploadInfo>(() => raw.get(`/api/uploads/${id}`));
+export const listOpenUploads = () => call<{ uploads: UploadInfo[] }>(() => raw.get("/api/uploads")).then((d) => d.uploads);
+export const getPartUrls = (id: string, parts: number[]) =>
+  call<{ urls: Record<string, string>; expiresIn: number }>(() => raw.post(`/api/uploads/${id}/parts`, { parts }));
+export const completeUpload = (id: string) => call<{ id: string; status: string }>(() => raw.post(`/api/uploads/${id}/complete`));
+export const discardUpload = (id: string) => call<{ success: boolean }>(() => raw.delete(`/api/uploads/${id}`));
+/** A part address that starts with "/" is on this API (local disk storage). */
+export const absoluteUrl = (u: string) => (u.startsWith("/") ? BASE + u : u);
+
+/** Record that the owner's wallet has stored the file on Shelby. */
+export const anchorVideo = (id: string, b: { accountAddress: string; txHash: string }) =>
+  call<{ id: string; onShelby: boolean }>(() => raw.post(`/api/videos/${id}/anchor`, b));
 
 // ── Video queries ───────────────────────────────────────────────────────────
 export async function getVideos(walletAddress?: string): Promise<VideoRecord[]> {
@@ -75,7 +97,9 @@ export async function getVideos(walletAddress?: string): Promise<VideoRecord[]> 
 
 export async function getVideo(id: string) {
   const res = await api.get(`/api/videos/${id}`);
-  return res.data as VideoRecord & { streamUrl: string | null };
+  const v = res.data as VideoRecord & { streamUrl: string | null };
+  if (v.streamUrl) v.streamUrl = absoluteUrl(v.streamUrl);
+  return v;
 }
 
 export async function getVideoStatus(id: string) {
@@ -95,6 +119,8 @@ export interface VideoJob {
   nextAttemptAt: number | null;
   /** why it failed. Only sent to the video's owner. */
   error: string | null;
+  /** the kind of failure, e.g. "too_large". Only sent to the video's owner. */
+  errorCode?: string | null;
   /** true only for the owner, and only when a retry can help */
   canRetry: boolean;
 }
@@ -206,4 +232,10 @@ export interface VideoRecord {
   };
   meta: { sizeBytes: number; mimeType: string; durationSeconds?: number };
   streamUrl?: string | null;
+  /** vm_upload: wallet that created the video */
+  ownerWallet?: string;
+  /** where streamUrl points: our own storage, or Shelby */
+  source?: "storage" | "shelby" | null;
+  /** true once the owner has stored the file on Shelby */
+  onShelby?: boolean;
 }

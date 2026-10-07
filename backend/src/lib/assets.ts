@@ -53,14 +53,13 @@ async function sha256File(filePath: string): Promise<string> {
 }
 
 /**
- * Keep the original when storage is durable, drop it after processing
- * when it is only local disk. STORAGE_KEEP_ORIGINAL=true or false overrides.
+ * vm_upload: the original is kept. It is the copy the video plays from
+ * and the one every later step is made from. STORAGE_KEEP_ORIGINAL=false
+ * removes it after processing instead (the video then only plays once it
+ * is on Shelby).
  */
 export function keepOriginal(): boolean {
-  const v = (process.env.STORAGE_KEEP_ORIGINAL ?? "").trim().toLowerCase();
-  if (v === "true") return true;
-  if (v === "false") return false;
-  return getStorage().durable;
+  return (process.env.STORAGE_KEEP_ORIGINAL ?? "").trim().toLowerCase() !== "false";
 }
 
 export async function listAssets(videoId: string): Promise<MediaAsset[]> {
@@ -107,6 +106,44 @@ export async function saveOriginal(args: {
     },
   ], "write");
 
+  await recordUsage([
+    ...earlier.map((old) => removedEntry(old)),
+    { feature: "storage", metric: "bytes_stored" as const, quantity: asset.bytes, ownerWallet: asset.ownerWallet, actorWallet: asset.ownerWallet,
+      videoId: asset.videoId, provider: asset.driver, key: `stored:${asset.id}`, meta: { kind: asset.kind } },
+  ]);
+  return asset;
+}
+
+/**
+ * vm_upload: record an original that is ALREADY in storage (it arrived
+ * in parts, straight from the browser). Replaces any earlier original of
+ * the same video and writes the bytes to the ledger.
+ */
+export async function registerOriginal(args: {
+  videoId: string; key: string; bytes: number; contentType?: string | null; ownerWallet?: string | null;
+}): Promise<MediaAsset> {
+  const storage = getStorage();
+  const earlier = (await listAssets(args.videoId)).filter((a) => a.kind === "original");
+  // Recording the same file twice changes nothing and is counted once.
+  const same = earlier.find((a) => a.key === args.key && a.bytes === args.bytes && a.driver === storage.driver);
+  if (same) return same;
+  for (const old of earlier) {
+    if (old.key !== args.key) await storage.delete(old.key).catch((err) => console.error(`[storage] could not delete ${old.key}: ${err?.message ?? err}`));
+  }
+  const asset: MediaAsset = {
+    id: crypto.randomUUID(), videoId: args.videoId, ownerWallet: args.ownerWallet ?? null, kind: "original",
+    driver: storage.driver, key: args.key, bytes: args.bytes, contentType: args.contentType ?? null,
+    // No hash yet: the bytes never passed through this server. A later step can read the object and fill it in.
+    sha256: null, createdAt: Date.now(),
+  };
+  await getDb().batch([
+    { sql: "DELETE FROM media_assets WHERE video_id = ? AND kind = 'original'", args: [args.videoId] },
+    {
+      sql: `INSERT INTO media_assets (id, video_id, owner_wallet, kind, storage_driver, storage_key, bytes, content_type, sha256, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [asset.id, asset.videoId, asset.ownerWallet, asset.kind, asset.driver, asset.key, asset.bytes, asset.contentType, asset.sha256, asset.createdAt],
+    },
+  ], "write");
   await recordUsage([
     ...earlier.map((old) => removedEntry(old)),
     { feature: "storage", metric: "bytes_stored" as const, quantity: asset.bytes, ownerWallet: asset.ownerWallet, actorWallet: asset.ownerWallet,
@@ -174,7 +211,11 @@ function abandonAfterMsFromEnv(): number {
 
 /** Sweep shortly after startup and then once an hour. Returns a stop function. */
 export function startHousekeeping(everyMs = 60 * 60 * 1000): () => void {
-  const run = () => { sweepStorage().catch((err) => console.error(`[storage] sweep failed: ${err?.message ?? err}`)); };
+  const run = () => {
+    sweepStorage().catch((err) => console.error(`[storage] sweep failed: ${err?.message ?? err}`));
+    // vm_upload: uploads nobody came back to. Loaded here on demand because uploads.ts imports this file.
+    import("./uploads.js").then((m) => m.sweepUploads()).catch((err) => console.error(`[uploads] sweep failed: ${err?.message ?? err}`));
+  };
   const first = setTimeout(run, 30_000);
   const timer = setInterval(run, everyMs);
   first.unref(); timer.unref();

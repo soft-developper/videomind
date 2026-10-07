@@ -36,11 +36,19 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
   ListObjectsV2Command,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  ListPartsCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export interface StoredObject { key: string; size: number; contentType?: string }
+
+/** vm_upload: one uploaded part of a multipart upload. */
+export interface PartInfo { partNumber: number; size: number; etag: string }
 
 export interface Storage {
   readonly driver: "local" | "s3";
@@ -66,6 +74,33 @@ export interface Storage {
   signedUrl(key: string, expiresSeconds: number): Promise<string | null>;
   /** Write, read back and delete a tiny object. Throws if any step fails. */
   check(): Promise<void>;
+
+  // ── vm_upload: uploads sent in parts, so a broken connection only
+  // ── costs the part that was in flight ─────────────────────────────────
+  /** Start an upload that arrives in parts. Returns the id of the upload. */
+  createMultipart(key: string, opts?: { contentType?: string }): Promise<string>;
+  /**
+   * An address the browser can PUT one part to directly, or null when
+   * this driver takes parts through the API instead (see writePart).
+   */
+  signPart(key: string, uploadId: string, partNumber: number, expiresSeconds: number): Promise<string | null>;
+  /** Store one part that came through the API. Only for drivers whose signPart returns null. */
+  writePart(key: string, uploadId: string, partNumber: number, body: Readable, maxBytes: number): Promise<{ size: number }>;
+  /** The parts stored so far. Throws UploadMissingError if the upload is unknown or expired. */
+  listParts(key: string, uploadId: string): Promise<PartInfo[]>;
+  /** Join the parts into the final object. */
+  completeMultipart(key: string, uploadId: string, parts: PartInfo[]): Promise<void>;
+  /** Throw the parts away. Aborting an unknown upload is not an error. */
+  abortMultipart(key: string, uploadId: string): Promise<void>;
+}
+
+export class UploadMissingError extends Error {
+  constructor() { super("This upload no longer exists in storage."); this.name = "UploadMissingError"; }
+}
+
+function assertPart(n: number): number {
+  if (!Number.isInteger(n) || n < 1 || n > 10000) throw new Error(`Invalid part number: ${n}`);
+  return n;
 }
 
 export class ObjectMissingError extends Error {
@@ -157,6 +192,81 @@ class LocalStorage implements Storage {
   }
 
   async signedUrl() { return null; }
+
+  // Parts are kept as numbered files in a folder per upload, and joined
+  // in order when the upload is completed.
+  private partsDir(uploadId: string): string {
+    if (!/^[0-9a-f-]{36}$/.test(uploadId)) throw new Error("Invalid upload id");
+    return path.join(this.root, "_multipart", uploadId);
+  }
+
+  async createMultipart(key: string) {
+    assertKey(key);
+    const uploadId = crypto.randomUUID();
+    await fsp.mkdir(this.partsDir(uploadId), { recursive: true });
+    return uploadId;
+  }
+
+  async signPart() { return null; }
+
+  async writePart(_key: string, uploadId: string, partNumber: number, body: Readable, maxBytes: number) {
+    const dir = this.partsDir(uploadId);
+    if (!(await fsp.stat(dir).catch(() => null))) throw new UploadMissingError();
+    const tmp = path.join(dir, `${assertPart(partNumber)}.tmp-${crypto.randomUUID()}`);
+    let size = 0;
+    try {
+      await pipeline(body, async function* (source) {
+        for await (const chunk of source) {
+          size += (chunk as Buffer).length;
+          if (size > maxBytes) throw new Error("Part is larger than the part size of this upload.");
+          yield chunk;
+        }
+      }, fs.createWriteStream(tmp));
+      await fsp.rename(tmp, path.join(dir, String(partNumber)));   // a part sent again replaces the earlier one
+    } catch (err) {
+      await fsp.unlink(tmp).catch(() => {});
+      throw err;
+    }
+    return { size };
+  }
+
+  async listParts(_key: string, uploadId: string) {
+    const dir = this.partsDir(uploadId);
+    const names = await fsp.readdir(dir).catch(() => null);
+    if (!names) throw new UploadMissingError();
+    const parts: PartInfo[] = [];
+    for (const name of names) {
+      if (!/^\d+$/.test(name)) continue;
+      const st = await fsp.stat(path.join(dir, name));
+      parts.push({ partNumber: Number(name), size: st.size, etag: `${st.size}-${Math.round(st.mtimeMs)}` });
+    }
+    return parts.sort((a, b) => a.partNumber - b.partNumber);
+  }
+
+  async completeMultipart(key: string, uploadId: string, parts: PartInfo[]) {
+    const dir = this.partsDir(uploadId);
+    if (!(await fsp.stat(dir).catch(() => null))) throw new UploadMissingError();
+    const dest = this.pathOf(key);
+    await fsp.mkdir(path.dirname(dest), { recursive: true });
+    const tmp = `${dest}.joining-${uploadId}`;
+    const out = fs.createWriteStream(tmp);
+    try {
+      for (const p of [...parts].sort((a, b) => a.partNumber - b.partNumber)) {
+        await pipeline(fs.createReadStream(path.join(dir, String(p.partNumber))), out, { end: false });
+      }
+      await new Promise<void>((resolve, reject) => out.end((err?: Error | null) => (err ? reject(err) : resolve())));
+      await fsp.rename(tmp, dest);
+    } catch (err) {
+      out.destroy();
+      await fsp.unlink(tmp).catch(() => {});
+      throw err;
+    }
+    await fsp.rm(dir, { recursive: true, force: true });
+  }
+
+  async abortMultipart(_key: string, uploadId: string) {
+    await fsp.rm(this.partsDir(uploadId), { recursive: true, force: true });
+  }
 
   async check() {
     await fsp.mkdir(this.root, { recursive: true });
@@ -288,6 +398,72 @@ class S3Storage implements Storage {
     return getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.cfg.bucket, Key: key }), {
       expiresIn: Math.max(1, Math.floor(expiresSeconds)),
     });
+  }
+
+  async createMultipart(key: string, opts: { contentType?: string } = {}) {
+    assertKey(key);
+    const r = await this.client.send(new CreateMultipartUploadCommand({
+      Bucket: this.cfg.bucket, Key: key,
+      ...(opts.contentType ? { ContentType: opts.contentType } : {}),
+    }));
+    if (!r.UploadId) throw new Error("Storage did not return an upload id.");
+    return r.UploadId;
+  }
+
+  async signPart(key: string, uploadId: string, partNumber: number, expiresSeconds: number) {
+    assertKey(key);
+    return getSignedUrl(this.client, new UploadPartCommand({
+      Bucket: this.cfg.bucket, Key: key, UploadId: uploadId, PartNumber: assertPart(partNumber),
+    }), { expiresIn: Math.max(60, Math.floor(expiresSeconds)) });
+  }
+
+  async writePart(): Promise<{ size: number }> {
+    throw new Error("Parts go straight to S3 storage, not through the API.");
+  }
+
+  async listParts(key: string, uploadId: string) {
+    assertKey(key);
+    const parts: PartInfo[] = [];
+    let marker: string | undefined;
+    try {
+      do {
+        const page = await this.client.send(new ListPartsCommand({
+          Bucket: this.cfg.bucket, Key: key, UploadId: uploadId, PartNumberMarker: marker,
+        }));
+        for (const p of page.Parts ?? []) {
+          if (p.PartNumber && p.ETag) parts.push({ partNumber: p.PartNumber, size: Number(p.Size ?? 0), etag: p.ETag });
+        }
+        marker = page.IsTruncated ? page.NextPartNumberMarker : undefined;
+      } while (marker);
+    } catch (err: any) {
+      if (err?.name === "NoSuchUpload" || isNotFound(err)) throw new UploadMissingError();
+      throw err;
+    }
+    return parts.sort((a, b) => a.partNumber - b.partNumber);
+  }
+
+  async completeMultipart(key: string, uploadId: string, parts: PartInfo[]) {
+    assertKey(key);
+    try {
+      await this.client.send(new CompleteMultipartUploadCommand({
+        Bucket: this.cfg.bucket, Key: key, UploadId: uploadId,
+        MultipartUpload: {
+          Parts: [...parts].sort((a, b) => a.partNumber - b.partNumber).map((p) => ({ PartNumber: p.partNumber, ETag: p.etag })),
+        },
+      }));
+    } catch (err: any) {
+      if (err?.name === "NoSuchUpload") throw new UploadMissingError();
+      throw err;
+    }
+  }
+
+  async abortMultipart(key: string, uploadId: string) {
+    assertKey(key);
+    try {
+      await this.client.send(new AbortMultipartUploadCommand({ Bucket: this.cfg.bucket, Key: key, UploadId: uploadId }));
+    } catch (err: any) {
+      if (err?.name !== "NoSuchUpload" && !isNotFound(err)) throw err;
+    }
   }
 
   async check() {

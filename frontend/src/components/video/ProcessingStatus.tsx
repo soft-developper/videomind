@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 
 const STEPS = [
-  { k: "uploading",    n: "Store",      d: "Writing the file to Shelby" },
+  { k: "uploading",    n: "Upload",     d: "Sending the file to your library" },
   { k: "transcribing", n: "Transcribe", d: "Writing down every sentence with its time" },
   { k: "analyzing",    n: "Chapters",   d: "Finding chapters, a summary and key moments" },
   { k: "ready",        n: "Ready",      d: "Searchable and ready to share" },
@@ -82,13 +82,18 @@ export function ProcessingStatus({
             Steps that already finished are kept. Only this step runs again.
           </p>
         )}
+        {failed?.errorCode === "too_large" && (
+          <p className="text-[13px] text-dim">
+            The video itself is fine and plays normally. Transcription of long recordings is not available yet.
+          </p>
+        )}
         {retryErr && <p role="alert" className="text-[13px] font-sans text-error">{retryErr}</p>}
         <div className="flex gap-2 pt-2">
           {failed?.canRetry ? (
             <button onClick={retry} disabled={retrying} className="btn btn-signal h-9 px-4 flex items-center">
               {retrying ? "Starting" : `Retry ${failed.label.toLowerCase()}`}
             </button>
-          ) : (
+          ) : failed?.errorCode === "too_large" ? null : (
             <Link href="/upload" className="btn btn-signal h-9 px-4 flex items-center">
               Upload again
             </Link>

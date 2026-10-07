@@ -15,7 +15,7 @@ import { SkeletonCard } from "@/components/ui/SkeletonCard";
 import { VideoCard, VIDEO_GRID, when } from "@/components/video/VideoCard";
 
 const STEP: Record<string, string> = {
-  uploading: "Uploading",
+  uploading: "Upload not finished",
   processing: "Processing",
   transcribing: "Transcribing",
   analyzing: "Finding chapters",

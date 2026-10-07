@@ -17,7 +17,7 @@ import type { VideoRecord } from "@/lib/api";
 export const VIDEO_GRID = "grid gap-x-5 gap-y-9 grid-cols-[repeat(auto-fill,minmax(248px,1fr))]";
 
 const WORKING: Record<string, string> = {
-  uploading:    "Uploading",
+  uploading:    "Upload not finished",
   processing:   "Processing",
   transcribing: "Transcribing",
   analyzing:    "Finding chapters",

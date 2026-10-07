@@ -1,45 +1,73 @@
 "use client";
-import { useCallback, useState } from "react";
+// vm_upload: upload first, Shelby after.
+//
+//   1. The file goes to storage in parts and survives a dropped
+//      connection, a closed tab or a restart. Processing starts the
+//      moment the last part arrives.
+//   2. Storing the file on Shelby is its own step right after. The wallet
+//      signs, and if that fails or is skipped the video is still there:
+//      the step can be run again at any time.
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { X, AlertTriangle, Check, FileVideo } from "lucide-react";
 import { clsx } from "clsx";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { useUploadBlobs } from "@shelby-protocol/react";
-import { reserveVideo, prepareVideo, confirmVideo } from "@/lib/api";
+import {
+  createUpload, listOpenUploads, discardUpload, anchorVideo, getVideo, ApiError, type UploadInfo,
+} from "@/lib/api";
+import { ResumableUpload, StorageBlockedError, UploadStopped, type UploadProgress } from "@/lib/uploader";
 // vm_shelby09: expiration removed from blob registration (sdk >= 0.8.0)
 import { shelbyClient, SHELBY_LOCATION } from "@/lib/shelby";
-import { useRouter } from "next/navigation";
+
+const GB = 1024 ** 3;
+/** Transcription reads the file in one request for now, and that request has a size limit. */
+const TRANSCRIBE_LIMIT = 25 * 1024 * 1024;
+/** The Shelby step loads the whole file into the browser's memory. */
+const SHELBY_LIMIT = 2 * GB;
+const MAX_BYTES = 10 * GB;
 
 function bytes(n: number) {
-  if (n < 1024 ** 2) return `${(n / 1024).toFixed(0)} KB`;
-  if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`;
-  return `${(n / 1024 ** 3).toFixed(2)} GB`;
+  if (n < 1024 ** 2) return `${Math.max(1, Math.round(n / 1024))} KB`;
+  if (n < GB) return `${(n / 1024 ** 2).toFixed(n < 10 * 1024 ** 2 ? 1 : 0)} MB`;
+  return `${(n / GB).toFixed(2)} GB`;
 }
 
-type Stage = "idle" | "sending" | "wallet" | "confirming" | "done";
-
-const LABEL: Record<Stage, string> = {
-  idle:       "Upload and analyze",
-  sending:    "Sending to server…",
-  wallet:     "Waiting for wallet…",
-  confirming: "Confirming on Shelby…",
-  done:       "Starting processing…",
-};
-
-function readable(raw: string): string {
+function readableWallet(raw: string): string {
   const r = raw || "";
   if (/reject|cancel|denied|declined/i.test(r))
-    return "You cancelled the signing request. Approve it to upload.";
+    return "You declined the request in your wallet.";
   if (/INSUFFICIENT_BALANCE|insufficient.*(balance|fund|gas)|EINSUFFICIENT/i.test(r))
     return "Your wallet needs testnet APT (for gas) and ShelbyUSD (for storage). Fund it from the Shelby faucet, then try again.";
   if (/failed to sign and submit|sign and submit|submit.*transaction|transaction.*(failed|rejected by)|simulation/i.test(r))
-    return "The transaction was signed but could not be submitted. This usually means the wallet has no testnet APT or ShelbyUSD yet - fund it from the Shelby faucet (a new Google-login wallet starts empty), then try again.";
+    return "The transaction could not be submitted. This usually means the wallet has no testnet APT or ShelbyUSD yet, or the Shelby network is not answering. Check the Shelby status in the sidebar, fund the wallet from the Shelby faucet if needed, then try again.";
   return r;
 }
 
+type Step =
+  | { at: "choose" }
+  | { at: "details" }
+  | { at: "uploading"; paused: boolean }
+  | { at: "uploaded" };
+
+type Shelby =
+  | { at: "idle" }
+  | { at: "wallet" }
+  | { at: "stored" }
+  | { at: "failed"; why: string }
+  | { at: "too_large" };
+
+interface Target { videoId: string; videoBlobName: string; title: string; size: number }
+
 export function UploadZone() {
   const router = useRouter();
+  const params = useSearchParams();
+  const anchorId = params.get("anchor");
+  const qc = useQueryClient();
   const { account, signAndSubmitTransaction, connected } = useWallet();
   // vm_signin: uploads need a signed in wallet
   const sessionWallet = useSessionWallet();
@@ -47,173 +75,357 @@ export function UploadZone() {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
-  const [stage, setStage] = useState<Stage>("idle");
-  const [pct, setPct] = useState(0);
+  const [step, setStep] = useState<Step>({ at: "choose" });
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
+  const [target, setTarget] = useState<Target | null>(null);
+  const [shelby, setShelby] = useState<Shelby>({ at: "idle" });
   const [err, setErr] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+  const runner = useRef<ResumableUpload | null>(null);
+  const info = useRef<UploadInfo | null>(null);
+  // Each run gets a number. A run that was cancelled or replaced must
+  // not touch the screen when its last promise settles.
+  const runNo = useRef(0);
+
+  // Uploads this wallet started and did not finish, on any device.
+  const open = useQuery({
+    queryKey: ["open-uploads", sessionWallet],
+    queryFn: listOpenUploads,
+    enabled: !!sessionWallet && step.at === "choose" && !anchorId,
+    staleTime: 5000,
+  });
+  const unfinished = open.data ?? [];
+
+  // "Store on Shelby" for a video uploaded earlier: the file has to be chosen again.
+  const anchorVideoQ = useQuery({
+    queryKey: ["video", anchorId],
+    queryFn: () => getVideo(anchorId!),
+    enabled: !!anchorId,
+  });
 
   // Docs pass the client explicitly rather than relying only on context:
   // https://docs.shelby.xyz/sdks/react/guides/dapp-example
-  const upload = useUploadBlobs({
-    client: shelbyClient,
-    onError: (e) => { setErr(readable(e.message)); setStage("idle"); },
-  });
+  const blobs = useUploadBlobs({ client: shelbyClient });
 
+  const busy = step.at === "uploading" || shelby.at === "wallet";
+  useEffect(() => {
+    if (!busy) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [busy]);
+  useEffect(() => () => { runner.current?.stop(); }, []);
+
+  // ── Shelby step ───────────────────────────────────────────────────────────
+  const storeOnShelby = useCallback(async (f: File, t: Target) => {
+    if (!connected || !account || !signAndSubmitTransaction) {
+      setShelby({ at: "failed", why: "Connect your wallet to store the file on Shelby." });
+      return;
+    }
+    if (f.size > SHELBY_LIMIT) { setShelby({ at: "too_large" }); return; }
+    setShelby({ at: "wallet" });
+    try {
+      const buf = new Uint8Array(await f.arrayBuffer());
+      await new Promise<void>((res, rej) => {
+        blobs.mutate(
+          {
+            // Official docs pass the AccountAddress object, not a string.
+            signer: { account: account.address as any, signAndSubmitTransaction },
+            blobs: [{ blobName: t.videoBlobName, blobData: buf }],
+            // Explicit location. Without one the contract rejects the write.
+            options: { locationHint: SHELBY_LOCATION },
+          },
+          { onSuccess: () => res(), onError: (e) => rej(e) }
+        );
+      });
+      await anchorVideo(t.videoId, { accountAddress: account.address.toString(), txHash: `wallet-${Date.now()}` });
+      setShelby({ at: "stored" });
+      qc.invalidateQueries({ queryKey: ["video", t.videoId] });
+      router.push(`/video/${t.videoId}`);
+    } catch (e: any) {
+      console.error("[VideoMind] storing on Shelby failed:", e);
+      setShelby({ at: "failed", why: readableWallet(e?.message ?? "Storing on Shelby failed.") });
+    }
+  }, [connected, account, signAndSubmitTransaction, blobs, qc, router]);
+
+  // ── upload ────────────────────────────────────────────────────────────────
+  const run = useCallback(async (f: File, u: UploadInfo) => {
+    info.current = u;
+    const t: Target = { videoId: u.videoId, videoBlobName: u.videoBlobName ?? "", title: u.title ?? f.name, size: u.size };
+    setTarget(t);
+    setStep({ at: "uploading", paused: false }); setErr(null);
+    const mine = ++runNo.current;
+    const r = new ResumableUpload(f, u, (p) => { if (runNo.current === mine) setProgress(p); });
+    runner.current = r;
+    try {
+      await r.start();
+      if (runNo.current !== mine) return;
+      setStep({ at: "uploaded" });
+      qc.invalidateQueries({ queryKey: ["videos"] });
+      qc.invalidateQueries({ queryKey: ["open-uploads"] });
+      void storeOnShelby(f, t);
+    } catch (e: any) {
+      if (runNo.current !== mine) return;
+      if (e instanceof UploadStopped) { setStep({ at: "uploading", paused: true }); return; }
+      setStep({ at: "uploading", paused: true });
+      if (e instanceof StorageBlockedError) setErr(e.message);
+      else if (e instanceof ApiError && e.code === "expired") setErr("This upload expired in storage. Discard it and start again.");
+      else setErr(e?.message ?? "The upload stopped.");
+    }
+  }, [qc, storeOnShelby]);
+
+  const begin = async () => {
+    if (!file || !title.trim() || starting) return;
+    if (!sessionWallet) { setErr("Sign in with your wallet first. The prompt is at the bottom of the page."); return; }
+    setErr(null); setStarting(true);
+    try {
+      const u = await createUpload({ filename: file.name, size: file.size, contentType: file.type || "video/mp4", title: title.trim(), description: desc });
+      await run(file, u);
+    } catch (e: any) {
+      setErr(e?.message ?? "The upload could not be started.");
+    } finally { setStarting(false); }
+  };
+
+  const pause = () => { runner.current?.stop(); };
+  const resume = () => { if (file && info.current) void run(file, info.current); };
+  const cancel = async () => {
+    runner.current?.stop();
+    const id = info.current?.videoId;
+    reset();
+    if (id) { await discardUpload(id).catch(() => {}); qc.invalidateQueries({ queryKey: ["open-uploads"] }); qc.invalidateQueries({ queryKey: ["videos"] }); }
+  };
+
+  const reset = () => {
+    runNo.current++;
+    setFile(null); setTitle(""); setDesc(""); setErr(null);
+    setStep({ at: "choose" }); setProgress(null); setTarget(null); setShelby({ at: "idle" });
+    runner.current = null; info.current = null;
+  };
+
+  // ── choosing a file ───────────────────────────────────────────────────────
   const onDrop = useCallback((files: File[]) => {
     const f = files[0];
     if (!f) return;
-    setFile(f);
-    setTitle(f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "));
     setErr(null);
-  }, []);
+
+    // Storing an earlier video on Shelby: it must be the same file.
+    if (anchorId) {
+      const v = anchorVideoQ.data;
+      if (!v) return;
+      if (f.size !== v.meta.sizeBytes) {
+        setErr(`That is a different file. The video is ${bytes(v.meta.sizeBytes)}, this file is ${bytes(f.size)}.`);
+        return;
+      }
+      const t: Target = { videoId: v.id, videoBlobName: v.shelby.videoBlobName, title: v.title, size: f.size };
+      setFile(f); setTarget(t); setStep({ at: "uploaded" });
+      void storeOnShelby(f, t);
+      return;
+    }
+
+    // The same file as an unfinished upload: continue it.
+    const match = unfinished.find((u) => u.filename === f.name && u.size === f.size);
+    if (match) { setFile(f); setTitle(match.title ?? f.name); void run(f, match); return; }
+
+    setFile(f);
+    setTitle(f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "));
+    setStep({ at: "details" });
+  }, [anchorId, anchorVideoQ.data, unfinished, run, storeOnShelby]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { "video/*": [".mp4", ".webm", ".mov", ".avi", ".mkv"] },
     maxFiles: 1,
-    maxSize: 2 * 1024 * 1024 * 1024,
+    maxSize: MAX_BYTES,
     onDropRejected: (r) => {
       const c = r[0]?.errors[0]?.code;
-      if (c === "file-too-large") setErr("That file is over 2 GB. Use a smaller one.");
+      if (c === "file-too-large") setErr("That file is over 10 GB. Use a smaller one.");
       else if (c === "file-invalid-type") setErr("Unsupported format. Use MP4, WebM, MOV, AVI or MKV.");
-      else setErr(r[0]?.errors[0]?.message ?? "File rejected.");
+      else setErr(r[0]?.errors[0]?.message ?? "That file cannot be used.");
     },
   });
 
-  const reset = () => {
-    setFile(null); setTitle(""); setDesc("");
-    setErr(null); setStage("idle"); setPct(0);
-  };
+  const pct = progress && progress.totalBytes ? Math.floor((progress.uploadedBytes / progress.totalBytes) * 100) : 0;
+  const paused = step.at === "uploading" && step.paused;
+  const statusLine = useMemo(() => {
+    if (!progress) return "Starting";
+    if (paused) return `Paused at ${bytes(progress.uploadedBytes)}`;
+    if (progress.phase === "waiting") return `Connection lost. Continuing from ${bytes(progress.uploadedBytes)} when it is back.`;
+    if (progress.phase === "finishing") return "Finishing";
+    if (progress.phase === "starting") return "Checking what has already arrived";
+    return "Uploading";
+  }, [progress, paused]);
 
-  const go = async () => {
-    if (!file || !title.trim()) return;
-    if (!connected || !account || !signAndSubmitTransaction) {
-      setErr("Connect a wallet first - the button is in the top bar.");
-      return;
-    }
-    if (!sessionWallet) {
-      setErr("Sign in with your wallet first. The prompt is at the bottom of the page.");
-      return;
-    }
-    setErr(null);
+  const errorBox = err && (
+    <div role="alert" className="rounded-md border border-error/50 bg-error/5">
+      <div className="flex items-start gap-3 p-3.5">
+        <AlertTriangle size={15} className="text-error shrink-0 mt-0.5" />
+        <p className="text-[13.5px] font-sans text-error leading-relaxed flex-1">{err}</p>
+        <button onClick={() => setErr(null)} aria-label="Dismiss" className="text-dim hover:text-paper shrink-0 no-min">
+          <X size={13} />
+        </button>
+      </div>
+    </div>
+  );
 
-    try {
-      // Read bytes directly from the File object the user just picked --
-      // instant, no network round trip. The old flow uploaded the file
-      // to the backend, waited for it to be base64-encoded and sent
-      // back down as JSON, then decoded it again here -- slow enough on
-      // real videos that the wallet popup could take minutes or never
-      // appear before the request timed out.
-      setStage("sending"); setPct(0);
-      const buf = new Uint8Array(await file.arrayBuffer());
-      setPct(15);
+  const fileRow = file && (
+    <div className="flex items-center gap-4">
+      <span className="w-11 h-11 shrink-0 rounded-md bg-slate-2 flex items-center justify-center text-paper-2">
+        <FileVideo size={20} strokeWidth={1.6} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[15px] font-medium text-paper leading-tight truncate">{step.at === "details" ? file.name : (target?.title ?? file.name)}</p>
+        <p className="tc mt-1">{bytes(file.size)}</p>
+      </div>
+    </div>
+  );
 
-      // Reserve an id + blob name FIRST (instant, no file). This lets the
-      // backend file upload and the Shelby wallet upload run in parallel
-      // instead of one after the other -- the file is no longer sent twice
-      // in sequence, so wall-clock upload time drops toward the longer of
-      // the two legs rather than their sum.
-      const { id, videoBlobName } = await reserveVideo(
-        file.name, title, desc, file.type || "video/mp4"
-      );
-      setPct(25);
+  // ── not connected / not signed in ─────────────────────────────────────────
+  if (!connected || !sessionWallet) {
+    return (
+      <div className="flex items-center gap-3 px-3.5 py-3 rounded-md border border-rule bg-slate">
+        <span className="dot dot-off" />
+        <p className="text-[13.5px] text-paper-2">
+          {!connected ? "Connect a wallet to upload. Your library belongs to your wallet." : "Sign in with your wallet to upload. The prompt is at the bottom of the page."}
+        </p>
+      </div>
+    );
+  }
 
-      setStage("wallet");
+  // ── after the upload: the Shelby step ─────────────────────────────────────
+  if (step.at === "uploaded" && target) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-lg border border-rule p-5">
+          {fileRow}
+          {!anchorId && (
+            <p className="flex items-center gap-2 mt-4 text-[14px] text-paper">
+              <Check size={15} className="text-marker" /> Uploaded. Processing has started.
+            </p>
+          )}
+        </div>
 
-      // ── DEBUG: everything the SDK needs, right before we call mutate ──
-      console.log("[VideoMind] about to call uploadBlobs.mutate", {
-        connected,
-        hasAccount: !!account,
-        address: account?.address?.toString(),
-        hasSignFn: typeof signAndSubmitTransaction,
-        blobName: videoBlobName,
-        byteLength: buf.length,
-      });
+        <div className="rounded-lg border border-rule p-5">
+          <h2 className="font-display text-[15px] text-paper">Store on Shelby</h2>
+          <p className="text-[13.5px] text-dim mt-1 leading-relaxed max-w-[58ch]">
+            Your wallet signs the file and it is written to Shelby, which gives the video an ownership proof anyone can check.
+          </p>
 
-      // Leg 1: the file bytes go to the backend (Whisper reads this copy).
-      // Progress from this leg drives the bar (25 -> 80).
-      const backendUpload = prepareVideo(
-        file, title, desc,
-        (pp) => setPct(25 + Math.round(pp * 0.55)),
-        id
-      );
+          <div className="mt-4" aria-live="polite">
+            {shelby.at === "wallet" && (
+              <p className="flex items-center gap-2.5 text-[14px] text-paper">
+                <span className="dot dot-work" /> Approve the request in your wallet. Keep this page open until it finishes.
+              </p>
+            )}
+            {shelby.at === "stored" && (
+              <p className="flex items-center gap-2 text-[14px] text-paper"><Check size={15} className="text-marker" /> Stored on Shelby.</p>
+            )}
+            {shelby.at === "failed" && (
+              <p role="alert" className="text-[13.5px] text-error leading-relaxed max-w-[62ch]">{shelby.why}</p>
+            )}
+            {shelby.at === "too_large" && (
+              <p className="text-[13.5px] text-paper-2 leading-relaxed max-w-[62ch]">
+                This file is {bytes(target.size)}. Files over 2 GB cannot be stored on Shelby from the browser yet. The video is safe in your library and plays normally.
+              </p>
+            )}
+          </div>
 
-      // Leg 2: the wallet signs and the blob goes to Shelby. Same signer
-      // shape, blobName and location. No expiry argument: the Shelbynet
-      // contract no longer takes one at registration (sdk >= 0.8.0).
-      const shelbyUpload = new Promise<void>((res, rej) => {
-        upload.mutate(
-          {
-            // Official docs pass account.accountAddress (the AccountAddress
-            // OBJECT), not a stringified address. The SDK feeds this into
-            // AccountAddress.from(..., {maxMissingChars: 63}).
-            signer: { account: account.address as any, signAndSubmitTransaction },
-            blobs: [{ blobName: videoBlobName, blobData: buf }],
-            // Explicit per-write location. Without a location the Move
-            // contract rejects the write outright.
-            options: { locationHint: SHELBY_LOCATION },
-          },
-          {
-            onSuccess: () => {
-              console.log("[VideoMind] uploadBlobs SUCCESS");
-              res();
-            },
-            onError: (e) => {
-              console.error("[VideoMind] uploadBlobs FAILED:", e);
-              rej(new Error(readable(e.message)));
-            },
-          }
-        );
-      });
+          <div className="flex items-center gap-2.5 mt-5 flex-wrap">
+            {(shelby.at === "failed" || shelby.at === "idle") && file && (
+              <button onClick={() => void storeOnShelby(file, target)} className="btn btn-signal h-9 px-3.5">
+                {shelby.at === "failed" ? "Try again" : "Store on Shelby"}
+              </button>
+            )}
+            <Link
+              href={`/video/${target.videoId}`}
+              className={clsx("btn h-9 px-3.5 inline-flex items-center", shelby.at === "wallet" || shelby.at === "failed" || shelby.at === "idle" ? "btn-ghost" : "btn-signal")}
+            >
+              {shelby.at === "stored" || shelby.at === "too_large" ? "Open the video" : "Do this later and open the video"}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-      // confirm only runs after BOTH the backend file upload AND the Shelby
-      // upload have finished -- so the temp file is guaranteed present when
-      // the pipeline kicks off, and the blob is committed on-chain.
-      await Promise.all([backendUpload, shelbyUpload]);
+  // ── while uploading ───────────────────────────────────────────────────────
+  if (step.at === "uploading") {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-lg border border-rule p-5">
+          {fileRow}
+          <div className="mt-5 space-y-2">
+            <div className="flex items-baseline justify-between gap-4">
+              <span className={clsx("text-[13.5px]", progress?.phase === "waiting" && !paused ? "text-warn" : "text-paper-2")} aria-live="polite">{statusLine}</span>
+              <span className="tc text-paper-2 shrink-0">
+                {progress ? `${bytes(progress.uploadedBytes)} of ${bytes(progress.totalBytes)}` : ""}
+              </span>
+            </div>
+            <div
+              role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Upload progress"
+              className="h-1.5 rounded-full bg-rule overflow-hidden"
+            >
+              <div className="h-full rounded-full bg-signal transition-[width] duration-300" style={{ width: `${pct}%` }} />
+            </div>
+            <p className="tc">{pct}%</p>
+          </div>
 
-      setStage("confirming"); setPct(85);
-      await confirmVideo({
-        id,
-        accountAddress: account.address.toString(),
-        txHash: `wallet-${Date.now()}`,
-        videoBlobName,
-      });
+          <div className="flex items-center gap-2.5 mt-4">
+            {paused
+              ? <button onClick={resume} className="btn btn-signal h-9 px-3.5">Resume</button>
+              : <button onClick={pause} className="btn btn-ghost h-9 px-3.5">Pause</button>}
+            <button onClick={() => void cancel()} className="h-9 px-2 text-[13px] text-dim hover:text-error transition-colors">
+              Cancel upload
+            </button>
+          </div>
+        </div>
+        {errorBox}
+        <p className="text-[13px] text-dim leading-relaxed max-w-[62ch]">
+          If the connection drops or this tab closes, nothing is lost. Come back to this page and choose the same file to continue from where it stopped.
+        </p>
+      </div>
+    );
+  }
 
-      setStage("done"); setPct(100);
-      router.push(`/video/${id}`);
-    } catch (e: any) {
-      console.error("[VideoMind] upload flow threw:", e);
-      setErr(readable(e?.message ?? "Upload failed."));
-      setStage("idle"); setPct(0);
-    }
-  };
-
-  const busy = stage !== "idle";
-  const canGo = !!file && !!title.trim() && connected && !busy;
-
+  // ── choosing and describing ───────────────────────────────────────────────
+  const anchorTitle = anchorVideoQ.data?.title;
   return (
     <div className="space-y-4">
-
-      {/* Wallet state */}
-      {!connected ? (
-        <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-md border border-rule bg-slate">
-          <span className="dot dot-off" />
-          <p className="text-[13.5px] text-paper-2">
-            Connect a wallet to upload. Your wallet signs the file.
+      {anchorId && (
+        <div className="rounded-md border border-rule bg-slate px-4 py-3.5">
+          <p className="text-[14px] font-medium text-paper">
+            Store {anchorTitle ? `"${anchorTitle}"` : "this video"} on Shelby
           </p>
-        </div>
-      ) : (
-        <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-md border border-rule">
-          <span className="dot dot-live" />
-          <p className="text-[13.5px] text-paper-2">
-            Signing wallet{" "}
-            <span className="tc text-[13px] text-paper-2">
-              {account?.address?.toString().slice(0, 6)}…{account?.address?.toString().slice(-4)}
-            </span>
+          <p className="text-[13.5px] text-dim mt-1 leading-relaxed">
+            Choose the same file again{anchorVideoQ.data ? ` (${bytes(anchorVideoQ.data.meta.sizeBytes)})` : ""}. Your wallet signs it and it is written to Shelby. Nothing is uploaded to the library twice.
           </p>
         </div>
       )}
 
-      {/* Drop zone */}
+      {!anchorId && unfinished.length > 0 && step.at === "choose" && (
+        <div className="rounded-md border border-rule bg-slate">
+          <p className="px-4 pt-3.5 text-[14px] font-medium text-paper">
+            {unfinished.length === 1 ? "An upload was not finished" : `${unfinished.length} uploads were not finished`}
+          </p>
+          <p className="px-4 mt-1 text-[13.5px] text-dim">Choose the same file below to continue from where it stopped.</p>
+          <ul className="mt-3 border-t border-rule divide-y divide-rule">
+            {unfinished.map((u) => (
+              <li key={u.videoId} className="flex items-center gap-3 px-4 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13.5px] text-paper truncate">{u.filename}</p>
+                  <p className="tc mt-0.5">{bytes(u.uploadedBytes)} of {bytes(u.size)} uploaded</p>
+                </div>
+                <button
+                  onClick={async () => { await discardUpload(u.videoId).catch(() => {}); open.refetch(); }}
+                  className="text-[13px] text-dim hover:text-error transition-colors shrink-0"
+                >
+                  Discard
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div
         {...getRootProps()}
         className={clsx(
@@ -222,20 +434,9 @@ export function UploadZone() {
         )}
       >
         <input {...getInputProps()} />
-
-        {file ? (
+        {file && step.at === "details" ? (
           <div className="p-6 flex items-center gap-4">
-            <span className="w-11 h-11 shrink-0 rounded-md bg-slate-2 flex items-center justify-center text-paper-2">
-              <FileVideo size={20} strokeWidth={1.6} />
-            </span>
-
-            <div className="min-w-0 flex-1">
-              <p className="text-[15px] font-medium text-paper leading-tight truncate">
-                {file.name}
-              </p>
-              <p className="tc mt-1">{bytes(file.size)}</p>
-            </div>
-
+            <div className="flex-1 min-w-0">{fileRow}</div>
             <button
               onClick={(e) => { e.stopPropagation(); reset(); }}
               className="flex items-center gap-1.5 text-[13px] text-dim hover:text-error transition-colors shrink-0 no-min"
@@ -249,13 +450,12 @@ export function UploadZone() {
               {isDragActive ? "Drop it here" : "Drag a video here"}
             </p>
             <p className="text-[13.5px] text-dim mt-2">or click to choose a file</p>
-            <p className="tc mt-4">MP4, WebM, MOV, AVI or MKV, up to 2 GB</p>
+            <p className="tc mt-4">MP4, WebM, MOV, AVI or MKV, up to 10 GB</p>
           </div>
         )}
       </div>
 
-      {/* Metadata */}
-      {file && (
+      {file && step.at === "details" && (
         <div className="space-y-3">
           <div>
             <label htmlFor="t" className="block text-[13px] font-medium text-paper-2 mb-1.5">Title</label>
@@ -278,59 +478,30 @@ export function UploadZone() {
               className="w-full px-3 py-2 text-[14px] font-sans resize-none"
             />
           </div>
-        </div>
-      )}
-
-      {/* Error */}
-      {err && (
-        <div role="alert" className="rounded-md border border-error/50 bg-error/5">
-          <div className="flex items-start gap-3 p-3.5">
-            <AlertTriangle size={15} className="text-error shrink-0 mt-0.5" />
-            <p className="text-[13.5px] font-sans text-error leading-relaxed flex-1">{err}</p>
-            <button onClick={() => setErr(null)} className="text-dim hover:text-paper shrink-0 no-min">
-              <X size={12} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Progress. The bar is in the accent: it shows how far along you are. */}
-      {busy && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[13.5px] text-paper-2">{LABEL[stage]}</span>
-            <span className="tc text-paper-2">{pct}%</span>
-          </div>
-          <div className="h-1 rounded-full bg-rule overflow-hidden">
-            <div
-              className="h-full rounded-full bg-signal transition-all duration-500"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          {stage === "wallet" && (
-            <p className="text-[13.5px] text-paper">Approve the signing request in your wallet</p>
+          {file.size > TRANSCRIBE_LIMIT && (
+            <p className="text-[13px] text-paper-2 leading-relaxed rounded-md border border-rule px-3.5 py-2.5">
+              This file is {bytes(file.size)}. It will upload and play, but it cannot be transcribed yet: transcription is limited to 25 MB until long recordings are supported.
+            </p>
           )}
         </div>
       )}
 
-      {/* THE BUTTON - always visible, disabled state is legible */}
-      <button
-        onClick={go}
-        disabled={!canGo}
-        className={clsx(
-          "w-full h-11 rounded text-[14px] font-sans font-medium transition-colors border",
-          canGo
-            ? "bg-paper border-paper text-void hover:bg-white"
-            : "bg-transparent border-rule text-dim cursor-not-allowed"
-        )}
-      >
-        {busy ? LABEL[stage] : (
-          !file      ? "Choose a video first"
-          : !title.trim() ? "Add a title"
-          : !connected    ? "Connect a wallet"
-          : "Upload"
-        )}
-      </button>
+      {errorBox}
+
+      {!anchorId && (
+        <button
+          onClick={() => void begin()}
+          disabled={!file || !title.trim() || starting || step.at !== "details"}
+          className={clsx(
+            "w-full h-11 rounded text-[14px] font-sans font-medium transition-colors border",
+            file && title.trim() && !starting && step.at === "details"
+              ? "bg-paper border-paper text-void hover:bg-white"
+              : "bg-transparent border-rule text-dim cursor-not-allowed"
+          )}
+        >
+          {starting ? "Starting" : !file ? "Choose a video first" : !title.trim() ? "Add a title" : "Upload"}
+        </button>
+      )}
     </div>
   );
 }

@@ -114,6 +114,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
               <VideoPlayer
                 ref={player}
                 streamUrl={video.streamUrl ?? null}
+                  source={video.source}
                 title={video.title}
                 shelbyAddress={video.shelby.accountAddress}
                 onDuration={setDur}
@@ -134,7 +135,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
               <OnChainProof
 
 
-                owner={video.shelby.accountAddress}
+                owner={video.onShelby === false ? undefined : video.shelby.accountAddress}
 
 
                 blobName={video.shelby.videoBlobName}

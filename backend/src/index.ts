@@ -12,6 +12,8 @@ import { startRunner, type Runner } from "./lib/runner.js";
 import { registerPipeline } from "./services/pipeline.js";
 // vm_storage: file storage and the usage ledger
 import usageRouter from "./routes/usage.js";
+// vm_upload: resumable uploads straight to storage
+import uploadsRouter from "./routes/uploads.js";
 import { checkStorage, storageHealth } from "./lib/storage.js";
 import { startHousekeeping } from "./lib/assets.js";
 
@@ -35,6 +37,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // vm_signin: wallet sign in and sessions
 app.use("/api/auth", authRouter);
+app.use("/api/uploads", uploadsRouter);
 app.use("/api/videos", videosRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/shelby", statsRouter);

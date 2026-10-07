@@ -1,12 +1,9 @@
 // src/routes/videos.ts
 import { Router } from "express";
-import multer from "multer";
-import path from "path";
 import fs from "fs/promises";
-import { v4 as uuidv4 } from "uuid";
 import { store } from "../lib/store.js";
 // vm_jobs: processing runs as durable jobs, not inside the request
-import { enqueueJob, listJobs, retryJob, deleteJobsForVideo } from "../lib/jobs.js";
+import { listJobs, retryJob, deleteJobsForVideo } from "../lib/jobs.js";
 import { nudgeRunner } from "../lib/runner.js";
 import { NOT_RETRYABLE, statusForStage } from "../services/pipeline.js";
 import { shelbyBlobUrl } from "../lib/shelbyClient.js";
@@ -15,54 +12,33 @@ import type { VideoRecord } from "../types/video.js";
 import { limitUpload, limitPipeline, limitDelete } from "../lib/guard.js";
 // vm_signin: the caller is the signed in wallet, never a value they send
 import { requireAuth, optionalAuth, authOf, sameWallet } from "../lib/auth.js";
-// vm_storage: uploads go into storage, not onto this machine's disk
-import { storageHealth, checkStorage } from "../lib/storage.js";
-import { saveOriginal, getOriginal, deleteAssetsForVideo, isVideoId } from "../lib/assets.js";
-import type { Request, Response, NextFunction } from "express";
+// vm_storage: every file of a video lives in storage
+import { getStorage, ObjectMissingError } from "../lib/storage.js";
+import { getOriginal, deleteAssetsForVideo } from "../lib/assets.js";
+// vm_upload: files arrive through /api/uploads (see src/routes/uploads.ts).
+// The old reserve, prepare and confirm routes are gone.
+import { abortUpload } from "../lib/uploads.js";
 
 const router = Router();
 
-const upload = multer({
-  dest: path.resolve("uploads"),
-  limits: { fileSize: 2 * 1024 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    const allowed = [
-      "video/mp4", "video/webm", "video/mov",
-      "video/avi", "video/mkv", "video/quicktime",
-    ];
-    if (allowed.includes(file.mimetype)) cb(null, true);
-    else cb(new Error(`Unsupported file type: ${file.mimetype}`));
-  },
-});
-
-/** Remove a video's stored files and its jobs. Call before deleting the video. */
+/** Remove a video's stored files, its jobs and any unfinished upload. Call before deleting the video. */
 async function dropVideoWork(id: string): Promise<void> {
   const src = await store.getSourcePath(id);
   if (src) await fs.unlink(src).catch(() => {});
   await deleteJobsForVideo(id);
+  await abortUpload(id, { keepVideo: true }).catch((err) =>
+    console.error(`[uploads] could not discard the unfinished upload of ${id}: ${err?.message ?? err}`));
   // If storage cannot be reached the asset rows stay, and the hourly
   // sweep removes the files later. Deleting the video still succeeds.
   await deleteAssetsForVideo(id).catch((err) =>
     console.error(`[storage] could not delete the files of ${id} now, the sweep will retry: ${err?.message ?? err}`));
 }
 
-/**
- * Refuse an upload BEFORE the file is received when storage is not
- * working, so nobody waits through a long upload that cannot be kept.
- * A failed check is tried again at most every 30 seconds.
- */
-let lastRecheck = 0;
-async function requireStorage(_req: Request, res: Response, next: NextFunction) {
-  if (!storageHealth().ok && Date.now() - lastRecheck > 30_000) {
-    lastRecheck = Date.now();
-    await checkStorage().catch(() => false);
-  }
-  if (storageHealth().ok) return next();
-  return res.status(503).json({
-    error: "Video storage is not available right now. Please try again in a few minutes.",
-    code: "storage_unavailable",
-  });
-}
+/** How long a playback address stays valid. */
+const PLAY_URL_SECONDS = 12 * 60 * 60;
+
+/** True once the owner has stored the file on Shelby. */
+const onShelby = (v: VideoRecord) => !!v.shelby.accountAddress && !!v.shelby.videoTxHash;
 
 const STAGE_LABEL: Record<string, string> = { transcribe: "Transcription", analyze: "Analysis" };
 
@@ -72,154 +48,28 @@ function ownsVideo(video: VideoRecord, wallet: string): boolean {
 }
 const NOT_OWNER = { error: "This video belongs to a different wallet.", code: "not_owner" };
 
-// ── POST /api/videos/reserve ────────────────────────────────────────────────
-// Instant, no file. Reserves an id + blob name so the browser can start the
-// Shelby wallet upload in parallel with the (separate) file upload to /prepare.
-router.post("/reserve", limitUpload, requireAuth, async (req, res) => {
+// ── POST /api/videos/:id/anchor ──────────────────────────────────────────────
+// vm_upload: the owner's wallet has stored the file on Shelby. Record
+// where, so the ownership proof can be shown. Storing on Shelby is its
+// own step after the upload, and can be done or repeated at any time.
+router.post("/:id/anchor", limitUpload, requireAuth, async (req, res) => {
   try {
     const wallet = authOf(req)!.wallet;
-    const id = uuidv4();
-    const originalName = (req.body.filename as string) || "video.mp4";
-    const ext = path.extname(originalName) || ".mp4";
-    const title =
-      (req.body.title as string) ||
-      path.basename(originalName, ext).replace(/[-_]/g, " ");
-    const description = (req.body.description as string) || "";
-    const mimeType = (req.body.mimeType as string) || "video/mp4";
-    const videoBlobName = `videomind/videos/${id}/raw${ext}`;
-
-    const record: VideoRecord = {
-      id,
-      title,
-      description,
-      createdAt: Date.now(),
-      status: "uploading",
-      ownerWallet: wallet,
-      shelby: { videoBlobName, accountAddress: "", videoTxHash: "" },
-      meta: { sizeBytes: 0, mimeType },
-    };
-    await store.set(id, record);
-
-    return res.status(200).json({ id, videoBlobName, mimeType });
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message });
-  }
-});
-
-// ── POST /api/videos/prepare ────────────────────────────────────────────────
-// The limiter and the sign in check run BEFORE multer, so a rejected
-// request never writes the file.
-router.post("/prepare", limitUpload, requireAuth, requireStorage, upload.single("video"), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: "No video file provided" });
-    const wallet = authOf(req)!.wallet;
-
-    const ext = path.extname(req.file.originalname) || ".mp4";
-    const namedFilePath = req.file.path;
-
-    // The id becomes part of a storage key, so it must be a real id.
-    if (req.body.id && !isVideoId(req.body.id)) {
-      await fs.unlink(namedFilePath).catch(() => {});
-      return res.status(400).json({ error: "id is not a valid video id" });
-    }
-
-    // If the browser reserved an id first (parallel-upload flow), reuse it.
-    // Otherwise fall back to the original create-here behaviour (backward
-    // compatible: a direct /prepare call with no reservedId still works).
-    const reservedId = (req.body.id as string) || undefined;
-    let id: string;
-    let videoBlobName: string;
-
-    const existing = reservedId ? await store.get(reservedId) : undefined;
-    if (existing && !ownsVideo(existing, wallet)) {
-      await fs.unlink(namedFilePath).catch(() => {});
-      return res.status(403).json(NOT_OWNER);
-    }
-    // Once a video is confirmed its original is fixed. The transcript,
-    // the recorded sha256 and the Shelby copy all describe that file.
-    if (existing && existing.status !== "uploading") {
-      await fs.unlink(namedFilePath).catch(() => {});
-      return res.status(409).json({ error: "This video was already uploaded. Start a new upload instead.", code: "already_uploaded" });
-    }
-    if (existing) {
-      id = existing.id;
-      videoBlobName = existing.shelby.videoBlobName;
-      await store.update(id, {
-        meta: { sizeBytes: req.file.size, mimeType: req.file.mimetype },
-      });
-    } else {
-      id = reservedId || uuidv4();
-      const title =
-        (req.body.title as string) ||
-        path.basename(req.file.originalname, ext).replace(/[-_]/g, " ");
-      const description = (req.body.description as string) || "";
-      videoBlobName = `videomind/videos/${id}/raw${ext}`;
-      const record: VideoRecord = {
-        id,
-        title,
-        description,
-        createdAt: Date.now(),
-        status: "uploading",
-        ownerWallet: wallet,
-        shelby: { videoBlobName, accountAddress: "", videoTxHash: "" },
-        meta: { sizeBytes: req.file.size, mimeType: req.file.mimetype },
-      };
-      await store.set(id, record);
-    }
-    // Move the file into storage as this video's original. A second
-    // upload for the same reservation replaces the first.
-    try {
-      await saveOriginal({ videoId: id, filePath: namedFilePath, ext, contentType: req.file.mimetype, ownerWallet: wallet });
-    } catch (err: any) {
-      console.error(`[storage] could not store the original of ${id}: ${err?.name ?? "Error"}: ${err?.message ?? err}`);
-      await fs.unlink(namedFilePath).catch(() => {});
-      return res.status(502).json({ error: "The video file could not be stored. Please try again.", code: "storage_failed" });
-    }
-
-    // No base64Data here anymore. The browser already has the raw File
-    // object it just uploaded from -- it reads bytes for the Shelby
-    // wallet upload directly via file.arrayBuffer(), instantly, with
-    // no round trip.
-    return res.status(200).json({ id, videoBlobName, mimeType: req.file.mimetype });
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message });
-  }
-});
-
-// ── POST /api/videos/confirm ────────────────────────────────────────────────
-router.post("/confirm", limitPipeline, requireAuth, async (req, res) => {
-  try {
-    const wallet = authOf(req)!.wallet;
-    const { id, accountAddress, txHash, videoBlobName } = req.body as {
-      id: string; accountAddress: string; txHash: string; videoBlobName: string;
-    };
-
-    if (!id || !accountAddress || !txHash) {
-      return res.status(400).json({ error: "id, accountAddress, and txHash are required" });
-    }
+    const { accountAddress, txHash } = (req.body ?? {}) as { accountAddress?: string; txHash?: string };
+    if (!accountAddress || !txHash) return res.status(400).json({ error: "accountAddress and txHash are required" });
     // The Shelby blob must belong to the signed in wallet.
     if (!sameWallet(accountAddress, wallet)) {
       return res.status(403).json({ error: "accountAddress must be the signed in wallet.", code: "not_owner" });
     }
-
-    const video = await store.get(id);
+    const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
     if (!ownsVideo(video, wallet)) return res.status(403).json(NOT_OWNER);
+    if (video.status === "uploading") return res.status(409).json({ error: "Finish the upload first.", code: "not_uploaded" });
 
-    if (!(await getOriginal(id)) && !(await store.getSourcePath(id))) {
-      return res.status(400).json({ error: "No pending file found. Did you call /prepare first?" });
-    }
-
-    await store.update(id, {
-      shelby: { videoBlobName, accountAddress: wallet, videoTxHash: txHash },
+    await store.update(video.id, {
+      shelby: { videoBlobName: video.shelby.videoBlobName, accountAddress: wallet, videoTxHash: String(txHash).slice(0, 200) },
     });
-
-    // One transcribe job per video. Confirming twice adds nothing.
-    const { created } = await enqueueJob({ videoId: id, kind: "transcribe" });
-    if (created) await store.update(id, { status: "transcribing" });
-    nudgeRunner();
-
-    return res.status(202).json({ id, status: "transcribing" });
+    return res.json({ id: video.id, onShelby: true });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
@@ -243,13 +93,42 @@ router.get("/:id", async (req, res) => {
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
 
-    const streamUrl = video.shelby.videoBlobName && video.shelby.accountAddress
-      ? shelbyBlobUrl(video.shelby.videoBlobName, video.shelby.accountAddress)
-      : null;
+    // vm_upload: play from our own storage when the original is there,
+    // otherwise from Shelby. Storage is the copy made for delivery.
+    const original = video.status === "uploading" ? null : await getOriginal(video.id);
+    let streamUrl: string | null = null;
+    let source: "storage" | "shelby" | null = null;
+    if (original) {
+      streamUrl = (await getStorage().signedUrl(original.key, PLAY_URL_SECONDS).catch(() => null))
+        ?? `/api/videos/${video.id}/file`;       // local disk storage has no signed addresses
+      source = "storage";
+    } else if (onShelby(video) && video.shelby.videoBlobName) {
+      streamUrl = shelbyBlobUrl(video.shelby.videoBlobName, video.shelby.accountAddress);
+      source = "shelby";
+    }
 
-    return res.json({ ...video, streamUrl });
+    return res.json({ ...video, streamUrl, source, onShelby: onShelby(video) });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/videos/:id/file ────────────────────────────────────────────────
+// vm_upload: local disk storage only (development). Streams the original
+// with range support so the player can seek. With S3 storage the player
+// gets a signed address to the bucket instead and this answers 404.
+router.get("/:id/file", async (req, res) => {
+  try {
+    const storage = getStorage();
+    const original = storage.driver === "local" ? await getOriginal(req.params.id) : null;
+    if (!original) return res.status(404).json({ error: "Not found" });
+    await storage.withLocalFile(original.key, (filePath) => new Promise<void>((resolve, reject) => {
+      res.type(original.contentType ?? "video/mp4");
+      res.sendFile(filePath, { acceptRanges: true }, (err) => (err && !res.headersSent ? reject(err) : resolve()));
+    }));
+  } catch (err: any) {
+    if (err instanceof ObjectMissingError) return res.status(404).json({ error: "Not found" });
+    if (!res.headersSent) return res.status(500).json({ error: err.message });
   }
 });
 
@@ -282,6 +161,8 @@ router.get("/:id/jobs", optionalAuth, async (req, res) => {
       maxAttempts: j.maxAttempts,
       nextAttemptAt: j.status === "queued" && j.attempts > 0 ? j.runAfter : null,
       error: owner ? j.error : null,
+      // vm_upload: lets the page give the right advice for this kind of failure
+      errorCode: owner ? j.errorCode ?? null : null,
       canRetry: owner && j.status === "failed" && !NOT_RETRYABLE.has(j.errorCode ?? ""),
     }));
     return res.json({ id: video.id, status: video.status, jobs });

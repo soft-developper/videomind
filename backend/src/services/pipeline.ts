@@ -113,9 +113,8 @@ export function makeHandlers(deps: PipelineDeps) {
 
     await store.update(job.videoId, { status: "ready" });
 
-    // With durable storage the original is kept: it is the copy that
-    // later steps (playback files, clips, anchoring again) are made from.
-    // On local disk it is removed, as before.
+    // The original is kept: it is the copy the video plays from and the
+    // one later steps (playback files, clips, storing on Shelby) are made from.
     if (!keepOriginal()) {
       await deleteOriginal(job.videoId).catch((err) => console.error(`[storage] could not remove the original of ${job.videoId}: ${err?.message ?? err}`));
     }

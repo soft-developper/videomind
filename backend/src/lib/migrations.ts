@@ -111,6 +111,29 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX usage_video_idx ON usage_ledger(video_id)`,
     ],
   },
+  {
+    // vm_upload: uploads sent in parts straight to storage (see src/lib/uploads.ts)
+    id: "004_uploads",
+    statements: [
+      `CREATE TABLE uploads (
+        video_id        TEXT PRIMARY KEY,
+        owner_wallet    TEXT NOT NULL,
+        upload_id       TEXT NOT NULL,
+        storage_driver  TEXT NOT NULL,
+        storage_key     TEXT NOT NULL,
+        filename        TEXT NOT NULL,
+        content_type    TEXT,
+        size_bytes      INTEGER NOT NULL,
+        part_size       INTEGER NOT NULL,
+        part_count      INTEGER NOT NULL,
+        status          TEXT NOT NULL DEFAULT 'open',
+        created_at      INTEGER NOT NULL,
+        updated_at      INTEGER NOT NULL,
+        completed_at    INTEGER
+      )`,
+      `CREATE INDEX uploads_owner_idx ON uploads(owner_wallet, status)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

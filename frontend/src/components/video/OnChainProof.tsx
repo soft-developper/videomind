@@ -101,14 +101,34 @@ function Row({
 }
 
 export function OnChainProof({
-  owner, blobName,
+  owner, blobName, storeHref,
 }: {
   owner?: string;
   blobName?: string;
+  /** vm_upload: where the owner goes to store the file on Shelby. Only passed to the owner. */
+  storeHref?: string;
 }) {
   const { data, isLoading, isError, error } = useOnChainBlob(owner, blobName);
 
-  if (!owner || !blobName) return null;
+  // vm_upload: uploaded, but the owner has not stored it on Shelby yet.
+  if (!owner || !blobName) {
+    if (!storeHref) return null;
+    return (
+      <section className="panel">
+        <header className="flex items-center gap-2.5 px-5 h-11 border-b border-rule">
+          <ShieldCheck size={13} className="text-dim" />
+          <span className="text-[14px] font-semibold text-paper">Ownership</span>
+        </header>
+        <div className="px-5 py-4">
+          <p className="text-[14px] text-paper">Not stored on Shelby yet</p>
+          <p className="text-[13.5px] text-dim mt-1 leading-relaxed max-w-[60ch]">
+            The video is in your library and plays normally. Storing it on Shelby signs it with your wallet and gives it a proof anyone can check.
+          </p>
+          <a href={storeHref} className="btn btn-ghost h-9 px-3.5 inline-flex items-center mt-4">Store on Shelby</a>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="panel">

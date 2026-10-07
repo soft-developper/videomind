@@ -15,12 +15,14 @@ interface Props {
   title: string;
   shelbyAddress?: string;
   blobName?: string;
+  /** vm_upload: where the file is served from */
+  source?: "storage" | "shelby" | null;
   onDuration?: (seconds: number) => void;
   onTimeUpdate?: (seconds: number) => void;
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
-  function VideoPlayer({ streamUrl, onDuration, onTimeUpdate }, ref) {
+  function VideoPlayer({ streamUrl, source, onDuration, onTimeUpdate }, ref) {
     const v = useRef<HTMLVideoElement>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -59,7 +61,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
     if (!streamUrl) {
       return (
         <div className="aspect-video rounded-md bg-screen border border-rule flex items-center justify-center">
-          <span className="tc">No stream</span>
+          <span className="tc">This video has no file to play yet</span>
         </div>
       );
     }
@@ -74,7 +76,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
           <div className="absolute inset-0 flex items-center justify-center z-10 bg-screen">
             <div className="flex items-center gap-2.5">
               <span className="dot dot-work" />
-              <span className="tc">Loading from Shelby</span>
+              <span className="tc">Loading the video</span>
             </div>
           </div>
         )}
@@ -82,9 +84,13 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10 bg-screen px-6 text-center">
             <AlertTriangle size={20} className="text-error" />
-            <p className="font-display text-[17px] text-paper">This video could not be loaded from Shelby</p>
+            <p className="font-display text-[17px] text-paper">
+              {source === "shelby" ? "This video could not be loaded from Shelby" : "This video could not be played"}
+            </p>
             <p className="text-[12px] font-sans text-dim max-w-xs leading-relaxed">
-              The network may be unreachable right now, or the paid storage period may have ended.
+              {source === "shelby"
+                ? "The network may be unreachable right now, or the paid storage period may have ended."
+                : "The file may be in a format this browser cannot play, or storage may be unreachable right now."}
             </p>
           </div>
         )}

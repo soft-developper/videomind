@@ -1,12 +1,13 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Suspense } from "react";
 import { UploadZone } from "@/components/upload/UploadZone";
 
 const STEPS = [
-  { n: "Stored",      d: "Your wallet signs the file and it is written to Shelby, owned by you." },
+  { n: "Uploaded",    d: "The file goes to your library in parts. A dropped connection continues where it stopped." },
   { n: "Transcribed", d: "Every sentence is written down with the time it was said." },
   { n: "Chaptered",   d: "The recording is split where the topic changes, with a summary and key moments." },
-  { n: "Ready",       d: "Search it, ask about it, share it." },
+  { n: "Stored on Shelby", d: "Your wallet signs the file and it is written to Shelby. This can also be done later." },
 ];
 
 export default function UploadPage() {
@@ -14,11 +15,14 @@ export default function UploadPage() {
     <AppShell>
       <PageHeader
         title="Upload a video"
-        description="The file is stored on Shelby and signed by your wallet, then transcribed and split into chapters."
+        description="The file goes to your library, is transcribed and split into chapters, and can be stored on Shelby with your wallet."
       />
       <div className="section pb-16">
         <div className="grid lg:grid-cols-[minmax(0,640px)_300px] gap-x-14 gap-y-10 items-start">
-            <UploadZone />
+            {/* vm_upload: the component reads the page address, which needs a Suspense boundary */}
+            <Suspense fallback={<div className="h-48 scan rounded-lg" />}>
+              <UploadZone />
+            </Suspense>
 
             <aside>
               <h2 className="font-display text-[14px] text-paper mb-1">What happens next</h2>

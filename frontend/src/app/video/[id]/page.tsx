@@ -16,12 +16,14 @@ import { ArrowLeft, MessageSquare, X, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState, useRef } from "react";
 import { clsx } from "clsx";
+import { useSessionWallet } from "@/components/layout/AuthProvider";
 
 export default function VideoPage({ params }: { params: { id: string } }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [t, setT] = useState(0);
   const [dur, setDur] = useState(0);
   const player = useRef<VideoPlayerHandle>(null);
+  const me = useSessionWallet();
   const saved = useRef(false);
 
   const { data: video, isLoading, refetch } = useQuery({
@@ -68,6 +70,10 @@ export default function VideoPage({ params }: { params: { id: string } }) {
   const ready   = video.status === "ready";
   const failed  = video.status === "error";
   const working = !ready && !failed;
+  // vm_upload: the upload itself is not finished yet
+  const unfinished = video.status === "uploading";
+  const mine = !!me && !!video.ownerWallet && me.toLowerCase() === video.ownerWallet.toLowerCase();
+  const shelbyOwner = video.onShelby === false ? undefined : video.shelby.accountAddress;
 
   // Prefer stored duration, fall back to what the player reports
   const duration = video.meta.durationSeconds ?? dur;
@@ -97,7 +103,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 )}
               </div>
 
-              {video.shelby.accountAddress && (
+              {shelbyOwner && (
                 <a
                   href={`https://explorer.aptoslabs.com/account/${video.shelby.accountAddress}?network=shelbynet`}
                   target="_blank"
@@ -132,8 +138,39 @@ export default function VideoPage({ params }: { params: { id: string } }) {
 
           {/* vm_jobs: one panel for both states. When a step fails it shows
               which step, why, and a retry for the owner. */}
-          {(working || failed) && (
-            <div className="max-w-[480px]">
+          {unfinished && (
+            <div className="max-w-[46ch] py-6">
+              <h2 className="font-display text-[17px] text-paper">This upload is not finished</h2>
+              <p className="text-[14px] text-dim mt-1.5 leading-relaxed">
+                {mine
+                  ? "Part of the file has arrived. Open Upload and choose the same file to continue from where it stopped."
+                  : "The owner has not finished uploading this video yet."}
+              </p>
+              {mine && <Link href="/upload" className="btn btn-signal h-9 px-3.5 inline-flex items-center mt-5">Continue the upload</Link>}
+            </div>
+          )}
+
+          {/* vm_upload: the video plays as soon as it is uploaded, even while
+              it is being processed or after a step has failed. */}
+          {(working || failed) && !unfinished && (
+            <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
+              <div className="min-w-0 space-y-5">
+                {video.streamUrl && (
+                  <VideoPlayer
+                    ref={player}
+                    streamUrl={video.streamUrl}
+                    source={video.source}
+                    title={video.title}
+                    onDuration={onDuration}
+                    onTimeUpdate={setT}
+                  />
+                )}
+                <OnChainProof
+                  owner={shelbyOwner}
+                  blobName={video.shelby.videoBlobName}
+                  storeHref={mine ? `/upload?anchor=${video.id}` : undefined}
+                />
+              </div>
               <ProcessingStatus videoId={params.id} onReady={() => refetch()} />
             </div>
           )}
@@ -145,6 +182,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 <VideoPlayer
                   ref={player}
                   streamUrl={video.streamUrl ?? null}
+                  source={video.source}
                   title={video.title}
                   shelbyAddress={video.shelby.accountAddress}
                   blobName={video.shelby.videoBlobName}
@@ -165,14 +203,9 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 <InsightsPanel video={video} onSeek={seek} />
 
                 <OnChainProof
-
-
-                  owner={video.shelby.accountAddress}
-
-
+                  owner={shelbyOwner}
                   blobName={video.shelby.videoBlobName}
-
-
+                  storeHref={mine ? `/upload?anchor=${video.id}` : undefined}
                 />
 
                 {video.ai?.transcript?.length ? (

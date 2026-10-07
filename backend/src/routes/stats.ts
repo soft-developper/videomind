@@ -16,7 +16,8 @@ router.get("/stats", optionalAuth, async (req, res) => {
     return res.json({
       totalVideos: videos.length,
       readyVideos: ready.length,
-      blobCount:   videos.filter((v) => v.shelby.videoBlobName).length,
+      // vm_upload: only videos the owner has stored on Shelby
+      blobCount:   videos.filter((v) => v.shelby.accountAddress && v.shelby.videoTxHash).length,
       processing:  videos.filter((v) =>
         ["uploading", "transcribing", "analyzing"].includes(v.status)
       ).length,

@@ -198,22 +198,34 @@ export const store = {
     if (stmts.length > 0) await db.batch(stmts, "write");
   },
 
-  /** Return all videos ordered newest-first. */
   /**
-   * Return all videos, optionally filtered by wallet address.
-   * When walletAddress is provided only videos uploaded by that wallet are returned.
+   * vm_upload: the ids of a wallet's videos. A video belongs to the wallet
+   * that created it, or whose Shelby account holds it. An entry still in
+   * "uploading" only counts while its upload is open, so abandoned
+   * reservations stay out of the library.
+   */
+  async idsFor(walletAddress: string): Promise<string[]> {
+    const res = await getDb().execute({
+      sql: `SELECT v.id AS id
+              FROM videos v
+              LEFT JOIN video_shelby s ON s.video_id = v.id
+              LEFT JOIN uploads u ON u.video_id = v.id
+             WHERE (v.owner_wallet = ? OR s.account_address = ?)
+               AND (v.status != 'uploading' OR u.status IN ('open', 'completing'))`,
+      args: [walletAddress, walletAddress],
+    });
+    return res.rows.map((r) => (r as Record<string, unknown>).id as string);
+  },
+
+  /**
+   * Return all videos, newest first, optionally only one wallet's.
    */
   async getAll(walletAddress?: string): Promise<VideoRecord[]> {
     const db = getDb();
 
-    // If filtering by wallet, first get matching video_ids from video_shelby
     let videoIds: string[] | null = null;
     if (walletAddress) {
-      const shelbyRes = await db.execute({
-        sql: "SELECT video_id FROM video_shelby WHERE account_address = ?",
-        args: [walletAddress],
-      });
-      videoIds = shelbyRes.rows.map((r) => (r as Record<string, unknown>).video_id as string);
+      videoIds = await store.idsFor(walletAddress);
       if (videoIds.length === 0) return []; // wallet has no videos
     }
 
@@ -262,12 +274,7 @@ export const store = {
   async deleteAll(walletAddress?: string): Promise<number> {
     const db = getDb();
     if (walletAddress) {
-      // Get IDs for this wallet first
-      const shelbyRes = await db.execute({
-        sql: "SELECT video_id FROM video_shelby WHERE account_address = ?",
-        args: [walletAddress],
-      });
-      const ids = shelbyRes.rows.map((r) => (r as Record<string, unknown>).video_id as string);
+      const ids = await store.idsFor(walletAddress);
       if (ids.length === 0) return 0;
       for (const id of ids) {
         await db.execute({ sql: "DELETE FROM videos WHERE id = ?", args: [id] });
