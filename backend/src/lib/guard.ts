@@ -144,5 +144,13 @@ export const limitDelete = rateLimit({
   global:    { max: envInt("LIMIT_DELETE_GLOBAL_HOUR", 300),     windowMs: HOUR },
 });
 
+/** Sign in attempts: nonce requests and signature checks. */
+export const limitAuth = rateLimit({
+  name: "auth",
+  label: "sign in attempts",
+  perClient: { max: envInt("LIMIT_AUTH_PER_CLIENT_10MIN", 30), windowMs: 10 * MIN },
+  global:    { max: envInt("LIMIT_AUTH_GLOBAL_HOUR", 1000),    windowMs: HOUR },
+});
+
 /** Test hook: clear all counters. */
 export function _resetLimits() { buckets.clear(); lastSweep = 0; }

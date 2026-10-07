@@ -2,10 +2,12 @@
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { useSessionWallet } from "./AuthProvider";
 
 export function ShelbyBadge() {
-  const { connected, account } = useWallet();
-  const wallet = account?.address?.toString();
+  const { connected } = useWallet();
+  // vm_signin: data loads only once the wallet has signed in
+  const wallet = useSessionWallet();
 
   const { data } = useQuery({
     queryKey: ["shelby-badge", wallet],
@@ -23,7 +25,7 @@ export function ShelbyBadge() {
     <div className="flex items-center gap-3 px-3 h-10 border border-rule">
       <span className="dot dot-live" />
       <span className="tc">
-        {data?.blobCount ?? "—"} blob{data?.blobCount !== 1 ? "s" : ""} on Shelby
+        {data?.blobCount ?? "…"} blob{data?.blobCount !== 1 ? "s" : ""} on Shelby
       </span>
       <span className="tc text-dim-2 ml-auto">
         {wallet.slice(0, 6)}…{wallet.slice(-4)}

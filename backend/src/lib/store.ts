@@ -1,12 +1,12 @@
 // src/lib/store.ts
-// Turso-backed persistent store — replaces the old in-memory Map.
+// Turso-backed persistent store, replaces the old in-memory Map.
 // All operations are async and use libSQL via @libsql/client.
 
 import { getDb } from "./db.js";
 import type { InValue } from "@libsql/client";
 import type { VideoRecord } from "../types/video.js";
 
-// Cast helper — libSQL batch requires InValue[] not unknown[]
+// Cast helper, libSQL batch requires InValue[] not unknown[]
 const args = (a: unknown[]): InValue[] => a as InValue[];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -25,6 +25,7 @@ function rowToVideo(v: Record<string, unknown>, shelby: Record<string, unknown>,
     description: v.description as string | undefined,
     status:      v.status as VideoRecord["status"],
     createdAt:   Number(v.created_at),
+    ownerWallet: (v.owner_wallet as string | null | undefined) ?? undefined,
     meta: {
       sizeBytes:       Number(v.size_bytes),
       mimeType:        v.mime_type as string,
@@ -59,8 +60,8 @@ export const store = {
     const db = getDb();
     await db.batch([
       {
-        sql: `INSERT OR REPLACE INTO videos (id, title, description, status, created_at, size_bytes, mime_type, duration_sec)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT OR REPLACE INTO videos (id, title, description, status, created_at, size_bytes, mime_type, duration_sec, owner_wallet)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           id,
           record.title,
@@ -70,6 +71,7 @@ export const store = {
           record.meta.sizeBytes,
           record.meta.mimeType,
           record.meta.durationSeconds ?? null,
+          record.ownerWallet ?? null,
         ],
       },
       {
@@ -108,7 +110,7 @@ export const store = {
     return rowToVideo(v, s, a);
   },
 
-  /** Partial update — only supply what changed. */
+  /** Partial update, only supply what changed. */
   async update(id: string, partial: Partial<VideoRecord>): Promise<void> {
     const db = getDb();
     const stmts: Array<{ sql: string; args: import("@libsql/client").InValue[] }> = [];

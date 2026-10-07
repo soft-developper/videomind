@@ -4,6 +4,7 @@ import { useDropzone } from "react-dropzone";
 import { X, AlertTriangle, Check } from "lucide-react";
 import { clsx } from "clsx";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { useUploadBlobs } from "@shelby-protocol/react";
 import { reserveVideo, prepareVideo, confirmVideo } from "@/lib/api";
 // vm_shelby09: expiration removed from blob registration (sdk >= 0.8.0)
@@ -40,6 +41,8 @@ function readable(raw: string): string {
 export function UploadZone() {
   const router = useRouter();
   const { account, signAndSubmitTransaction, connected } = useWallet();
+  // vm_signin: uploads need a signed in wallet
+  const sessionWallet = useSessionWallet();
 
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
@@ -85,6 +88,10 @@ export function UploadZone() {
     if (!file || !title.trim()) return;
     if (!connected || !account || !signAndSubmitTransaction) {
       setErr("Connect a wallet first - the button is in the top bar.");
+      return;
+    }
+    if (!sessionWallet) {
+      setErr("Sign in with your wallet first. The prompt is at the bottom of the page.");
       return;
     }
     setErr(null);

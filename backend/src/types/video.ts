@@ -5,6 +5,8 @@ export interface VideoRecord {
   description?: string;
   createdAt: number; // unix ms
   status: VideoStatus;
+  /** vm_signin: wallet that reserved the upload (canonical 0x + 64 hex). */
+  ownerWallet?: string;
   shelby: {
     videoBlobName: string;
     transcriptBlobName?: string;

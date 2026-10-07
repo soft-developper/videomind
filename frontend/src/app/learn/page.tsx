@@ -1,6 +1,7 @@
 "use client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { getLearningPaths, regenerateLearningPaths, type LearningPath } from "@/lib/api";
 import { Navbar } from "@/components/layout/Navbar";
 import { RefreshCw, ArrowRight } from "lucide-react";
@@ -14,8 +15,9 @@ const LEVEL: Record<string, string> = {
 };
 
 export default function LearnPage() {
-  const { connected, account } = useWallet();
-  const wallet = account?.address?.toString();
+  const { connected } = useWallet();
+  // vm_signin: data loads only once the wallet has signed in
+  const wallet = useSessionWallet();
   const qc = useQueryClient();
 
   const { data, isLoading, isError, error } = useQuery({
@@ -43,7 +45,7 @@ export default function LearnPage() {
               <span className="italic text-signal">in the right order.</span>
             </h1>
             <p className="text-[14px] font-sans text-dim mt-4 max-w-md leading-relaxed">
-              Claude reads everything you've uploaded and works out what to watch first —
+              Claude reads everything you've uploaded and works out what to watch first,
               and why.
             </p>
           </div>
@@ -56,6 +58,16 @@ export default function LearnPage() {
               <p className="font-display text-[24px] text-paper mb-3">Connect a wallet</p>
               <p className="text-[13px] font-sans text-dim">
                 Paths are built from your own library.
+              </p>
+            </div>
+          )}
+
+          {/* vm_signin: connected but not signed in */}
+          {connected && !wallet && (
+            <div className="py-20 text-center">
+              <p className="font-display text-[24px] text-paper mb-3">Sign in to see your paths</p>
+              <p className="text-[13px] font-sans text-dim">
+                The prompt is at the bottom of the page.
               </p>
             </div>
           )}

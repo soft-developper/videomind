@@ -2,6 +2,7 @@
 // Turso (libSQL) database client + schema migrations
 import { createClient } from "@libsql/client";
 import "dotenv/config";
+import { runMigrations } from "./migrations.js";
 
 // ── Client singleton ──────────────────────────────────────────────────────
 let _db: ReturnType<typeof createClient> | null = null;
@@ -67,6 +68,9 @@ export async function migrate() {
       tweet_thread TEXT
     )`,
   ], "write");
+
+  // vm_signin: run once migrations (users, sessions, nonces, owner column).
+  await runMigrations(db);
 
   console.log("[DB] Schema migrations applied ✓");
 }

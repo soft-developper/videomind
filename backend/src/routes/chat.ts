@@ -2,7 +2,9 @@ import { Router } from "express";
 import { store } from "../lib/store.js";
 import { chatWithVideo, semanticSearch } from "../services/aiPipeline.js";
 // vm_apiguard: wallet checks and rate limits, see src/lib/guard.ts
-import { isWalletAddress, limitAi } from "../lib/guard.js";
+import { limitAi } from "../lib/guard.js";
+// vm_signin: the caller is the signed in wallet, never a value they send
+import { requireAuth, authOf } from "../lib/auth.js";
 
 const router = Router();
 
@@ -25,15 +27,12 @@ router.post("/:videoId", limitAi, async (req, res) => {
 });
 
 // POST /api/chat/search/all
-// Searches ONE wallet's videos. Without a wallet it returns nothing. This
-// route used to search every wallet's transcripts when no wallet was sent.
-router.post("/search/all", limitAi, async (req, res) => {
+// Searches the signed in wallet's videos only.
+router.post("/search/all", limitAi, requireAuth, async (req, res) => {
   try {
-    const { query, wallet } = req.body as { query: string; wallet?: string };
+    const { query } = req.body as { query: string };
     if (!query?.trim()) return res.status(400).json({ error: "query is required" });
-    if (!isWalletAddress(wallet)) {
-      return res.json({ results: [], message: "Connect a wallet to search your videos" });
-    }
+    const wallet = authOf(req)!.wallet;
 
     const readyVideos = (await store.getReady(wallet)).filter((v) => v.ai?.transcript);
 

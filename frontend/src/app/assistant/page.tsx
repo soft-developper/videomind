@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { askLibrary, type LibraryAnswer } from "@/lib/api";
 import { Navbar } from "@/components/layout/Navbar";
 import { Send, RefreshCw } from "lucide-react";
@@ -23,8 +24,9 @@ const PROMPTS = [
 ];
 
 export default function AssistantPage() {
-  const { connected, account } = useWallet();
-  const wallet = account?.address?.toString();
+  const { connected } = useWallet();
+  // vm_signin: questions are sent only once the wallet has signed in
+  const wallet = useSessionWallet();
 
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [q, setQ] = useState("");
@@ -36,7 +38,12 @@ export default function AssistantPage() {
 
   const ask = async (text: string) => {
     const question = text.trim();
-    if (!question || busy || !wallet) return;
+    if (!question || busy) return;
+    if (!wallet) {
+      // vm_signin: say why nothing was sent, instead of ignoring the question
+      setMsgs((m) => [...m, { role: "ai", text: "Sign in with your wallet first. The prompt is at the bottom of the page.", failed: true }]);
+      return;
+    }
     setQ(""); setLast(question);
     setMsgs((m) => [...m, { role: "you", text: question }]);
     setBusy(true);

@@ -4,7 +4,9 @@ import { store } from "../lib/store.js";
 import { getDb } from "../lib/db.js";
 import { generateLearningPaths, askLibrary } from "../services/learningService.js";
 // vm_apiguard: wallet checks and rate limits, see src/lib/guard.ts
-import { isWalletAddress, limitAi, takeBudget, AI_LIMIT } from "../lib/guard.js";
+import { limitAi, takeBudget, AI_LIMIT } from "../lib/guard.js";
+// vm_signin: the caller is the signed in wallet, never a value they send
+import { requireAuth, authOf } from "../lib/auth.js";
 
 const router = Router();
 
@@ -12,10 +14,9 @@ const MIN_VIDEOS_FOR_PATHS = 3;
 
 // ── GET /api/learn/paths?wallet=0x... ────────────────────────────────────────
 // Returns cached paths if the video count hasn't changed since generation.
-router.get("/paths", async (req, res) => {
+router.get("/paths", requireAuth, async (req, res) => {
   try {
-    const wallet = req.query.wallet;
-    if (!isWalletAddress(wallet)) return res.status(400).json({ error: "wallet is required" });
+    const wallet = authOf(req)!.wallet;
 
     const videos = (await store.getReady(wallet)).filter((v) => v.ai?.summary);
 
@@ -70,10 +71,9 @@ router.get("/paths", async (req, res) => {
 
 // ── POST /api/learn/paths/regenerate ─────────────────────────────────────────
 // Force a fresh generation, bypassing the cache.
-router.post("/paths/regenerate", limitAi, async (req, res) => {
+router.post("/paths/regenerate", limitAi, requireAuth, async (req, res) => {
   try {
-    const { wallet } = req.body as { wallet: string };
-    if (!isWalletAddress(wallet)) return res.status(400).json({ error: "wallet is required" });
+    const wallet = authOf(req)!.wallet;
 
     const videos = (await store.getReady(wallet)).filter((v) => v.ai?.summary);
     if (videos.length < MIN_VIDEOS_FOR_PATHS) {
@@ -104,11 +104,11 @@ router.post("/paths/regenerate", limitAi, async (req, res) => {
 
 // ── POST /api/learn/ask ──────────────────────────────────────────────────────
 // Cross-video library assistant.
-router.post("/ask", limitAi, async (req, res) => {
+router.post("/ask", limitAi, requireAuth, async (req, res) => {
   try {
-    const { question, wallet } = req.body as { question: string; wallet: string };
+    const { question } = req.body as { question: string };
     if (!question?.trim()) return res.status(400).json({ error: "question is required" });
-    if (!isWalletAddress(wallet)) return res.status(400).json({ error: "wallet is required" });
+    const wallet = authOf(req)!.wallet;
 
     const videos = (await store.getReady(wallet)).filter((v) => v.ai?.transcript?.length);
 

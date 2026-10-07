@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { clsx } from "clsx";
 import { WalletButton } from "./WalletButton";
+import { SignInNotice } from "./SignInNotice";
 import { useState, useEffect } from "react";
 
 const NAV = [
@@ -81,6 +82,8 @@ export function Navbar() {
           </div>
         </div>
       </nav>
+
+      <SignInNotice />
 
       {/* Mobile drawer */}
       <div className={clsx(

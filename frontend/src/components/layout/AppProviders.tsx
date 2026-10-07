@@ -6,6 +6,7 @@ import { ShelbyClientProvider } from "@shelby-protocol/react";
 import { Network } from "@aptos-labs/ts-sdk";
 import { useState } from "react";
 import { shelbyClient } from "@/lib/shelby";
+import { AuthProvider } from "./AuthProvider";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -25,7 +26,8 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
         onError={(error) => console.error("[Wallet]", error)}
       >
         <ShelbyClientProvider client={shelbyClient}>
-          {children}
+          {/* vm_signin: wallet sign in state for the whole app */}
+          <AuthProvider>{children}</AuthProvider>
         </ShelbyClientProvider>
       </AptosWalletAdapterProvider>
     </QueryClientProvider>

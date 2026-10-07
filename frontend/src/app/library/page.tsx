@@ -5,13 +5,15 @@ import { VideoCard } from "@/components/video/VideoCard";
 import { SkeletonCard } from "@/components/ui/SkeletonCard";
 import { Navbar } from "@/components/layout/Navbar";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { ArrowRight, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
 export default function Library() {
-  const { connected, account } = useWallet();
-  const wallet = account?.address?.toString();
+  const { connected } = useWallet();
+  // vm_signin: data loads only once the wallet has signed in
+  const wallet = useSessionWallet();
 
   const [wipe, setWipe] = useState(false);
   const [wiping, setWiping] = useState(false);
@@ -133,6 +135,19 @@ export default function Library() {
             </div>
           )}
 
+          {/* vm_signin: connected but not signed in. The library is not empty, it is not loaded. */}
+          {connected && !wallet && (
+            <div className="py-24 text-center">
+              <p className="font-display text-[24px] text-paper mb-3">
+                Sign in to open your library
+              </p>
+              <p className="text-[13px] font-sans text-dim max-w-sm mx-auto leading-relaxed">
+                Your wallet is connected. One signature proves it is yours, then your videos load.
+                The prompt is at the bottom of the page.
+              </p>
+            </div>
+          )}
+
           {connected && isLoading && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
@@ -149,7 +164,7 @@ export default function Library() {
             </div>
           )}
 
-          {connected && !isLoading && !isError && videos.length === 0 && (
+          {connected && wallet && !isLoading && !isError && videos.length === 0 && (
             <div className="py-24 text-center">
               <p className="font-display text-[24px] text-paper mb-3">
                 Nothing here yet

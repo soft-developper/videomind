@@ -9,7 +9,9 @@ import { processVideoAI } from "../services/videoProcessor.js";
 import { shelbyBlobUrl } from "../lib/shelbyClient.js";
 import type { VideoRecord } from "../types/video.js";
 // vm_apiguard: wallet checks and rate limits, see src/lib/guard.ts
-import { isWalletAddress, limitUpload, limitPipeline, limitDelete } from "../lib/guard.js";
+import { limitUpload, limitPipeline, limitDelete } from "../lib/guard.js";
+// vm_signin: the caller is the signed in wallet, never a value they send
+import { requireAuth, authOf, sameWallet } from "../lib/auth.js";
 
 const router = Router();
 
@@ -28,11 +30,18 @@ const upload = multer({
 
 export const pendingFiles = new Map<string, { filePath: string; ext: string }>();
 
+/** True if this wallet reserved the video or its Shelby blob belongs to it. */
+function ownsVideo(video: VideoRecord, wallet: string): boolean {
+  return sameWallet(video.ownerWallet, wallet) || sameWallet(video.shelby.accountAddress, wallet);
+}
+const NOT_OWNER = { error: "This video belongs to a different wallet.", code: "not_owner" };
+
 // ── POST /api/videos/reserve ────────────────────────────────────────────────
 // Instant, no file. Reserves an id + blob name so the browser can start the
 // Shelby wallet upload in parallel with the (separate) file upload to /prepare.
-router.post("/reserve", limitUpload, async (req, res) => {
+router.post("/reserve", limitUpload, requireAuth, async (req, res) => {
   try {
+    const wallet = authOf(req)!.wallet;
     const id = uuidv4();
     const originalName = (req.body.filename as string) || "video.mp4";
     const ext = path.extname(originalName) || ".mp4";
@@ -49,6 +58,7 @@ router.post("/reserve", limitUpload, async (req, res) => {
       description,
       createdAt: Date.now(),
       status: "uploading",
+      ownerWallet: wallet,
       shelby: { videoBlobName, accountAddress: "", videoTxHash: "" },
       meta: { sizeBytes: 0, mimeType },
     };
@@ -61,10 +71,12 @@ router.post("/reserve", limitUpload, async (req, res) => {
 });
 
 // ── POST /api/videos/prepare ────────────────────────────────────────────────
-// The limiter runs BEFORE multer, so a rejected request never writes the file.
-router.post("/prepare", limitUpload, upload.single("video"), async (req, res) => {
+// The limiter and the sign in check run BEFORE multer, so a rejected
+// request never writes the file.
+router.post("/prepare", limitUpload, requireAuth, upload.single("video"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No video file provided" });
+    const wallet = authOf(req)!.wallet;
 
     const ext = path.extname(req.file.originalname) || ".mp4";
 
@@ -80,6 +92,10 @@ router.post("/prepare", limitUpload, upload.single("video"), async (req, res) =>
     let videoBlobName: string;
 
     const existing = reservedId ? await store.get(reservedId) : undefined;
+    if (existing && !ownsVideo(existing, wallet)) {
+      await fs.unlink(namedFilePath).catch(() => {});
+      return res.status(403).json(NOT_OWNER);
+    }
     if (existing) {
       id = existing.id;
       videoBlobName = existing.shelby.videoBlobName;
@@ -99,6 +115,7 @@ router.post("/prepare", limitUpload, upload.single("video"), async (req, res) =>
         description,
         createdAt: Date.now(),
         status: "uploading",
+        ownerWallet: wallet,
         shelby: { videoBlobName, accountAddress: "", videoTxHash: "" },
         meta: { sizeBytes: req.file.size, mimeType: req.file.mimetype },
       };
@@ -117,8 +134,9 @@ router.post("/prepare", limitUpload, upload.single("video"), async (req, res) =>
 });
 
 // ── POST /api/videos/confirm ────────────────────────────────────────────────
-router.post("/confirm", limitPipeline, async (req, res) => {
+router.post("/confirm", limitPipeline, requireAuth, async (req, res) => {
   try {
+    const wallet = authOf(req)!.wallet;
     const { id, accountAddress, txHash, videoBlobName } = req.body as {
       id: string; accountAddress: string; txHash: string; videoBlobName: string;
     };
@@ -126,12 +144,14 @@ router.post("/confirm", limitPipeline, async (req, res) => {
     if (!id || !accountAddress || !txHash) {
       return res.status(400).json({ error: "id, accountAddress, and txHash are required" });
     }
-    if (!isWalletAddress(accountAddress)) {
-      return res.status(400).json({ error: "accountAddress is not a valid wallet address" });
+    // The Shelby blob must belong to the signed in wallet.
+    if (!sameWallet(accountAddress, wallet)) {
+      return res.status(403).json({ error: "accountAddress must be the signed in wallet.", code: "not_owner" });
     }
 
     const video = await store.get(id);
     if (!video) return res.status(404).json({ error: "Video not found" });
+    if (!ownsVideo(video, wallet)) return res.status(403).json(NOT_OWNER);
 
     const pending = pendingFiles.get(id);
     if (!pending) {
@@ -140,10 +160,10 @@ router.post("/confirm", limitPipeline, async (req, res) => {
 
     await store.update(id, {
       status: "transcribing",
-      shelby: { videoBlobName, accountAddress, videoTxHash: txHash },
+      shelby: { videoBlobName, accountAddress: wallet, videoTxHash: txHash },
     });
 
-    processVideoAI(id, pending.filePath, accountAddress).catch(console.error);
+    processVideoAI(id, pending.filePath, wallet).catch(console.error);
 
     return res.status(202).json({ id, status: "transcribing" });
   } catch (err: any) {
@@ -152,16 +172,11 @@ router.post("/confirm", limitPipeline, async (req, res) => {
 });
 
 // ── GET /api/videos?wallet=0x... ─────────────────────────────────────────────
-// Returns only videos uploaded by the given wallet address.
-// A wallet is REQUIRED. This route used to return every video on the
-// platform when no wallet was sent.
-router.get("/", async (req, res) => {
+// Returns the signed in wallet's videos. Any wallet value sent by the
+// caller is ignored.
+router.get("/", requireAuth, async (req, res) => {
   try {
-    const wallet = req.query.wallet;
-    if (!isWalletAddress(wallet)) {
-      return res.status(400).json({ error: "A valid wallet address is required" });
-    }
-    const videos = await store.getAll(wallet);
+    const videos = await store.getAll(authOf(req)!.wallet);
     return res.json({ videos });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
@@ -197,7 +212,7 @@ router.get("/:id/status", async (req, res) => {
 
 // ── PATCH /api/videos/:id/duration ───────────────────────────────────────────
 // Called once by the frontend player when video metadata loads.
-router.patch("/:id/duration", async (req, res) => {
+router.patch("/:id/duration", requireAuth, async (req, res) => {
   try {
     const { durationSeconds } = req.body as { durationSeconds: number };
     if (typeof durationSeconds !== "number" || !isFinite(durationSeconds) || durationSeconds <= 0) {
@@ -206,6 +221,7 @@ router.patch("/:id/duration", async (req, res) => {
 
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
+    if (!ownsVideo(video, authOf(req)!.wallet)) return res.status(403).json(NOT_OWNER);
 
     await store.update(req.params.id, {
       meta: { ...video.meta, durationSeconds },
@@ -218,14 +234,11 @@ router.patch("/:id/duration", async (req, res) => {
 });
 
 // ── DELETE /api/videos/all?wallet=0x... ─────────────────────────────────────
-// Deletes all videos for ONE wallet. A wallet is REQUIRED. This route
-// used to delete every video on the platform when no wallet was sent.
-router.delete("/all", limitDelete, async (req, res) => {
+// Deletes all of the signed in wallet's videos. Any wallet value sent by
+// the caller is ignored.
+router.delete("/all", limitDelete, requireAuth, async (req, res) => {
   try {
-    const wallet = req.query.wallet;
-    if (!isWalletAddress(wallet)) {
-      return res.status(400).json({ error: "A valid wallet address is required" });
-    }
+    const wallet = authOf(req)!.wallet;
     const count = await store.deleteAll(wallet);
     return res.json({
       success: true,
@@ -238,10 +251,11 @@ router.delete("/all", limitDelete, async (req, res) => {
 });
 
 // ── DELETE /api/videos/:id ───────────────────────────────────────────────────
-router.delete("/:id", limitDelete, async (req, res) => {
+router.delete("/:id", limitDelete, requireAuth, async (req, res) => {
   try {
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
+    if (!ownsVideo(video, authOf(req)!.wallet)) return res.status(403).json(NOT_OWNER);
     await store.delete(req.params.id);
     const pending = pendingFiles.get(req.params.id);
     if (pending) {

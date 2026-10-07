@@ -3,9 +3,13 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { ChevronDown, LogOut, Copy, Check } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { clsx } from "clsx";
+import { useAuth } from "./AuthProvider";
 
 export function WalletButton() {
   const { connect, disconnect, connected, isLoading, account, wallets = [] } = useWallet();
+  // vm_signin: sign in right after a wallet the visitor picked connects,
+  // and end the session when they disconnect.
+  const { armSignIn, signOut, signedIn } = useAuth();
   const [menu, setMenu] = useState(false);
   const [picker, setPicker] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -42,7 +46,7 @@ export function WalletButton() {
           onClick={() => setMenu((v) => !v)}
           className="flex items-center gap-2 px-3 h-8 border border-rule hover:border-rule-lit transition-colors"
         >
-          <span className="dot dot-live" />
+          <span className={signedIn ? "dot dot-live" : "dot dot-dead"} />
           <span className="tc text-paper-2">{short(addr)}</span>
           <ChevronDown size={11} className={clsx("text-dim transition-transform", menu && "rotate-180")} />
         </button>
@@ -50,7 +54,7 @@ export function WalletButton() {
         {menu && (
           <div className="absolute right-0 top-full mt-1 w-52 bg-void border border-rule z-50">
             <div className="px-3 py-2.5 border-b border-rule">
-              <p className="eyebrow mb-1">Wallet</p>
+              <p className="eyebrow mb-1">{signedIn ? "Signed in" : "Connected, not signed in"}</p>
               <p className="tc text-paper-2">{short(addr)}</p>
             </div>
             <button
@@ -65,7 +69,7 @@ export function WalletButton() {
               {copied ? "Copied" : "Copy address"}
             </button>
             <button
-              onClick={() => { disconnect(); setMenu(false); }}
+              onClick={() => { void signOut(); disconnect(); setMenu(false); }}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-sans text-dim hover:text-error hover:bg-slate transition-colors border-t border-rule"
             >
               <LogOut size={12} />
@@ -111,7 +115,7 @@ export function WalletButton() {
           {wallets.map((w) => (
             <button
               key={w.name}
-              onClick={() => { connect(w.name); setPicker(false); }}
+              onClick={() => { armSignIn(); connect(w.name); setPicker(false); }}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-sans text-paper-2 hover:text-paper hover:bg-slate transition-colors"
             >
               {w.icon && (

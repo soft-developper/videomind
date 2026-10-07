@@ -1,18 +1,29 @@
 import axios, { type AxiosError } from "axios";
+// vm_signin: every request carries the session token once signed in
+import { getSession, setSession } from "./session";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 export const api = axios.create({ baseURL: BASE, timeout: 120_000 });
 
+api.interceptors.request.use((config) => {
+  const s = getSession();
+  if (s) config.headers.set("Authorization", `Bearer ${s.token}`);
+  return config;
+});
+
 api.interceptors.response.use(
   (res) => res,
-  (err: AxiosError<{ error?: string }>) => {
+  (err: AxiosError<{ error?: string; code?: string }>) => {
     const serverMsg = err.response?.data?.error;
     const statusCode = err.response?.status;
+    // The API no longer accepts this session (expired or signed out
+    // elsewhere): drop it so the page offers sign in again.
+    if (statusCode === 401 && err.response?.data?.code === "auth_required") setSession(null);
     let message: string;
     if (serverMsg) message = serverMsg;
     else if (err.code === "ECONNABORTED" || err.message.includes("timeout"))
-      message = "Request timed out. The server may be busy — please try again.";
+      message = "Request timed out. The server may be busy, please try again.";
     else if (!err.response)
       message = "Cannot reach the VideoMind server. Is the backend running?";
     else if (statusCode === 413) message = "File is too large. Maximum size is 2 GB.";

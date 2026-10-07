@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Search, RefreshCw, X } from "lucide-react";
 import { searchAllVideos } from "@/lib/api";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { readableTime } from "@/lib/exports";
 import Link from "next/link";
 
@@ -14,8 +15,9 @@ const EXAMPLES = [
 ];
 
 export function SearchInterface() {
-  const { connected, account } = useWallet();
-  const wallet = account?.address?.toString();
+  const { connected } = useWallet();
+  // vm_signin: search runs only once the wallet has signed in
+  const wallet = useSessionWallet();
 
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<any[] | null>(null);
@@ -26,6 +28,7 @@ export function SearchInterface() {
   const run = async (text: string) => {
     const query = text.trim();
     if (!query) return;
+    if (!wallet) { setErr("Sign in with your wallet first. The prompt is at the bottom of the page."); return; }
     setQ(query); setLast(query); setBusy(true); setHits(null); setErr(null);
     try {
       const d = await searchAllVideos(query, wallet);
