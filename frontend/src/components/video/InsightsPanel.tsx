@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Copy, Check, Play, Pencil } from "lucide-react";
 import { clsx } from "clsx";
 import type { VideoRecord } from "@/lib/api";
@@ -48,6 +48,9 @@ export function InsightsPanel({
   const [tab, setTab] = useState<Tab>("summary");
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
+  // vm_chapters: what was just saved, shown until the page has fetched it back.
+  const [justSaved, setJustSaved] = useState<NonNullable<VideoRecord["ai"]>["chapters"] | null>(null);
+  useEffect(() => { setJustSaved(null); }, [video.ai?.chapters]);
   const ai = video.ai;
   if (!ai) return null;
   const canSeek = typeof onSeek === "function";
@@ -93,10 +96,10 @@ export function InsightsPanel({
         {tab === "cuts" && editing && (
           <ChapterEditor
             videoId={video.id}
-            chapters={ai.chapters ?? []}
+            chapters={justSaved ?? ai.chapters ?? []}
             currentTime={currentTime}
             duration={duration}
-            onDone={(done) => { setEditing(false); if (done) { setSaved(true); onChaptersSaved?.(); setTimeout(() => setSaved(false), 2500); } }}
+            onDone={(done) => { setEditing(false); if (done) { setJustSaved(done); setSaved(true); onChaptersSaved?.(); setTimeout(() => setSaved(false), 2500); } }}
           />
         )}
 
@@ -111,10 +114,10 @@ export function InsightsPanel({
                 </button>
               </div>
             )}
-            {(ai.chapters ?? []).length === 0 && (
+            {(justSaved ?? ai.chapters ?? []).length === 0 && (
               <p className="p-5 text-[13.5px] text-dim">No chapters were found in this video.</p>
             )}
-            {(ai.chapters ?? []).map((c, i) => (
+            {(justSaved ?? ai.chapters ?? []).map((c, i) => (
               <button
                 key={i}
                 onClick={() => canSeek && onSeek!(c.startSeconds)}

@@ -229,6 +229,25 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX passages_video ON passages(video_id, seq)`,
     ],
   },
+  {
+    // vm_notes: each signed in viewer's own bookmarks and notes on a video,
+    // at a moment in it. Private to the wallet that wrote them.
+    id: "009_notes",
+    statements: [
+      `CREATE TABLE video_notes (
+        id          TEXT PRIMARY KEY,
+        video_id    TEXT NOT NULL,
+        wallet      TEXT NOT NULL,
+        kind        TEXT NOT NULL,
+        at_sec      REAL NOT NULL,
+        text        TEXT NOT NULL DEFAULT '',
+        created_at  INTEGER NOT NULL,
+        updated_at  INTEGER NOT NULL
+      )`,
+      `CREATE INDEX video_notes_mine ON video_notes(wallet, video_id, at_sec)`,
+      `CREATE INDEX video_notes_video ON video_notes(video_id)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

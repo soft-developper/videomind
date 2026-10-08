@@ -318,6 +318,8 @@ export const store = {
       { sql: "DELETE FROM transcript_chunks WHERE video_id = ?", args: [id] },
       // vm_search: the passages search reads
       { sql: "DELETE FROM passages WHERE video_id = ?", args: [id] },
+      // vm_notes: everyone's bookmarks and notes on it
+      { sql: "DELETE FROM video_notes WHERE video_id = ?", args: [id] },
       { sql: "DELETE FROM videos WHERE id = ?", args: [id] },
     ], "write");
   },
@@ -338,6 +340,7 @@ export const store = {
       { sql: "DELETE FROM collection_items", args: [] },
       { sql: "DELETE FROM transcript_chunks", args: [] },
       { sql: "DELETE FROM passages", args: [] },
+      { sql: "DELETE FROM video_notes", args: [] },
       { sql: "DELETE FROM videos", args: [] },
     ], "write");
     return count;

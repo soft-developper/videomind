@@ -8,6 +8,7 @@ import { IntelligenceStrip } from "@/components/video/IntelligenceStrip";
 import { InsightsPanel } from "@/components/video/InsightsPanel";
 import { OnChainProof } from "@/components/video/OnChainProof";
 import { TranscriptPanel } from "@/components/video/TranscriptPanel";
+import { NotesPanel } from "@/components/video/NotesPanel";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { ExportMenu } from "@/components/video/ExportMenu";
 import { SkeletonVideoPage } from "@/components/ui/SkeletonCard";
@@ -185,6 +186,9 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                   chapters={video.ai?.chapters}
                 />
               ) : null}
+
+              {/* vm_notes: this wallet's own bookmarks and notes */}
+              <NotesPanel videoId={params.id} title={video.title} currentTime={t} onSeek={seek} />
             </div>
 
             <aside className="hidden lg:block lg:sticky lg:top-[72px] lg:h-[calc(100vh-88px)]">

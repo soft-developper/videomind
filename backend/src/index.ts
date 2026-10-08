@@ -18,6 +18,8 @@ import { checkStorage, storageHealth } from "./lib/storage.js";
 import { startHousekeeping } from "./lib/assets.js";
 // vm_info: collections of videos
 import collectionsRouter from "./routes/collections.js";
+// vm_notes
+import notesRouter from "./routes/notes.js";
 // vm_media: thumbnails and video facts need FFmpeg
 import { checkMediaTools, mediaHealth } from "./lib/media.js";
 
@@ -43,6 +45,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRouter);
 app.use("/api/uploads", uploadsRouter);
 app.use("/api/videos", videosRouter);
+app.use("/api/videos", notesRouter);   // vm_notes: /api/videos/:id/notes
 app.use("/api/chat", chatRouter);
 app.use("/api/shelby", statsRouter);
 app.use("/api/learn", learnRouter);

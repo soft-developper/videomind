@@ -185,6 +185,24 @@ export function momentFromUrl(): number | null {
   return s && s > 0 ? s : null;
 }
 
+// ── vm_notes: the signed in wallet's own bookmarks and notes on a video ──
+export interface Note { id: string; kind: "bookmark" | "note"; atSeconds: number; text: string; createdAt: number; updatedAt: number }
+export async function getNotes(videoId: string): Promise<Note[]> {
+  const res = await api.get(`/api/videos/${videoId}/notes`);
+  return (res.data?.notes ?? []) as Note[];
+}
+export async function addNote(videoId: string, note: { kind: Note["kind"]; atSeconds: number; text?: string }): Promise<Note> {
+  const res = await api.post(`/api/videos/${videoId}/notes`, note);
+  return res.data as Note;
+}
+export async function editNote(videoId: string, id: string, change: { atSeconds?: number; text?: string }): Promise<Note> {
+  const res = await api.patch(`/api/videos/${videoId}/notes/${id}`, change);
+  return res.data as Note;
+}
+export async function deleteNote(videoId: string, id: string): Promise<void> {
+  await api.delete(`/api/videos/${videoId}/notes/${id}`);
+}
+
 /** vm_chapters: the owner's own chapters replace the suggested ones. Answers the chapters as saved. */
 export async function saveChapters(id: string, chapters: Array<{ title: string; startSeconds: number; summary: string }>) {
   // A refusal arrives as an ApiError whose data says which chapter (data.index).
