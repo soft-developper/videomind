@@ -206,6 +206,38 @@ export async function deleteNote(videoId: string, id: string): Promise<void> {
   await api.delete(`/api/videos/${videoId}/notes/${id}`);
 }
 
+// ── vm_progress: where this wallet stopped in each video ──
+export interface WatchProgress { videoId: string; positionSeconds: number; durationSeconds: number | null; updatedAt: number }
+export async function getProgress(videoId: string): Promise<{ progress: WatchProgress | null; resumeAt: number | null }> {
+  const res = await api.get(`/api/videos/${videoId}/progress`);
+  return res.data;
+}
+/**
+ * Save where the viewer is. `leaving` sends it with keepalive, so it still
+ * arrives when the page is being closed.
+ */
+export async function saveProgress(videoId: string, positionSeconds: number, durationSeconds?: number, leaving = false): Promise<void> {
+  const s = getSession();
+  if (!s) return;
+  const body = JSON.stringify({ positionSeconds, durationSeconds: durationSeconds && isFinite(durationSeconds) ? durationSeconds : undefined });
+  if (leaving) {
+    fetch(`${BASE}/api/videos/${videoId}/progress`, { method: "PUT", keepalive: true, headers: { "content-type": "application/json", authorization: `Bearer ${s.token}` }, body }).catch(() => {});
+    return;
+  }
+  await api.put(`/api/videos/${videoId}/progress`, JSON.parse(body));
+}
+export async function clearProgress(videoId: string): Promise<void> {
+  await api.delete(`/api/videos/${videoId}/progress`);
+}
+export interface ContinueItem { videoId: string; title: string; positionSeconds: number; durationSeconds: number | null; updatedAt: number; thumbUrl: string | null }
+export interface MyProgress { continue: ContinueItem[]; watched: Record<string, { positionSeconds: number; durationSeconds: number | null; finished: boolean }> }
+export async function getMyProgress(): Promise<MyProgress> {
+  const res = await api.get("/api/progress");
+  const d = res.data as MyProgress;
+  for (const c of d.continue) if (c.thumbUrl) c.thumbUrl = absoluteUrl(c.thumbUrl);
+  return d;
+}
+
 /** vm_chapters: the owner's own chapters replace the suggested ones. Answers the chapters as saved. */
 export async function saveChapters(id: string, chapters: Array<{ title: string; startSeconds: number; summary: string }>) {
   // A refusal arrives as an ApiError whose data says which chapter (data.index).

@@ -78,7 +78,11 @@ function ChapterRuler({ starts, duration }: { starts: number[]; duration?: numbe
   );
 }
 
-export function VideoCard({ video }: { video: VideoRecord }) {
+export function VideoCard({ video, watched }: {
+  video: VideoRecord;
+  /** vm_progress: how far this viewer got */
+  watched?: { positionSeconds: number; durationSeconds: number | null; finished: boolean };
+}) {
   const failed = video.status === "error";
   const working = !failed && video.status !== "ready";
   const chapters = video.ai?.chapters ?? [];
@@ -117,6 +121,7 @@ export function VideoCard({ video }: { video: VideoRecord }) {
     : [
         // vm_info: the category leads, since it says what kind of recording this is
         categoryLabel(video.category),
+        watched?.finished ? "Watched" : null,
         chapters.length ? `${chapters.length} chapter${chapters.length === 1 ? "" : "s"}` : null,
         length(duration),
       ].filter(Boolean) as string[];
@@ -178,6 +183,13 @@ export function VideoCard({ video }: { video: VideoRecord }) {
                 <p className="text-[12.5px] text-dim mt-0.5">Open it to see which step, and retry.</p>
               </div>
             )}
+
+            {/* vm_progress: how far this viewer got */}
+            {watched && !working && !failed && (watched.durationSeconds ?? duration) ? (
+              <span className="absolute inset-x-0 bottom-0 h-[3px] bg-rule-lit/60" aria-hidden>
+                <span className="block h-full bg-signal" style={{ width: `${watched.finished ? 100 : Math.min(100, (watched.positionSeconds / (watched.durationSeconds ?? duration!)) * 100)}%` }} />
+              </span>
+            ) : null}
 
             {runtime && !working && !failed && (
               <span className="absolute bottom-2 right-2 tc text-[12px] text-paper px-1.5 py-px rounded-xs bg-screen/85 border border-rule">

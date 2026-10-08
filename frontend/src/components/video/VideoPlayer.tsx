@@ -27,12 +27,19 @@ interface Props {
   chapters?: Array<{ title: string; startSeconds: number }>;
   /** vm_workspace: where to start, for a link to a moment (?t=). The video waits for play. */
   startAt?: number | null;
+  /** vm_progress: startAt is where this viewer stopped last time; say so, and offer to start over */
+  resumed?: boolean;
+  onStartOver?: () => void;
+  /** vm_progress: where the viewer is, for remembering it */
+  onProgress?: (seconds: number, duration: number, reason: "tick" | "pause" | "end") => void;
   onDuration?: (seconds: number) => void;
   onTimeUpdate?: (seconds: number) => void;
 }
 
 /** vm_captions: whether this viewer last left captions on. Kept in this browser only. */
 const CC_KEY = "vm.captions";
+/** 75 -> "1:15" */
+const readable = (sec: number) => { const s = Math.floor(sec), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60; return h ? `${h}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}` : `${m}:${String(r).padStart(2, "0")}`; };
 /** Height of the control bar (h-10). */
 const BAR_PX = 40;
 function ccPreference(): boolean {
@@ -40,7 +47,7 @@ function ccPreference(): boolean {
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
-  function VideoPlayer({ streamUrl, source, poster, format, captions, chapters, startAt, onDuration, onTimeUpdate }, ref) {
+  function VideoPlayer({ streamUrl, source, poster, format, captions, chapters, startAt, resumed, onStartOver, onProgress, onDuration, onTimeUpdate }, ref) {
     const v = useRef<HTMLVideoElement>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -50,6 +57,24 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
     const hide = useRef<ReturnType<typeof setTimeout>>();
     const durSent = useRef(false);
     const started = useRef(false);
+    // vm_progress: "Resumed at 12:30", until a few seconds into playing or Start over.
+    const [chip, setChip] = useState<number | null>(null);
+    const begin = useCallback((at: number) => {
+      const el = v.current;
+      if (!el || started.current || !(at > 0) || (isFinite(el.duration) && at >= el.duration)) return;
+      started.current = true; el.currentTime = at; setNow(at);
+      if (resumed) setChip(at);
+    }, [resumed]);
+    // The place to start can arrive after the video has loaded (it is fetched). Apply it if nothing has played yet.
+    useEffect(() => {
+      const el = v.current;
+      if (startAt && el && el.readyState >= 1 && el.paused && el.currentTime < 1) begin(startAt);
+    }, [startAt, begin]);
+    useEffect(() => {
+      if (chip === null || !playing) return;
+      const t = setTimeout(() => setChip(null), 6000);
+      return () => clearTimeout(t);
+    }, [chip, playing]);
 
     // vm_workspace: the chapter playing, and the ones either side of it.
     const [now, setNow] = useState(0);
@@ -178,19 +203,17 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
           onLoadedMetadata={() => {
             const el = v.current;
             // vm_workspace: a link to a moment opens there, paused
-            if (el && !started.current && startAt && startAt > 0 && (!isFinite(el.duration) || startAt < el.duration)) {
-              started.current = true; el.currentTime = startAt; setNow(startAt);
-            }
+            if (startAt) begin(startAt);
             if (!el || durSent.current || !isFinite(el.duration)) return;
             durSent.current = true;
             onDuration?.(el.duration);
           }}
-          onTimeUpdate={() => { const t = v.current?.currentTime ?? 0; setNow(t); onTimeUpdate?.(t); }}
+          onTimeUpdate={() => { const el = v.current; const t = el?.currentTime ?? 0; setNow(t); onTimeUpdate?.(t); if (el && !el.paused) onProgress?.(t, el.duration, "tick"); }}
           onSeeked={() => { const t = v.current?.currentTime ?? 0; setNow(t); onTimeUpdate?.(t); }}
           onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
+          onPause={() => { setPlaying(false); const el = v.current; if (el && !el.ended) onProgress?.(el.currentTime, el.duration, "pause"); }}
           onError={() => { setError(true); setLoading(false); }}
-          onEnded={() => setPlaying(false)}
+          onEnded={() => { setPlaying(false); const el = v.current; if (el) onProgress?.(el.duration, el.duration, "end"); }}
         >
           {ccUrl && (
             <track
@@ -260,6 +283,19 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
             <Maximize size={13} />
           </button>
         </div>
+
+        {/* vm_progress: where this viewer stopped last time */}
+        {chip !== null && (
+          <div className="absolute top-3 left-3 z-20 flex items-center gap-2 pl-3 pr-1.5 h-8 rounded bg-screen/90 border border-rule" role="status">
+            <span className="text-[12.5px] text-paper-2">Resumed at <span className="tc text-paper">{readable(chip)}</span></span>
+            <button
+              onClick={() => { const el = v.current; if (el) { el.currentTime = 0; setNow(0); } setChip(null); onStartOver?.(); }}
+              className="h-6 px-2 rounded text-[12.5px] text-paper hover:bg-slate-2 no-min"
+            >
+              Start over
+            </button>
+          </div>
+        )}
 
         {/* Big play */}
         {!playing && !loading && !error && (

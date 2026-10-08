@@ -248,6 +248,23 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX video_notes_video ON video_notes(video_id)`,
     ],
   },
+  {
+    // vm_progress: where each signed in viewer stopped in each video, so
+    // the video opens there again and Home can offer "Continue watching".
+    id: "010_progress",
+    statements: [
+      `CREATE TABLE watch_progress (
+        wallet        TEXT NOT NULL,
+        video_id      TEXT NOT NULL,
+        position_sec  REAL NOT NULL,
+        duration_sec  REAL,
+        updated_at    INTEGER NOT NULL,
+        PRIMARY KEY (wallet, video_id)
+      )`,
+      `CREATE INDEX watch_progress_recent ON watch_progress(wallet, updated_at)`,
+      `CREATE INDEX watch_progress_video ON watch_progress(video_id)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

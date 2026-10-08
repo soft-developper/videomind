@@ -16,6 +16,7 @@ import { SkeletonVideoPage } from "@/components/ui/SkeletonCard";
 import { ArrowLeft, MessageSquare, X, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useWatchProgress } from "@/lib/useWatchProgress";
 import { useCallback, useState, useRef } from "react";
 import { clsx } from "clsx";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
@@ -58,6 +59,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
   // vm_workspace: a link to a moment (?t=90) opens the video there
   const searchParams = useSearchParams();
   const [startAt] = useState(() => momentFromUrl(searchParams.get("t")));
+  // vm_progress: where this wallet stopped last time, unless the link names a moment
+  const progress = useWatchProgress(params.id, me, video?.status === "ready");
   const { data: captions } = useQuery({
     queryKey: ["captions", params.id, me ?? null],
     queryFn: () => getCaptions(params.id),
@@ -257,7 +260,10 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   blobName={video.shelby.videoBlobName}
                   captions={captions ?? null}
                   chapters={video.ai?.chapters}
-                  startAt={startAt}
+                  startAt={startAt ?? progress.resumeAt}
+                  resumed={startAt == null && progress.resumeAt != null}
+                  onStartOver={progress.startOver}
+                  onProgress={progress.report}
                   onDuration={onDuration}
                   onTimeUpdate={setT}
                 />

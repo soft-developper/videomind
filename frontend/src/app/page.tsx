@@ -5,14 +5,16 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import { getVideos } from "@/lib/api";
+import { getVideos, getMyProgress, type ContinueItem } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { Search } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { WalletButton } from "@/components/layout/WalletButton";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/SkeletonCard";
-import { VideoCard, VIDEO_GRID, when } from "@/components/video/VideoCard";
+import { VideoCard, VIDEO_GRID, when, clock } from "@/components/video/VideoCard";
 
 const STEP: Record<string, string> = {
   uploading: "Upload not finished",
@@ -95,6 +97,31 @@ function Example() {
   );
 }
 
+/** vm_progress: a video this viewer has started, with how far they got. */
+function ContinueCard({ item }: { item: ContinueItem }) {
+  const dur = item.durationSeconds ?? 0;
+  const left = dur ? Math.max(0, Math.round((dur - item.positionSeconds) / 60)) : null;
+  return (
+    <Link href={`/video/${item.videoId}`} className="block group rounded-md focus-visible:outline-offset-4">
+      <div className="relative aspect-video overflow-hidden rounded-md bg-screen border border-rule group-hover:border-rule-lit transition-colors">
+        {item.thumbUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.thumbUrl} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+        )}
+        {dur > 0 && (
+          <span className="absolute inset-x-0 bottom-0 h-[3px] bg-rule-lit/60" aria-hidden>
+            <span className="block h-full bg-signal" style={{ width: `${Math.min(100, (item.positionSeconds / dur) * 100)}%` }} />
+          </span>
+        )}
+      </div>
+      <h3 className="pt-2.5 text-[14px] font-medium leading-snug line-clamp-2 text-paper">{item.title}</h3>
+      <p className="tc mt-1">
+        Stopped at {clock(item.positionSeconds)}{left !== null ? `, ${left < 1 ? "under a minute" : `${left} min`} left` : ""}
+      </p>
+    </Link>
+  );
+}
+
 function useGreeting(): string {
   // Set after mount, so the server and the browser never disagree on the hour.
   const [text, setText] = useState("Welcome back");
@@ -117,6 +144,11 @@ export default function Home() {
     enabled: !!wallet,
     retry: 2,
   });
+
+  // vm_progress: where this wallet stopped in each video
+  const { data: mine } = useQuery({ queryKey: ["my-progress", wallet ?? null], queryFn: getMyProgress, enabled: !!wallet, staleTime: 15_000 });
+  const router = useRouter();
+  const [q, setQ] = useState("");
 
   const videos = useMemo(() => [...(data ?? [])].sort((a, b) => b.createdAt - a.createdAt), [data]);
   const inProgress = videos.filter((v) => v.status !== "ready");
@@ -212,6 +244,34 @@ export default function Home() {
           </Link>
         )}
 
+        {/* vm_progress: search, and picking up where you stopped */}
+        {wallet && data && videos.length > 0 && (
+          <form
+            role="search"
+            onSubmit={(e) => { e.preventDefault(); if (q.trim()) router.push(`/search?q=${encodeURIComponent(q.trim())}`); }}
+            className="flex items-center max-w-[560px] mb-10 rounded-md border border-rule bg-side focus-within:border-dim transition-colors"
+          >
+            <Search size={14} className="text-dim ml-3 shrink-0" />
+            <label htmlFor="home-search" className="sr-only">Search your library</label>
+            <input
+              id="home-search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search everything that was said in your videos"
+              className="flex-1 min-w-0 h-10 px-3 text-[14px] bg-transparent border-0 rounded-none focus:border-0"
+            />
+          </form>
+        )}
+
+        {wallet && (mine?.continue.length ?? 0) > 0 && (
+          <section aria-labelledby="continue" className="mb-12">
+            <h2 id="continue" className="font-display text-[15px] text-paper mb-4">Continue watching</h2>
+            <div className={VIDEO_GRID}>
+              {mine!.continue.slice(0, 4).map((c) => <ContinueCard key={c.videoId} item={c} />)}
+            </div>
+          </section>
+        )}
+
         {wallet && inProgress.length > 0 && (
           <section aria-labelledby="in-progress" className="mb-12">
             <h2 id="in-progress" className="font-display text-[15px] text-paper mb-3">In progress</h2>
@@ -244,7 +304,7 @@ export default function Home() {
               </Link>
             </div>
             <div className={VIDEO_GRID}>
-              {recent.map((v) => <VideoCard key={v.id} video={v} />)}
+              {recent.map((v) => <VideoCard key={v.id} video={v} watched={mine?.watched[v.id]} />)}
             </div>
           </section>
         )}

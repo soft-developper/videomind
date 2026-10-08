@@ -20,6 +20,8 @@ import { startHousekeeping } from "./lib/assets.js";
 import collectionsRouter from "./routes/collections.js";
 // vm_notes
 import notesRouter from "./routes/notes.js";
+// vm_progress
+import progressRouter from "./routes/progress.js";
 // vm_media: thumbnails and video facts need FFmpeg
 import { checkMediaTools, mediaHealth } from "./lib/media.js";
 
@@ -46,6 +48,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/uploads", uploadsRouter);
 app.use("/api/videos", videosRouter);
 app.use("/api/videos", notesRouter);   // vm_notes: /api/videos/:id/notes
+app.use("/api", progressRouter);          // vm_progress: /api/videos/:id/progress, /api/progress
 app.use("/api/chat", chatRouter);
 app.use("/api/shelby", statsRouter);
 app.use("/api/learn", learnRouter);

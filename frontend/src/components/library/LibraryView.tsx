@@ -4,7 +4,7 @@
 //   view        the videos of one sidebar page (Lectures, Seminars, ...)
 //   collection  the videos of one collection, in the order they were added
 import { useQuery } from "@tanstack/react-query";
-import { getVideos, getCollections, deleteAllVideos, type VideoRecord } from "@/lib/api";
+import { getVideos, getCollections, deleteAllVideos, getMyProgress, type VideoRecord } from "@/lib/api";
 import { VideoCard, VIDEO_GRID } from "@/components/video/VideoCard";
 import { SkeletonCard } from "@/components/ui/SkeletonCard";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -16,7 +16,8 @@ import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { CATEGORIES, LIBRARY_VIEWS, categoryLabel } from "@/lib/categories";
 import { Search, X } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 type Sort = "recent" | "title" | "longest" | "order";
 export type LibraryScope = { kind: "all" } | { kind: "view"; key: string } | { kind: "collection"; id: string };
@@ -43,6 +44,30 @@ export function LibraryView({ scope }: { scope: LibraryScope }) {
   const [category, setCategory] = useState("");
   const [sort, setSort] = useState<Sort>(scope.kind === "collection" ? "order" : "recent");
 
+  // vm_progress: the filter, category and order live in the address, so Back
+  // from a video returns to the same list.
+  const router = useRouter();
+  const path = usePathname();
+  // Set once the address has been read, so the address is not written over before that.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    setFilter(p.get("q") ?? "");
+    setCategory(p.get("category") ?? "");
+    const so = p.get("sort");
+    if (so && ["recent", "title", "longest", "order"].includes(so)) setSort(so as Sort);
+    setRestored(true);
+  }, []);
+  useEffect(() => {
+    if (!restored) return;
+    const p = new URLSearchParams();
+    if (filter.trim()) p.set("q", filter.trim());
+    if (category) p.set("category", category);
+    if (sort !== (scope.kind === "collection" ? "order" : "recent")) p.set("sort", sort);
+    const next = p.toString() ? `${path}?${p.toString()}` : path;
+    if (next !== window.location.pathname + window.location.search) router.replace(next, { scroll: false });
+  }, [restored, filter, category, sort, path, router, scope.kind]);
+
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["videos", wallet],
     queryFn: () => getVideos(wallet),
@@ -50,6 +75,8 @@ export function LibraryView({ scope }: { scope: LibraryScope }) {
     enabled: !!wallet,
     retry: 2,
   });
+  // vm_progress: how far this wallet got in each video, for the cards
+  const { data: mine } = useQuery({ queryKey: ["my-progress", wallet ?? null], queryFn: getMyProgress, enabled: !!wallet, staleTime: 15_000 });
   const collections = useQuery({
     queryKey: ["collections", wallet],
     queryFn: getCollections,
@@ -291,7 +318,7 @@ export function LibraryView({ scope }: { scope: LibraryScope }) {
               </EmptyState>
             ) : (
               <div className={VIDEO_GRID}>
-                {shown.map((v) => <VideoCard key={v.id} video={v} />)}
+                {shown.map((v) => <VideoCard key={v.id} video={v} watched={mine?.watched[v.id]} />)}
               </div>
             )}
           </>

@@ -13,8 +13,10 @@ import { ChatPanel } from "@/components/chat/ChatPanel";
 import { ExportMenu } from "@/components/video/ExportMenu";
 import { SkeletonVideoPage } from "@/components/ui/SkeletonCard";
 import { ExternalLink, MessageSquare, X } from "lucide-react";
+import { useSessionWallet } from "@/components/layout/AuthProvider";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useWatchProgress } from "@/lib/useWatchProgress";
 import { useRef, useState, useCallback } from "react";
 import { clsx } from "clsx";
 
@@ -39,7 +41,10 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
   });
   // vm_workspace: a link to a moment (?t=90) opens the video there
   const searchParams = useSearchParams();
+  const sessionWallet = useSessionWallet();
   const [startAt] = useState(() => momentFromUrl(searchParams.get("t")));
+  // vm_progress: where this wallet stopped last time, unless the link names a moment
+  const progress = useWatchProgress(params.id, sessionWallet, video?.status === "ready");
   const { data: captions } = useQuery({
     queryKey: ["captions", params.id],
     queryFn: () => getCaptions(params.id),
@@ -153,7 +158,10 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 shelbyAddress={video.shelby.accountAddress}
                 captions={captions ?? null}
                 chapters={video.ai?.chapters}
-                startAt={startAt}
+                startAt={startAt ?? progress.resumeAt}
+                  resumed={startAt == null && progress.resumeAt != null}
+                  onStartOver={progress.startOver}
+                  onProgress={progress.report}
                 onDuration={setDur}
                 onTimeUpdate={setT}
               />
