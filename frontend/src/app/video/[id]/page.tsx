@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { getVideo, setVideoDuration, ApiError } from "@/lib/api";
+import { getVideo, getCaptions, setVideoDuration, ApiError } from "@/lib/api";
 import { AppShell } from "@/components/layout/AppShell";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { InsightsPanel } from "@/components/video/InsightsPanel";
@@ -43,6 +43,14 @@ export default function VideoPage({ params }: { params: { id: string } }) {
       q.state.data?.status && ["ready", "error"].includes(q.state.data.status) ? false : 5000,
     // "private" and "not found" are answers, not failures to try again
     retry: (count, e) => !(e instanceof ApiError && (e.status === 403 || e.status === 404)) && count < 2,
+  });
+
+  // vm_captions: fetched once the video is ready and something was said
+  const hasSpeech = video?.status === "ready" && (video.ai?.transcript?.length ?? 0) > 0;
+  const { data: captions } = useQuery({
+    queryKey: ["captions", params.id, me ?? null],
+    queryFn: () => getCaptions(params.id),
+    enabled: hasSpeech, staleTime: Infinity, retry: false,
   });
 
   const seek = useCallback((s: number) => player.current?.seekTo(s), []);
@@ -167,6 +175,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   ? <span className="text-[13px] text-dim">Private videos have no share link. Use Edit details to change who can watch.</span>
                   : <ShareButton videoId={params.id} />}
                 <ExportMenu
+                  videoId={params.id}
                   title={video.title}
                   transcript={video.ai?.transcript}
                   summary={video.ai?.summary}
@@ -235,6 +244,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   title={video.title}
                   shelbyAddress={video.shelby.accountAddress}
                   blobName={video.shelby.videoBlobName}
+                  captions={captions ?? null}
                   onDuration={onDuration}
                   onTimeUpdate={setT}
                 />

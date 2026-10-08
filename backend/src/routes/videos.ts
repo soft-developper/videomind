@@ -23,6 +23,8 @@ import { abortUpload } from "../lib/uploads.js";
 import { ownsVideo, canView, parseInfo, applyInfo, InfoError, PRIVATE_VIDEO } from "../lib/videoInfo.js";
 // vm_transcribe: how far a long transcription has come
 import { transcriptionProgress } from "../services/transcribe.js";
+// vm_captions
+import { buildCues, toVtt, toSrt } from "../lib/captions.js";
 
 /**
  * vm_transcribe: a library list needs chapters and a summary, not every
@@ -225,6 +227,31 @@ router.get("/:id/picture/:kind", async (req, res) => {
     });
   } catch (err: any) {
     if (!res.headersSent) res.status(404).json({ error: "Not found" });
+  }
+});
+
+// ── GET /api/videos/:id/captions ──────────────────────────────────────────────
+// vm_captions: captions cut from the transcript for reading on screen.
+// WebVTT by default (the player), ?format=srt for SubRip, ?download=1 to
+// save it as a file. Anyone who can watch the video can read them.
+router.get("/:id/captions", optionalAuth, async (req, res) => {
+  try {
+    const video = await store.get(req.params.id);
+    if (!video) return res.status(404).json({ error: "Video not found" });
+    if (!canView(video, authOf(req)?.wallet)) return res.status(403).json(PRIVATE_VIDEO);
+    const cues = buildCues(video.ai?.transcript ?? []);
+    if (!cues.length) return res.status(404).json({ error: "This video has no captions.", code: "no_captions" });
+    const srt = req.query.format === "srt";
+    res.setHeader("Content-Type", srt ? "application/x-subrip; charset=utf-8" : "text/vtt; charset=utf-8");
+    // Captions change only when the video is transcribed again. Private ones are never kept by shared caches.
+    res.setHeader("Cache-Control", "private, max-age=300");
+    if (req.query.download === "1") {
+      const name = (video.title ?? "captions").normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 80) || "captions";
+      res.setHeader("Content-Disposition", `attachment; filename="${name}.${srt ? "srt" : "vtt"}"`);
+    }
+    return res.send(srt ? toSrt(cues) : toVtt(cues));
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
   }
 });
 

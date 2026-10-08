@@ -144,6 +144,19 @@ export async function getVideo(id: string) {
   return v;
 }
 
+/**
+ * vm_captions: the video's captions, cut for reading on screen. WebVTT for
+ * the player, SubRip for download. Fetched with the session, so a
+ * private video's owner gets them too.
+ */
+export async function getCaptions(id: string, format: "vtt" | "srt" = "vtt"): Promise<string> {
+  const res = await api.get(`/api/videos/${id}/captions`, {
+    params: format === "srt" ? { format } : undefined,
+    responseType: "text", transformResponse: (d) => d,
+  });
+  return String(res.data ?? "");
+}
+
 export async function getVideoStatus(id: string) {
   const res = await api.get(`/api/videos/${id}/status`);
   return res.data as { id: string; status: string };

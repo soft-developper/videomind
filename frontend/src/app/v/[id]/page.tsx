@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { getVideo, ApiError } from "@/lib/api";
+import { getVideo, getCaptions, ApiError } from "@/lib/api";
 import { categoryLabel } from "@/lib/categories";
 import { formatLabel } from "@/lib/media";
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
@@ -26,6 +26,13 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
     queryKey: ["public-video", params.id],
     queryFn: () => getVideo(params.id),
     retry: (count, e) => !(e instanceof ApiError && (e.status === 403 || e.status === 404)) && count < 1,
+  });
+  // vm_captions: fetched once the video is ready and something was said
+  const hasSpeech = video?.status === "ready" && (video.ai?.transcript?.length ?? 0) > 0;
+  const { data: captions } = useQuery({
+    queryKey: ["captions", params.id],
+    queryFn: () => getCaptions(params.id),
+    enabled: hasSpeech, staleTime: Infinity, retry: false,
   });
   // vm_info: the owner has not shared this video
   const isPrivate = !video && error instanceof ApiError && error.code === "private";
@@ -96,6 +103,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 )}
               </div>
               <ExportMenu
+                videoId={params.id}
                 title={video.title}
                 transcript={video.ai?.transcript}
                 summary={video.ai?.summary}
@@ -132,6 +140,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 format={video.media && video.media.playable !== "yes" ? formatLabel(video.media) : null}
                 title={video.title}
                 shelbyAddress={video.shelby.accountAddress}
+                captions={captions ?? null}
                 onDuration={setDur}
                 onTimeUpdate={setT}
               />

@@ -5,8 +5,12 @@ import { clsx } from "clsx";
 import {
   toSRT, toVTT, toMarkdown, toPlainText, downloadFile, slugify, type Segment,
 } from "@/lib/exports";
+// vm_captions: subtitles come from the server, cut for reading on screen
+import { getCaptions } from "@/lib/api";
 
 interface Props {
+  /** vm_captions: when given, .srt and .vtt are the server's captions */
+  videoId?: string;
   title: string;
   transcript?: Segment[];
   summary?: string;
@@ -32,11 +36,17 @@ export function ExportMenu(props: Props) {
   if (!transcript?.length) return null;
   const slug = slugify(title);
 
+  // The server's captions; the sentence by sentence version if they cannot be fetched.
+  const captionsOr = async (format: "srt" | "vtt", local: () => string) => {
+    if (!props.videoId) return local();
+    try { return await getCaptions(props.videoId, format); } catch { return local(); }
+  };
+
   const flash = () => { setDone(true); setTimeout(() => setDone(false), 1800); setOpen(false); };
 
   const OPTS = [
-    { ext: "srt", note: "subtitles for editors",  run: () => { downloadFile(toSRT(transcript), `${slug}.srt`); flash(); } },
-    { ext: "vtt", note: "web video players",       run: () => { downloadFile(toVTT(transcript), `${slug}.vtt`, "text/vtt"); flash(); } },
+    { ext: "srt", note: "subtitles for editors",  run: async () => { downloadFile(await captionsOr("srt", () => toSRT(transcript)), `${slug}.srt`); flash(); } },
+    { ext: "vtt", note: "web video players",       run: async () => { downloadFile(await captionsOr("vtt", () => toVTT(transcript)), `${slug}.vtt`, "text/vtt"); flash(); } },
     { ext: "md",  note: "notes, cuts and quotes",  run: () => { downloadFile(toMarkdown(props), `${slug}.md`, "text/markdown"); flash(); } },
     { ext: "txt", note: "transcript, no timecodes",run: () => { downloadFile(toPlainText(transcript), `${slug}.txt`); flash(); } },
   ];

@@ -1,8 +1,8 @@
 "use client";
 import {
-  useState, useRef, useEffect, forwardRef, useImperativeHandle,
+  useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle,
 } from "react";
-import { Play, Pause, Volume2, VolumeX, Maximize, AlertTriangle } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Maximize, AlertTriangle, Captions, CaptionsOff } from "lucide-react";
 import { clsx } from "clsx";
 
 export interface VideoPlayerHandle {
@@ -21,12 +21,22 @@ interface Props {
   poster?: string | null;
   /** what the file is ("HEVC in MOV") when browsers cannot all play it */
   format?: string | null;
+  /** vm_captions: WebVTT text. A captions button appears when there is some. */
+  captions?: string | null;
   onDuration?: (seconds: number) => void;
   onTimeUpdate?: (seconds: number) => void;
 }
 
+/** vm_captions: whether this viewer last left captions on. Kept in this browser only. */
+const CC_KEY = "vm.captions";
+/** Height of the control bar (h-10). */
+const BAR_PX = 40;
+function ccPreference(): boolean {
+  try { return localStorage.getItem(CC_KEY) === "on"; } catch { return false; }
+}
+
 export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
-  function VideoPlayer({ streamUrl, source, poster, format, onDuration, onTimeUpdate }, ref) {
+  function VideoPlayer({ streamUrl, source, poster, format, captions, onDuration, onTimeUpdate }, ref) {
     const v = useRef<HTMLVideoElement>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -35,6 +45,40 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
     const [show, setShow] = useState(true);
     const hide = useRef<ReturnType<typeof setTimeout>>();
     const durSent = useRef(false);
+
+    // vm_captions: the text becomes a file the browser can load as a track.
+    // Captions start off, unless this viewer turned them on last time.
+    const [ccUrl, setCcUrl] = useState<string | null>(null);
+    const [ccOn, setCcOn] = useState(false);
+    useEffect(() => { setCcOn(ccPreference()); }, []);
+    useEffect(() => {
+      if (!captions) { setCcUrl(null); return; }
+      const url = URL.createObjectURL(new Blob([captions], { type: "text/vtt" }));
+      setCcUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }, [captions]);
+    useEffect(() => {
+      const track = v.current?.textTracks?.[0];
+      if (track) track.mode = ccOn ? "showing" : "hidden";
+    }, [ccOn, ccUrl]);
+    // While the control bar is up, captions sit just above it instead of under it.
+    const barUp = show || !playing;
+    const placeCues = useCallback(() => {
+      const el = v.current, track = el?.textTracks?.[0];
+      if (!el || !track?.cues) return;
+      const h = el.getBoundingClientRect().height || 1;
+      const above = Math.max(0, 100 - ((BAR_PX + 6) / h) * 100);
+      for (const cue of Array.from(track.cues) as VTTCue[]) {
+        if (barUp) { cue.snapToLines = false; cue.line = above; cue.lineAlign = "end"; }
+        else { cue.snapToLines = true; cue.line = "auto"; }
+      }
+    }, [barUp]);
+    useEffect(() => { placeCues(); }, [placeCues, ccOn, ccUrl]);
+    const toggleCaptions = () => {
+      const on = !ccOn;
+      setCcOn(on);
+      try { localStorage.setItem(CC_KEY, on ? "on" : "off"); } catch {}
+    };
 
     useImperativeHandle(ref, () => ({
       seekTo: (s: number) => {
@@ -121,7 +165,17 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
           onPause={() => setPlaying(false)}
           onError={() => { setError(true); setLoading(false); }}
           onEnded={() => setPlaying(false)}
-        />
+        >
+          {ccUrl && (
+            <track
+              key={ccUrl}
+              kind="captions"
+              label="Captions"
+              src={ccUrl}
+              onLoad={() => { const t = v.current?.textTracks?.[0]; if (t) t.mode = ccOn ? "showing" : "hidden"; placeCues(); }}
+            />
+          )}
+        </video>
 
         {/* Minimal chrome - the Intelligence Strip below is the real interface */}
         <div className={clsx(
@@ -142,6 +196,17 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
           </button>
           <span className="tc ml-auto truncate hidden sm:block">Use the timeline below to move through the video</span>
           <span className="ml-auto sm:hidden" />
+          {ccUrl && (
+            <button
+              onClick={toggleCaptions}
+              aria-label={ccOn ? "Turn captions off" : "Turn captions on"}
+              aria-pressed={ccOn}
+              title={ccOn ? "Captions on" : "Captions off"}
+              className={clsx("transition-colors no-min", ccOn ? "text-paper" : "text-dim hover:text-paper")}
+            >
+              {ccOn ? <Captions size={14} /> : <CaptionsOff size={14} />}
+            </button>
+          )}
           <button
             onClick={() => {
               const el = v.current; if (!el) return;
