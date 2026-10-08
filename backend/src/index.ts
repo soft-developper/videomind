@@ -16,6 +16,8 @@ import usageRouter from "./routes/usage.js";
 import uploadsRouter from "./routes/uploads.js";
 import { checkStorage, storageHealth } from "./lib/storage.js";
 import { startHousekeeping } from "./lib/assets.js";
+// vm_info: collections of videos
+import collectionsRouter from "./routes/collections.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -43,6 +45,7 @@ app.use("/api/chat", chatRouter);
 app.use("/api/shelby", statsRouter);
 app.use("/api/learn", learnRouter);
 app.use("/api/usage", usageRouter);
+app.use("/api/collections", collectionsRouter);
 
 app.get("/api/health", (_req, res) => {
   const s = storageHealth();

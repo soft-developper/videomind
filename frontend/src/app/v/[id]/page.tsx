@@ -1,6 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { getVideo } from "@/lib/api";
+import { getVideo, ApiError } from "@/lib/api";
+import { categoryLabel } from "@/lib/categories";
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
 import { IntelligenceStrip } from "@/components/video/IntelligenceStrip";
 import { InsightsPanel } from "@/components/video/InsightsPanel";
@@ -20,11 +21,13 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
   const [dur, setDur] = useState(0);
   const [chat, setChat] = useState(false);
 
-  const { data: video, isLoading } = useQuery({
+  const { data: video, isLoading, error } = useQuery({
     queryKey: ["public-video", params.id],
     queryFn: () => getVideo(params.id),
-    retry: 1,
+    retry: (count, e) => !(e instanceof ApiError && (e.status === 403 || e.status === 404)) && count < 1,
   });
+  // vm_info: the owner has not shared this video
+  const isPrivate = !video && error instanceof ApiError && error.code === "private";
 
   const seek = useCallback((s: number) => player.current?.seekTo(s), []);
 
@@ -46,10 +49,12 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
         <div className="flex items-center justify-center min-h-[70vh] px-4">
           <div className="text-center space-y-3 max-w-sm">
             <p className="font-display text-[20px] text-paper">
-              {!video ? "This video was not found" : "This video is still being processed"}
+              {isPrivate ? "This video is private" : !video ? "This video was not found" : "This video is still being processed"}
             </p>
             <p className="text-[13px] font-sans text-dim leading-relaxed">
-              {!video
+              {isPrivate
+                ? "Its owner has not shared it. If it is yours, open it from your library."
+                : !video
                 ? "This video may have been deleted, or the link is wrong."
                 : "Check back in a few minutes."}
             </p>
@@ -77,9 +82,16 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                   {video.title}
                 </h1>
                 {video.description && (
-                  <p className="text-[13px] font-sans text-dim mt-2 max-w-2xl leading-relaxed">
+                  <p className="text-[13px] font-sans text-dim mt-2 max-w-2xl leading-relaxed whitespace-pre-line">
                     {video.description}
                   </p>
+                )}
+                {(video.category || video.collection || (video.tags?.length ?? 0) > 0) && (
+                  <ul className="flex items-center gap-2 flex-wrap mt-3" aria-label="Details">
+                    {categoryLabel(video.category) && <li className="badge">{categoryLabel(video.category)}</li>}
+                    {video.collection && <li className="badge">{video.collection.name}</li>}
+                    {(video.tags ?? []).map((t) => <li key={t.toLowerCase()} className="text-[12.5px] text-dim">#{t}</li>)}
+                  </ul>
                 )}
               </div>
               <ExportMenu

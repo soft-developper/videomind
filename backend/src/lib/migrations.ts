@@ -134,6 +134,42 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX uploads_owner_idx ON uploads(owner_wallet, status)`,
     ],
   },
+  {
+    // vm_info: category, visibility, tags and collections (see src/lib/videoInfo.ts).
+    // Videos that exist already become "unlisted", which is how they have
+    // behaved so far: anyone with the link can open them.
+    id: "005_video_info",
+    statements: [
+      `ALTER TABLE videos ADD COLUMN category TEXT`,
+      `ALTER TABLE videos ADD COLUMN visibility TEXT NOT NULL DEFAULT 'unlisted'`,
+      `CREATE TABLE collections (
+        id            TEXT PRIMARY KEY,
+        owner_wallet  TEXT NOT NULL,
+        name          TEXT NOT NULL,
+        name_key      TEXT NOT NULL,
+        description   TEXT,
+        created_at    INTEGER NOT NULL,
+        updated_at    INTEGER NOT NULL
+      )`,
+      `CREATE UNIQUE INDEX collections_owner_name_idx ON collections(owner_wallet, name_key)`,
+      `CREATE TABLE collection_items (
+        collection_id TEXT NOT NULL,
+        video_id      TEXT NOT NULL,
+        position      INTEGER NOT NULL DEFAULT 0,
+        added_at      INTEGER NOT NULL,
+        PRIMARY KEY (collection_id, video_id)
+      )`,
+      `CREATE INDEX collection_items_video_idx ON collection_items(video_id)`,
+      `CREATE TABLE video_tags (
+        video_id  TEXT NOT NULL,
+        tag       TEXT NOT NULL,
+        tag_key   TEXT NOT NULL,
+        position  INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (video_id, tag_key)
+      )`,
+      `CREATE INDEX video_tags_key_idx ON video_tags(tag_key)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

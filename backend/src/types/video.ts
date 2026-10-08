@@ -7,6 +7,14 @@ export interface VideoRecord {
   status: VideoStatus;
   /** vm_signin: wallet that reserved the upload (canonical 0x + 64 hex). */
   ownerWallet?: string;
+  /** vm_info: what the owner says about the video. See src/lib/videoInfo.ts */
+  category?: string | null;
+  /** who may open the video. Videos from before this field existed are "unlisted". */
+  visibility?: "private" | "unlisted" | "public";
+  /** the owner's own tags, in the order they were typed (not the AI's, which are in ai.tags) */
+  tags?: string[];
+  /** position is the video's place in the collection's order */
+  collection?: { id: string; name: string; position?: number } | null;
   shelby: {
     videoBlobName: string;
     transcriptBlobName?: string;

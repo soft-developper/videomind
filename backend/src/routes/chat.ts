@@ -7,6 +7,8 @@ import { limitAi } from "../lib/guard.js";
 import { requireAuth, optionalAuth, authOf } from "../lib/auth.js";
 // vm_storage: AI usage is written to the ledger against the video's owner
 import { withUsage, ownerOf } from "../lib/usage.js";
+// vm_info: a private video answers questions only for its owner
+import { canView, PRIVATE_VIDEO } from "../lib/videoInfo.js";
 
 const router = Router();
 
@@ -15,6 +17,7 @@ router.post("/:videoId", limitAi, optionalAuth, async (req, res) => {
   try {
     const video = await store.get(req.params.videoId);
     if (!video) return res.status(404).json({ error: "Video not found" });
+    if (!canView(video, authOf(req)?.wallet)) return res.status(403).json(PRIVATE_VIDEO);
     if (video.status !== "ready") return res.status(400).json({ error: "Video is still processing" });
     if (!video.ai?.transcript) return res.status(400).json({ error: "Transcript not available" });
 

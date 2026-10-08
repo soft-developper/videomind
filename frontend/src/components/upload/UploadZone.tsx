@@ -7,6 +7,11 @@
 //   2. Storing the file on Shelby is its own step right after. The wallet
 //      signs, and if that fails or is skipped the video is still there:
 //      the step can be run again at any time.
+//
+// vm_info: the details form (category, collection, tags, who can watch)
+// is filled in before the upload starts. A private video is not sent to
+// Shelby by itself, because a file on Shelby can be read by anyone who
+// has its address.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { X, AlertTriangle, Check, FileVideo } from "lucide-react";
@@ -23,6 +28,24 @@ import {
 import { ResumableUpload, StorageBlockedError, UploadStopped, type UploadProgress } from "@/lib/uploader";
 // vm_shelby09: expiration removed from blob registration (sdk >= 0.8.0)
 import { shelbyClient, SHELBY_LOCATION } from "@/lib/shelby";
+import { VideoInfoForm, emptyDraft, draftToPatch, type InfoDraft } from "@/components/video/VideoInfoForm";
+import { CATEGORIES } from "@/lib/categories";
+
+// The category and visibility of the last upload are offered again for
+// the next one. Kept in this browser only; the page works without it.
+const DEFAULTS_KEY = "vm.upload.defaults.v1";
+function readDefaults(): Partial<InfoDraft> {
+  try {
+    const d = JSON.parse(window.localStorage.getItem(DEFAULTS_KEY) ?? "{}");
+    return {
+      category: CATEGORIES.some((c) => c.id === d.category) ? d.category : "",
+      visibility: ["private", "unlisted", "public"].includes(d.visibility) ? d.visibility : "private",
+    };
+  } catch { return {}; }
+}
+function saveDefaults(d: InfoDraft) {
+  try { window.localStorage.setItem(DEFAULTS_KEY, JSON.stringify({ category: d.category, visibility: d.visibility })); } catch {}
+}
 
 const GB = 1024 ** 3;
 /** Transcription reads the file in one request for now, and that request has a size limit. */
@@ -56,6 +79,8 @@ type Step =
 
 type Shelby =
   | { at: "idle" }
+  /** vm_info: not started, because the video is private */
+  | { at: "held" }
   | { at: "wallet" }
   | { at: "stored" }
   | { at: "failed"; why: string }
@@ -73,8 +98,8 @@ export function UploadZone() {
   const sessionWallet = useSessionWallet();
 
   const [file, setFile] = useState<File | null>(null);
-  const [title, setTitle] = useState("");
-  const [desc, setDesc] = useState("");
+  const [draft, setDraft] = useState<InfoDraft>(() => emptyDraft());
+  const title = draft.title;
   const [step, setStep] = useState<Step>({ at: "choose" });
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [target, setTarget] = useState<Target | null>(null);
@@ -163,7 +188,13 @@ export function UploadZone() {
       setStep({ at: "uploaded" });
       qc.invalidateQueries({ queryKey: ["videos"] });
       qc.invalidateQueries({ queryKey: ["open-uploads"] });
-      void storeOnShelby(f, t);
+      qc.invalidateQueries({ queryKey: ["collections"] });
+      // vm_info: a private video is not sent to Shelby by itself. If its
+      // visibility cannot be read, it is treated as private.
+      const saved = await getVideo(u.videoId).catch(() => null);
+      if (runNo.current !== mine) return;
+      if (saved && saved.visibility !== "private") void storeOnShelby(f, t);
+      else setShelby({ at: "held" });
     } catch (e: any) {
       if (runNo.current !== mine) return;
       if (e instanceof UploadStopped) { setStep({ at: "uploading", paused: true }); return; }
@@ -179,7 +210,8 @@ export function UploadZone() {
     if (!sessionWallet) { setErr("Sign in with your wallet first. The prompt is at the bottom of the page."); return; }
     setErr(null); setStarting(true);
     try {
-      const u = await createUpload({ filename: file.name, size: file.size, contentType: file.type || "video/mp4", title: title.trim(), description: desc });
+      const u = await createUpload({ filename: file.name, size: file.size, contentType: file.type || "video/mp4", ...draftToPatch(draft) });
+      saveDefaults(draft);
       await run(file, u);
     } catch (e: any) {
       setErr(e?.message ?? "The upload could not be started.");
@@ -197,7 +229,7 @@ export function UploadZone() {
 
   const reset = () => {
     runNo.current++;
-    setFile(null); setTitle(""); setDesc(""); setErr(null);
+    setFile(null); setDraft(emptyDraft()); setErr(null);
     setStep({ at: "choose" }); setProgress(null); setTarget(null); setShelby({ at: "idle" });
     runner.current = null; info.current = null;
   };
@@ -224,10 +256,10 @@ export function UploadZone() {
 
     // The same file as an unfinished upload: continue it.
     const match = unfinished.find((u) => u.filename === f.name && u.size === f.size);
-    if (match) { setFile(f); setTitle(match.title ?? f.name); void run(f, match); return; }
+    if (match) { setFile(f); setDraft(emptyDraft({ title: match.title ?? f.name })); void run(f, match); return; }
 
     setFile(f);
-    setTitle(f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "));
+    setDraft(emptyDraft({ ...readDefaults(), title: f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ") }));
     setStep({ at: "details" });
   }, [anchorId, anchorVideoQ.data, unfinished, run, storeOnShelby]);
 
@@ -322,6 +354,11 @@ export function UploadZone() {
             {shelby.at === "failed" && (
               <p role="alert" className="text-[13.5px] text-error leading-relaxed max-w-[62ch]">{shelby.why}</p>
             )}
+            {shelby.at === "held" && (
+              <p className="text-[13.5px] text-paper-2 leading-relaxed max-w-[62ch]">
+                This video is private, so it was not sent to Shelby. A file stored on Shelby can be read by anyone who has its address. You can still store it there, now or later from the video page.
+              </p>
+            )}
             {shelby.at === "too_large" && (
               <p className="text-[13.5px] text-paper-2 leading-relaxed max-w-[62ch]">
                 This file is {bytes(target.size)}. Files over 2 GB cannot be stored on Shelby from the browser yet. The video is safe in your library and plays normally.
@@ -339,8 +376,13 @@ export function UploadZone() {
               href={`/video/${target.videoId}`}
               className={clsx("btn h-9 px-3.5 inline-flex items-center", shelby.at === "wallet" || shelby.at === "failed" || shelby.at === "idle" ? "btn-ghost" : "btn-signal")}
             >
-              {shelby.at === "stored" || shelby.at === "too_large" ? "Open the video" : "Do this later and open the video"}
+              {shelby.at === "stored" || shelby.at === "too_large" || shelby.at === "held" ? "Open the video" : "Do this later and open the video"}
             </Link>
+            {shelby.at === "held" && file && (
+              <button onClick={() => void storeOnShelby(file, target)} className="btn btn-ghost h-9 px-3.5">
+                Store on Shelby anyway
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -398,6 +440,11 @@ export function UploadZone() {
           <p className="text-[13.5px] text-dim mt-1 leading-relaxed">
             Choose the same file again{anchorVideoQ.data ? ` (${bytes(anchorVideoQ.data.meta.sizeBytes)})` : ""}. Your wallet signs it and it is written to Shelby. Nothing is uploaded to the library twice.
           </p>
+          {anchorVideoQ.data?.visibility === "private" && (
+            <p className="text-[13.5px] text-warn mt-2 leading-relaxed">
+              This video is private. A file stored on Shelby can be read by anyone who has its address.
+            </p>
+          )}
         </div>
       )}
 
@@ -456,28 +503,8 @@ export function UploadZone() {
       </div>
 
       {file && step.at === "details" && (
-        <div className="space-y-3">
-          <div>
-            <label htmlFor="t" className="block text-[13px] font-medium text-paper-2 mb-1.5">Title</label>
-            <input
-              id="t"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="What is this recording?"
-              className="w-full h-10 px-3 text-[14px] font-sans"
-            />
-          </div>
-          <div>
-            <label htmlFor="d" className="block text-[13px] font-medium text-paper-2 mb-1.5">Description <span className="font-normal text-dim">(optional)</span></label>
-            <textarea
-              id="d"
-              value={desc}
-              onChange={(e) => setDesc(e.target.value)}
-              rows={2}
-              placeholder="Anything that helps you find it later"
-              className="w-full px-3 py-2 text-[14px] font-sans resize-none"
-            />
-          </div>
+        <div className="space-y-4">
+          <VideoInfoForm value={draft} onChange={setDraft} idPrefix="upload" />
           {file.size > TRANSCRIBE_LIMIT && (
             <p className="text-[13px] text-paper-2 leading-relaxed rounded-md border border-rule px-3.5 py-2.5">
               This file is {bytes(file.size)}. It will upload and play, but it cannot be transcribed yet: transcription is limited to 25 MB until long recordings are supported.

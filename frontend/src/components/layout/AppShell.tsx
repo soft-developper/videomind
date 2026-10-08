@@ -32,8 +32,11 @@ const NAV: Group[] = [
     label: "Library",
     items: [
       { label: "All videos", href: "/library", icon: Film, match: (p) => p === "/library" || p.startsWith("/video/") },
-      { label: "Courses" }, { label: "Lectures" }, { label: "Seminars" },
-      { label: "Presentations" }, { label: "Events" }, { label: "Live recordings" },
+      // vm_info: Courses lists collections. The rest list videos by category (see src/lib/categories.ts).
+      { label: "Courses", href: "/library/courses", match: (p) => p.startsWith("/library/courses") },
+      { label: "Lectures", href: "/library/lectures" }, { label: "Seminars", href: "/library/seminars" },
+      { label: "Presentations", href: "/library/presentations" }, { label: "Events", href: "/library/events" },
+      { label: "Live recordings", href: "/library/live" },
     ],
   },
   {

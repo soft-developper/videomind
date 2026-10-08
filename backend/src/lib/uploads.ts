@@ -22,6 +22,8 @@ import { originalKey, registerOriginal, safeExt } from "./assets.js";
 import { enqueueJob } from "./jobs.js";
 import { nudgeRunner } from "./runner.js";
 import type { VideoRecord } from "../types/video.js";
+// vm_info: category, collection, tags and visibility given with the upload
+import { applyInfo, type InfoPatch } from "./videoInfo.js";
 
 const MIB = 1024 * 1024;
 const GIB = 1024 * MIB;
@@ -88,8 +90,11 @@ function expectedSize(u: UploadRow, partNumber: number): number {
 // ── create ────────────────────────────────────────────────────────────────
 
 export async function createUpload(args: {
-  wallet: string; filename: string; size: number; contentType?: string; title?: string; description?: string;
+  wallet: string; filename: string; size: number; contentType?: string;
+  /** vm_info: already checked by parseInfo */
+  info?: InfoPatch;
 }): Promise<UploadRow & { videoBlobName: string; title: string }> {
+  const info = args.info ?? {};
   const filename = path.basename(String(args.filename ?? "")).slice(0, 200);
   const ext = path.extname(filename).toLowerCase();
   if (!filename || !ALLOWED_EXT.has(ext)) {
@@ -110,7 +115,7 @@ export async function createUpload(args: {
   const videoId = crypto.randomUUID();
   const key = originalKey(videoId, ext);
   const contentType = /^video\/[\w.+-]+$/.test(args.contentType ?? "") ? args.contentType! : "video/mp4";
-  const title = (String(args.title ?? "").trim() || path.basename(filename, path.extname(filename)).replace(/[-_]+/g, " ")).slice(0, 300);
+  const title = (String(info.title ?? "").trim() || path.basename(filename, path.extname(filename)).replace(/[-_]+/g, " ")).slice(0, 300);
   const { partSize, partCount } = planParts(size);
   const videoBlobName = `videomind/videos/${videoId}/raw${safeExt(ext)}`;
 
@@ -122,8 +127,10 @@ export async function createUpload(args: {
   }
   const now = Date.now();
   const record: VideoRecord = {
-    id: videoId, title, description: String(args.description ?? "").slice(0, 5000), createdAt: now, status: "uploading",
+    id: videoId, title, description: String(info.description ?? "").slice(0, 5000), createdAt: now, status: "uploading",
     ownerWallet: args.wallet,
+    // vm_info: private unless the owner chose otherwise
+    category: info.category ?? null, visibility: info.visibility ?? "private",
     // The Shelby name is reserved now and used when the owner stores the file there.
     shelby: { videoBlobName, accountAddress: "", videoTxHash: "" },
     meta: { sizeBytes: size, mimeType: contentType },
@@ -136,6 +143,8 @@ export async function createUpload(args: {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)`,
       args: [videoId, args.wallet, uploadId, storage.driver, key, filename, contentType, size, partSize, partCount, now, now],
     });
+    // Tags and collection. A collection that is not the caller's is refused here, and the catch below undoes the rest.
+    await applyInfo(videoId, args.wallet, { tags: info.tags, collectionId: info.collectionId, newCollection: info.newCollection });
   } catch (err) {
     await storage.abortMultipart(key, uploadId).catch(() => {});
     await store.delete(videoId).catch(() => {});

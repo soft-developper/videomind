@@ -30,7 +30,8 @@ api.interceptors.response.use(
     else if (statusCode === 415) message = "Unsupported file type. Please upload MP4, WebM, MOV, AVI, or MKV.";
     else if (statusCode === 500) message = "Server error. Check the backend logs for details.";
     else message = err.message ?? "An unexpected error occurred.";
-    return Promise.reject(new Error(message));
+    // vm_info: keep the status and the server's code, so a page can tell "private" from "not found"
+    return Promise.reject(new ApiError(message, statusCode ?? 0, err.response?.data?.code, err.response?.data));
   }
 );
 
@@ -73,7 +74,7 @@ raw.interceptors.request.use((config) => {
   return config;
 });
 
-export const createUpload = (b: { filename: string; size: number; contentType: string; title: string; description: string }) =>
+export const createUpload = (b: { filename: string; size: number; contentType: string } & VideoInfoPatch) =>
   call<UploadInfo>(() => raw.post("/api/uploads", b));
 export const getUpload = (id: string) => call<UploadInfo>(() => raw.get(`/api/uploads/${id}`));
 export const listOpenUploads = () => call<{ uploads: UploadInfo[] }>(() => raw.get("/api/uploads")).then((d) => d.uploads);
@@ -87,6 +88,42 @@ export const absoluteUrl = (u: string) => (u.startsWith("/") ? BASE + u : u);
 /** Record that the owner's wallet has stored the file on Shelby. */
 export const anchorVideo = (id: string, b: { accountAddress: string; txHash: string }) =>
   call<{ id: string; onShelby: boolean }>(() => raw.post(`/api/videos/${id}/anchor`, b));
+
+// ── Video details and collections ───────────────────────────────────────────
+// vm_info: what the owner says about a video, and who may open it.
+export type Visibility = "private" | "unlisted" | "public";
+
+/** Only the fields that are sent change. */
+export interface VideoInfoPatch {
+  title?: string;
+  description?: string;
+  category?: string | null;
+  visibility?: Visibility;
+  tags?: string[];
+  /** null takes the video out of its collection */
+  collectionId?: string | null;
+  /** put the video in the collection with this name, creating it if needed */
+  newCollection?: string;
+}
+
+export interface VideoInfo {
+  id: string; title: string; description: string; category: string | null;
+  visibility: Visibility; tags: string[]; collection: { id: string; name: string } | null;
+}
+
+export const updateVideo = (id: string, patch: VideoInfoPatch) =>
+  call<VideoInfo>(() => raw.patch(`/api/videos/${id}`, patch));
+
+export interface Collection {
+  id: string; name: string; description: string | null;
+  createdAt: number; updatedAt: number;
+  videoCount: number; totalSeconds: number;
+}
+export const getCollections = () =>
+  call<{ collections: Collection[] }>(() => raw.get("/api/collections")).then((d) => d.collections);
+export const createCollection = (name: string) => call<Collection>(() => raw.post("/api/collections", { name }));
+export const renameCollection = (id: string, name: string) => call<Collection>(() => raw.patch(`/api/collections/${id}`, { name }));
+export const deleteCollection = (id: string) => call<{ success: boolean }>(() => raw.delete(`/api/collections/${id}`));
 
 // ── Video queries ───────────────────────────────────────────────────────────
 export async function getVideos(walletAddress?: string): Promise<VideoRecord[]> {
@@ -238,4 +275,12 @@ export interface VideoRecord {
   source?: "storage" | "shelby" | null;
   /** true once the owner has stored the file on Shelby */
   onShelby?: boolean;
+  /** vm_info: the owner's details. Videos from before these existed are "unlisted". */
+  category?: string | null;
+  visibility?: Visibility;
+  /** the owner's own tags (the AI's are in ai.tags) */
+  tags?: string[];
+  collection?: { id: string; name: string; position?: number } | null;
+  /** true when the signed in wallet owns this video. Only sent with one video, not with the list. */
+  isOwner?: boolean;
 }

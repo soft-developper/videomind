@@ -8,6 +8,8 @@ import {
   createUpload, getUpload, uploadState, partUrls, completeUpload, abortUpload, listOpenUploads,
   checkLocalSignature, UploadError, PART_URL_SECONDS, type UploadRow,
 } from "../lib/uploads.js";
+// vm_info: the details typed in the upload form
+import { parseInfo, InfoError } from "../lib/videoInfo.js";
 
 const router = Router();
 
@@ -34,7 +36,7 @@ async function requireStorage(_req: Request, res: Response, next: NextFunction) 
 }
 
 function fail(res: Response, err: any) {
-  if (err instanceof UploadError) return res.status(err.status).json({ error: err.message, code: err.code, ...err.extra });
+  if (err instanceof UploadError || err instanceof InfoError) return res.status(err.status).json({ error: err.message, code: err.code, ...err.extra });
   console.error(`[uploads] ${err?.name ?? "Error"}: ${err?.message ?? err}`);
   return res.status(500).json({ error: "The upload service hit a problem. Please try again." });
 }
@@ -62,8 +64,8 @@ router.post("/", limitUpload, requireAuth, requireStorage, async (req, res) => {
       wallet: authOf(req)!.wallet,
       filename: String(b.filename ?? ""), size: Number(b.size),
       contentType: typeof b.contentType === "string" ? b.contentType : undefined,
-      title: typeof b.title === "string" ? b.title : undefined,
-      description: typeof b.description === "string" ? b.description : undefined,
+      // A blank title is allowed here: it is then taken from the file name.
+      info: parseInfo({ ...b, title: typeof b.title === "string" && b.title.trim() ? b.title : undefined }),
     });
     return res.status(201).json({ ...describe(u), title: u.title, videoBlobName: u.videoBlobName, done: [], uploadedBytes: 0 });
   } catch (err) { return fail(res, err); }

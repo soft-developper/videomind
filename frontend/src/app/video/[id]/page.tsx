@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { getVideo, setVideoDuration } from "@/lib/api";
+import { getVideo, setVideoDuration, ApiError } from "@/lib/api";
 import { AppShell } from "@/components/layout/AppShell";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { InsightsPanel } from "@/components/video/InsightsPanel";
@@ -17,6 +17,11 @@ import Link from "next/link";
 import { useCallback, useState, useRef } from "react";
 import { clsx } from "clsx";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
+// vm_info: category, collection, tags and who can watch
+import { VideoDetails } from "@/components/video/VideoDetails";
+import { WalletButton } from "@/components/layout/WalletButton";
+import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { Lock } from "lucide-react";
 
 export default function VideoPage({ params }: { params: { id: string } }) {
   const [chatOpen, setChatOpen] = useState(false);
@@ -26,12 +31,16 @@ export default function VideoPage({ params }: { params: { id: string } }) {
   const me = useSessionWallet();
   const saved = useRef(false);
 
-  const { data: video, isLoading, refetch } = useQuery({
-    queryKey: ["video", params.id],
+  const { connected } = useWallet();
+  // vm_info: the signed in wallet is part of the key, so a private video
+  // loads the moment its owner signs in.
+  const { data: video, isLoading, error, refetch } = useQuery({
+    queryKey: ["video", params.id, me ?? null],
     queryFn: () => getVideo(params.id),
     refetchInterval: (q) =>
       q.state.data?.status && ["ready", "error"].includes(q.state.data.status) ? false : 5000,
-    retry: 2,
+    // "private" and "not found" are answers, not failures to try again
+    retry: (count, e) => !(e instanceof ApiError && (e.status === 403 || e.status === 404)) && count < 2,
   });
 
   const seek = useCallback((s: number) => player.current?.seekTo(s), []);
@@ -48,6 +57,28 @@ export default function VideoPage({ params }: { params: { id: string } }) {
       <AppShell>
         <div className="section pt-8 pb-16">
           <SkeletonVideoPage />
+        </div>
+      </AppShell>
+    );
+  }
+
+  // vm_info: a private video, and the caller is not its owner (or has not signed in yet)
+  if (!video && error instanceof ApiError && error.code === "private") {
+    return (
+      <AppShell>
+        <div className="section pt-10 max-w-[52ch]">
+          <h1 className="font-display text-[20px] text-paper flex items-center gap-2"><Lock size={16} className="text-paper-2" /> This video is private</h1>
+          <p className="text-[14px] text-dim mt-1.5 leading-relaxed">
+            {me
+              ? "It belongs to a different wallet, and its owner has not shared it."
+              : connected
+                ? "Only its owner can open it. If it is yours, sign in with your wallet. The prompt is at the bottom of the page."
+                : "Only its owner can open it. If it is yours, connect the wallet you uploaded it with."}
+          </p>
+          <div className="flex items-center gap-2.5 mt-5 flex-wrap">
+            {!connected && <WalletButton />}
+            <Link href="/library" className="btn btn-ghost h-9 px-3.5 inline-flex items-center">Back to the library</Link>
+          </div>
         </div>
       </AppShell>
     );
@@ -72,7 +103,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
   const working = !ready && !failed;
   // vm_upload: the upload itself is not finished yet
   const unfinished = video.status === "uploading";
-  const mine = !!me && !!video.ownerWallet && me.toLowerCase() === video.ownerWallet.toLowerCase();
+  const mine = video.isOwner ?? (!!me && !!video.ownerWallet && me.toLowerCase() === video.ownerWallet.toLowerCase());
+  const isPrivate = video.visibility === "private";
   const shelbyOwner = video.onShelby === false ? undefined : video.shelby.accountAddress;
 
   // Prefer stored duration, fall back to what the player reports
@@ -97,10 +129,11 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   {video.title}
                 </h1>
                 {video.description && (
-                  <p className="text-[13px] font-sans text-dim mt-2 max-w-2xl leading-relaxed">
+                  <p className="text-[13px] font-sans text-dim mt-2 max-w-2xl leading-relaxed whitespace-pre-line">
                     {video.description}
                   </p>
                 )}
+                <VideoDetails video={video} owner={mine} />
               </div>
 
               {shelbyOwner && (
@@ -120,7 +153,9 @@ export default function VideoPage({ params }: { params: { id: string } }) {
 
             {ready && (
               <div className="flex items-center gap-2 mt-4 flex-wrap">
-                <ShareButton videoId={params.id} />
+                {isPrivate
+                  ? <span className="text-[13px] text-dim">Private videos have no share link. Use Edit details to change who can watch.</span>
+                  : <ShareButton videoId={params.id} />}
                 <ExportMenu
                   title={video.title}
                   transcript={video.ai?.transcript}

@@ -1,6 +1,7 @@
 // src/routes/videos.ts
 import { Router } from "express";
 import fs from "fs/promises";
+import crypto from "crypto";
 import { store } from "../lib/store.js";
 // vm_jobs: processing runs as durable jobs, not inside the request
 import { listJobs, retryJob, deleteJobsForVideo } from "../lib/jobs.js";
@@ -9,7 +10,7 @@ import { NOT_RETRYABLE, statusForStage } from "../services/pipeline.js";
 import { shelbyBlobUrl } from "../lib/shelbyClient.js";
 import type { VideoRecord } from "../types/video.js";
 // vm_apiguard: wallet checks and rate limits, see src/lib/guard.ts
-import { limitUpload, limitPipeline, limitDelete } from "../lib/guard.js";
+import { limitUpload, limitPipeline, limitDelete, rateLimit } from "../lib/guard.js";
 // vm_signin: the caller is the signed in wallet, never a value they send
 import { requireAuth, optionalAuth, authOf, sameWallet } from "../lib/auth.js";
 // vm_storage: every file of a video lives in storage
@@ -18,6 +19,8 @@ import { getOriginal, deleteAssetsForVideo } from "../lib/assets.js";
 // vm_upload: files arrive through /api/uploads (see src/routes/uploads.ts).
 // The old reserve, prepare and confirm routes are gone.
 import { abortUpload } from "../lib/uploads.js";
+// vm_info: category, collection, tags, and who may open a video
+import { ownsVideo, canView, parseInfo, applyInfo, InfoError, PRIVATE_VIDEO } from "../lib/videoInfo.js";
 
 const router = Router();
 
@@ -42,10 +45,32 @@ const onShelby = (v: VideoRecord) => !!v.shelby.accountAddress && !!v.shelby.vid
 
 const STAGE_LABEL: Record<string, string> = { transcribe: "Transcription", analyze: "Analysis" };
 
-/** True if this wallet reserved the video or its Shelby blob belongs to it. */
-function ownsVideo(video: VideoRecord, wallet: string): boolean {
-  return sameWallet(video.ownerWallet, wallet) || sameWallet(video.shelby.accountAddress, wallet);
+/** Saving a video's details is cheap, but it is still a write. */
+const limitEdit = rateLimit({
+  name: "video_edit",
+  label: "edits",
+  perClient: { max: Number(process.env.LIMIT_EDIT_PER_CLIENT_10MIN) || 120, windowMs: 10 * 60_000 },
+  global:    { max: Number(process.env.LIMIT_EDIT_GLOBAL_10MIN) || 3000,    windowMs: 10 * 60_000 },
+});
+
+// vm_info: with local disk storage the player reads the file through this
+// API, and a video element cannot send a session token. The address
+// carries a signature that runs out instead, the same way an address
+// into the bucket does. The secret lives only in this process.
+const fileSecret = crypto.randomBytes(32);
+const fileSignature = (id: string, exp: number) =>
+  crypto.createHmac("sha256", fileSecret).update(`${id}|${exp}`).digest("hex");
+function signedFilePath(id: string, seconds: number): string {
+  const exp = Date.now() + seconds * 1000;
+  return `/api/videos/${id}/file?exp=${exp}&sig=${fileSignature(id, exp)}`;
 }
+function fileSignatureOk(id: string, exp: number, sig: unknown): boolean {
+  if (!Number.isFinite(exp) || exp < Date.now() || typeof sig !== "string") return false;
+  const want = Buffer.from(fileSignature(id, exp), "hex");
+  const got = Buffer.from(sig, "hex");
+  return got.length === want.length && crypto.timingSafeEqual(got, want);
+}
+
 const NOT_OWNER = { error: "This video belongs to a different wallet.", code: "not_owner" };
 
 // ── POST /api/videos/:id/anchor ──────────────────────────────────────────────
@@ -88,10 +113,13 @@ router.get("/", requireAuth, async (req, res) => {
 });
 
 // ── GET /api/videos/:id ─────────────────────────────────────────────────────
-router.get("/:id", async (req, res) => {
+router.get("/:id", optionalAuth, async (req, res) => {
   try {
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
+    // vm_info: a private video opens only for its owner. Nothing about it is sent to anyone else.
+    const wallet = authOf(req)?.wallet;
+    if (!canView(video, wallet)) return res.status(403).json(PRIVATE_VIDEO);
 
     // vm_upload: play from our own storage when the original is there,
     // otherwise from Shelby. Storage is the copy made for delivery.
@@ -100,14 +128,14 @@ router.get("/:id", async (req, res) => {
     let source: "storage" | "shelby" | null = null;
     if (original) {
       streamUrl = (await getStorage().signedUrl(original.key, PLAY_URL_SECONDS).catch(() => null))
-        ?? `/api/videos/${video.id}/file`;       // local disk storage has no signed addresses
+        ?? signedFilePath(video.id, PLAY_URL_SECONDS);   // local disk storage has no signed addresses of its own
       source = "storage";
     } else if (onShelby(video) && video.shelby.videoBlobName) {
       streamUrl = shelbyBlobUrl(video.shelby.videoBlobName, video.shelby.accountAddress);
       source = "shelby";
     }
 
-    return res.json({ ...video, streamUrl, source, onShelby: onShelby(video) });
+    return res.json({ ...video, streamUrl, source, onShelby: onShelby(video), isOwner: ownsVideo(video, wallet) });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
@@ -117,8 +145,12 @@ router.get("/:id", async (req, res) => {
 // vm_upload: local disk storage only (development). Streams the original
 // with range support so the player can seek. With S3 storage the player
 // gets a signed address to the bucket instead and this answers 404.
+// vm_info: only with the signature that GET /api/videos/:id hands out.
 router.get("/:id/file", async (req, res) => {
   try {
+    if (!fileSignatureOk(req.params.id, Number(req.query.exp), req.query.sig)) {
+      return res.status(403).json({ error: "This playback address is not valid or has run out. Reload the page." });
+    }
     const storage = getStorage();
     const original = storage.driver === "local" ? await getOriginal(req.params.id) : null;
     if (!original) return res.status(404).json({ error: "Not found" });
@@ -133,10 +165,11 @@ router.get("/:id/file", async (req, res) => {
 });
 
 // ── GET /api/videos/:id/status ──────────────────────────────────────────────
-router.get("/:id/status", async (req, res) => {
+router.get("/:id/status", optionalAuth, async (req, res) => {
   try {
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
+    if (!canView(video, authOf(req)?.wallet)) return res.status(403).json(PRIVATE_VIDEO);
     return res.json({ id: video.id, status: video.status });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
@@ -152,6 +185,7 @@ router.get("/:id/jobs", optionalAuth, async (req, res) => {
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
     const wallet = authOf(req)?.wallet;
+    if (!canView(video, wallet)) return res.status(403).json(PRIVATE_VIDEO);
     const owner = !!wallet && ownsVideo(video, wallet);
     const jobs = (await listJobs(req.params.id)).map((j) => ({
       kind: j.kind,
@@ -192,6 +226,28 @@ router.post("/:id/jobs/:kind/retry", limitPipeline, requireAuth, async (req, res
     nudgeRunner();
     return res.status(202).json({ id: video.id, status: statusForStage(job.kind) });
   } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/videos/:id ────────────────────────────────────────────────────
+// vm_info: the owner changes the video's details. Only the fields that
+// are sent change. Body: any of title, description, category, visibility,
+// tags, collectionId (null takes it out), newCollection (a name).
+router.patch("/:id", limitEdit, requireAuth, async (req, res) => {
+  try {
+    const wallet = authOf(req)!.wallet;
+    const video = await store.get(req.params.id);
+    if (!video) return res.status(404).json({ error: "Video not found" });
+    if (!ownsVideo(video, wallet)) return res.status(403).json(NOT_OWNER);
+    await applyInfo(video.id, wallet, parseInfo(req.body));
+    const v = (await store.get(video.id))!;
+    return res.json({
+      id: v.id, title: v.title, description: v.description ?? "", category: v.category ?? null,
+      visibility: v.visibility, tags: v.tags ?? [], collection: v.collection ?? null,
+    });
+  } catch (err: any) {
+    if (err instanceof InfoError) return res.status(err.status).json({ error: err.message, code: err.code, ...err.extra });
     return res.status(500).json({ error: err.message });
   }
 });

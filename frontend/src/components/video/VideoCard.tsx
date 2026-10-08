@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
-import { Trash2 } from "lucide-react";
+import { Trash2, Lock } from "lucide-react";
 import { clsx } from "clsx";
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { api } from "@/lib/api";
 import type { VideoRecord } from "@/lib/api";
+import { categoryLabel } from "@/lib/categories";
 
 // vm_shell: the card shows what is known about the video instead of a
 // thumbnail it does not have yet: its first chapters as a small table of
@@ -109,6 +110,8 @@ export function VideoCard({ video }: { video: VideoRecord }) {
   const meta = failed
     ? []
     : [
+        // vm_info: the category leads, since it says what kind of recording this is
+        categoryLabel(video.category),
         chapters.length ? `${chapters.length} chapter${chapters.length === 1 ? "" : "s"}` : null,
         length(duration),
       ].filter(Boolean) as string[];
@@ -169,7 +172,10 @@ export function VideoCard({ video }: { video: VideoRecord }) {
             )}>
               {video.title}
             </h3>
-            <p className="tc mt-1 flex flex-wrap gap-x-3">
+            <p className="tc mt-1 flex flex-wrap items-center gap-x-3">
+              {video.visibility === "private" && (
+                <span className="inline-flex items-center gap-1"><Lock size={10} strokeWidth={2} aria-hidden /> Private</span>
+              )}
               {meta.map((m) => <span key={m}>{m}</span>)}
               <span>{when(video.createdAt)}</span>
             </p>
