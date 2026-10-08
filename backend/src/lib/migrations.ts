@@ -303,6 +303,18 @@ const MIGRATIONS: Migration[] = [
           WHERE COALESCE(account_address, '') != '' AND COALESCE(video_tx_hash, '') != '' AND COALESCE(video_blob_name, '') != ''`,
     ],
   },
+  {
+    // vm_profile: the name and short bio a wallet shows on its public page.
+    id: "012_profiles",
+    statements: [
+      `CREATE TABLE profiles (
+        wallet      TEXT PRIMARY KEY,
+        name        TEXT,
+        bio         TEXT,
+        updated_at  INTEGER NOT NULL
+      )`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

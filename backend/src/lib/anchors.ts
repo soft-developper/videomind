@@ -299,3 +299,18 @@ export async function pendingWithoutCheck(limit = 25): Promise<Anchor[]> {
   });
   return r.rows.map((x) => rowToAnchor(x as Record<string, unknown>));
 }
+
+/** vm_profile: every store of many videos at once, oldest first per video. */
+export async function anchorsForVideos(videoIds: string[]): Promise<Map<string, Anchor[]>> {
+  const out = new Map<string, Anchor[]>();
+  if (!videoIds.length) return out;
+  const r = await getDb().execute({
+    sql: `SELECT * FROM anchors WHERE video_id IN (${videoIds.map(() => "?").join(",")}) ORDER BY created_at, rowid`,
+    args: videoIds,
+  });
+  for (const row of r.rows) {
+    const a = rowToAnchor(row as Record<string, unknown>);
+    out.set(a.videoId, [...(out.get(a.videoId) ?? []), a]);
+  }
+  return out;
+}

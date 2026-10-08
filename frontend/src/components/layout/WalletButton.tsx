@@ -1,6 +1,7 @@
 "use client";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import { ChevronDown, LogOut, Copy, Check } from "lucide-react";
+import { ChevronDown, LogOut, Copy, Check, Wallet, User } from "lucide-react";
+import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { clsx } from "clsx";
 import { useAuth } from "./AuthProvider";
@@ -85,6 +86,17 @@ export function WalletButton({ block = false, placement = "down", quiet = false 
               {copied ? <Check size={12} className="text-marker" /> : <Copy size={12} />}
               {copied ? "Copied" : "Copy address"}
             </button>
+            {/* vm_profile */}
+            {signedIn && (
+              <>
+                <Link href="/wallet" onClick={() => setMenu(false)} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-sans text-paper-2 hover:text-paper hover:bg-slate-2 transition-colors border-t border-rule">
+                  <Wallet size={12} /> Your wallet
+                </Link>
+                <Link href={`/u/${addr}`} onClick={() => setMenu(false)} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-sans text-paper-2 hover:text-paper hover:bg-slate-2 transition-colors">
+                  <User size={12} /> Your public page
+                </Link>
+              </>
+            )}
             <button
               onClick={() => { void signOut(); disconnect(); setMenu(false); }}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-sans text-paper-2 hover:text-error hover:bg-slate-2 transition-colors border-t border-rule"

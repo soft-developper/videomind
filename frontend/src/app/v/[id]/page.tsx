@@ -109,6 +109,12 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 <h1 className="font-display text-[22px] sm:text-[26px] leading-[1.2] text-paper">
                   {video.title}
                 </h1>
+                {/* vm_profile: who made it, linking to their public page */}
+                {video.ownerWallet && (
+                  <Link href={`/u/${video.ownerWallet}`} className="inline-block text-[13.5px] text-paper-2 hover:text-paper hover:underline underline-offset-2 mt-1.5">
+                    By {video.ownerName ?? `${video.ownerWallet.slice(0, 6)}…${video.ownerWallet.slice(-4)}`}
+                  </Link>
+                )}
                 {video.description && (
                   <p className="text-[13px] font-sans text-dim mt-2 max-w-2xl leading-relaxed whitespace-pre-line">
                     {video.description}

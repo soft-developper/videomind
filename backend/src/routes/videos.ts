@@ -32,6 +32,9 @@ import { courseOf } from "../lib/course.js";
 // vm_anchors
 import { listAnchors, addAnchor, latest, canStoreAgain, blobNameFor, isOurBlobName, checkAnchor, deleteAnchorsForVideo, type Anchor } from "../lib/anchors.js";
 import { queueAnchorCheck } from "../services/anchor.js";
+// vm_profile: who made a video, by the name on their public page
+import { namesOf } from "../lib/profiles.js";
+import { normalizeWallet } from "../lib/auth.js";
 
 /**
  * vm_transcribe: a library list needs chapters and a summary, not every
@@ -273,7 +276,9 @@ router.get("/:id", optionalAuth, async (req, res) => {
     const body = req.query.words === "1" ? video : withoutWords(video);
     // vm_courses: its place in its course, among the lessons this wallet may open
     const course = await courseOf(video, wallet).catch(() => null);
-    return res.json({ ...body, streamUrl, source, posterUrl, thumbUrl, onShelby: onShelby(video), isOwner: ownsVideo(video, wallet), course });
+    const ownerWallet = normalizeWallet(video.ownerWallet);
+    const ownerName = ownerWallet ? (await namesOf([ownerWallet]).catch(() => new Map<string, string>())).get(ownerWallet) ?? null : null;
+    return res.json({ ...body, streamUrl, source, posterUrl, thumbUrl, onShelby: onShelby(video), isOwner: ownsVideo(video, wallet), course, ownerName });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

@@ -414,6 +414,8 @@ export interface VideoRecord {
   course?: { id: string; name: string; lesson: number; lessons: number; prev: { id: string; title: string } | null; next: { id: string; title: string } | null } | null;
   /** true when the signed in wallet owns this video. Only sent with one video, not with the list. */
   isOwner?: boolean;
+  /** vm_profile: the name on the owner's public page, if they set one */
+  ownerName?: string | null;
   /** vm_media: what the server read from the file. Absent until it has looked. */
   media?: MediaFacts;
   /** a small picture for cards. The address stays the same for hours, so the browser keeps it. */
@@ -437,3 +439,30 @@ export interface MediaFacts {
   /** can browsers play the file as it is: all of them, some of them, or none */
   playable: "yes" | "some" | "no";
 }
+
+// ── vm_profile: public pages, your profile, your wallet ─────────────────────
+export interface ProfileCard {
+  id: string; title: string; description: string | null; category: string | null;
+  durationSeconds: number | null; createdAt: number; thumbUrl: string | null; chapters: number;
+  collection: { id: string; name: string; position?: number } | null;
+}
+export interface PublicProfile {
+  wallet: string; name: string | null; bio: string | null;
+  videos: ProfileCard[];
+  courses: Array<{ id: string; name: string; description: string | null; lessons: number; firstVideoId: string; thumbUrl: string | null }>;
+}
+export interface MyProfile { wallet: string; name: string | null; bio: string | null }
+export type WalletState = AnchorState | "never";
+export interface WalletOverview {
+  wallet: string;
+  summary: { videos: number; verified: number; checking: number; never: number; attention: number; storedBytesNow: number };
+  videos: Array<{
+    id: string; title: string; visibility: Visibility; thumbUrl: string | null; sizeBytes: number | null;
+    state: WalletState; paidUntil: number | null; stores: number; endingSoon: boolean; attention: boolean; canStoreAgain: boolean;
+  }>;
+  usage: { days: number; since: number; totals: Array<{ feature: string; metric: string; unit: string; total: number; events: number }> };
+}
+export const getPublicProfile = (wallet: string) => call<PublicProfile>(() => raw.get(`/api/profiles/${encodeURIComponent(wallet)}`));
+export const getMyProfile = () => call<MyProfile>(() => raw.get("/api/me/profile"));
+export const saveMyProfile = (p: { name: string | null; bio: string | null }) => call<MyProfile>(() => raw.put("/api/me/profile", p));
+export const getMyWallet = () => call<WalletOverview>(() => raw.get("/api/me/wallet"));

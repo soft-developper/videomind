@@ -9,6 +9,8 @@ import { clsx } from "clsx";
 import {
   Home, Film, Upload, Disc, Radio, Search, BookOpen, MessageSquare,
   BarChart3, User, Settings, Menu, X, type LucideIcon,
+  // vm_profile
+  Wallet,
 } from "lucide-react";
 import { getVideos } from "@/lib/api";
 import { SHELBYNET_URLS } from "@/lib/network";
@@ -59,7 +61,9 @@ const NAV: Group[] = [
     label: "Workspace",
     items: [
       { label: "Analytics", icon: BarChart3 },
-      { label: "Profile", icon: User },
+      // vm_profile
+      { label: "Wallet", href: "/wallet", icon: Wallet },
+      { label: "Profile", href: "/profile", icon: User, match: (p) => p === "/profile" || p.startsWith("/u/") },
       { label: "Settings", icon: Settings },
     ],
   },
