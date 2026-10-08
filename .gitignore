@@ -34,3 +34,5 @@ Thumbs.db
 # Patch script backups (kept locally for --revert, never committed)
 .vm_*_backups/
 *.bak-*
+.vercel
+.env*
