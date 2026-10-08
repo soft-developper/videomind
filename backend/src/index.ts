@@ -18,6 +18,8 @@ import { checkStorage, storageHealth } from "./lib/storage.js";
 import { startHousekeeping } from "./lib/assets.js";
 // vm_info: collections of videos
 import collectionsRouter from "./routes/collections.js";
+// vm_media_probe: measures whether this server can run FFmpeg, before transcoding is built
+import mediaProbeRouter from "./routes/mediaProbe.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -46,6 +48,7 @@ app.use("/api/shelby", statsRouter);
 app.use("/api/learn", learnRouter);
 app.use("/api/usage", usageRouter);
 app.use("/api/collections", collectionsRouter);
+app.use("/api/health/media", mediaProbeRouter);
 
 app.get("/api/health", (_req, res) => {
   const s = storageHealth();
