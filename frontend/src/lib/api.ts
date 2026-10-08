@@ -176,10 +176,13 @@ export function parseClock(text: string): number | null {
   return parts.reduce((a, n) => a * 60 + n, 0);
 }
 
-/** vm_workspace: "?t=90", "?t=1:30" or "?t=1:02:03" as seconds, for a link to a moment. */
-export function momentFromUrl(): number | null {
-  if (typeof window === "undefined") return null;
-  const raw = new URLSearchParams(window.location.search).get("t");
+/**
+ * vm_workspace: "?t=90", "?t=1:30" or "?t=1:02:03" as seconds, for a link to a moment.
+ * vm_search_page: pass the page's own search params (useSearchParams). After a link inside
+ * the app, window.location can still hold the page that was left when the new one first renders.
+ */
+export function momentFromUrl(raw?: string | null): number | null {
+  if (raw === undefined) raw = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("t");
   if (!raw) return null;
   const s = parseClock(raw);
   return s && s > 0 ? s : null;
@@ -258,14 +261,16 @@ export async function chatWithVideo(videoId: string, question: string) {
   return res.data as { answer: string; sources: Array<{ time: number; text: string }> };
 }
 
-export async function searchAllVideos(query: string, walletAddress?: string) {
-  const res = await api.post("/api/chat/search/all", { query, wallet: walletAddress });
-  return res.data as {
-    results: Array<{
-      videoId: string; title: string;
-      matches: Array<{ time: number; text: string }>;
-    }>;
-  };
+/** vm_search_page: one moment a search found, and the video it is in. */
+export interface SearchMoment { time: number; end: number; text: string; score: number }
+export interface SearchResult { videoId: string; title: string; score: number; category?: string | null; thumbUrl?: string | null; matches: SearchMoment[] }
+
+/** Search every sentence of the signed in wallet's ready videos. */
+export async function searchAllVideos(query: string, filter: { categories?: string[]; collectionId?: string } = {}) {
+  const res = await api.post("/api/chat/search/all", { query, ...filter });
+  const d = res.data as { results: SearchResult[]; notIndexed: number };
+  for (const r of d.results) if (r.thumbUrl) r.thumbUrl = absoluteUrl(r.thumbUrl);
+  return d;
 }
 
 export async function deleteAllVideos(walletAddress: string) {

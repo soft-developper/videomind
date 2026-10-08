@@ -72,6 +72,13 @@ const STAGE_LABEL: Record<string, string> = { transcribe: "Transcription", analy
 // library refreshes. A private video's pictures are as private as it is:
 // the address is only ever given to someone allowed to open the video.
 const PICTURE_WINDOW_SECONDS = 6 * 3600;
+/** vm_search_page: card pictures for other lists (search results), same addresses as the library's. */
+export async function thumbUrls(videoIds: string[]): Promise<Map<string, string | null>> {
+  const keys = await pictureKeys(videoIds).catch(() => new Map<string, Partial<Record<PictureKind, string>>>());
+  const out = new Map<string, string | null>();
+  for (const id of videoIds) out.set(id, await pictureUrl(id, "thumb", keys.get(id)?.thumb));
+  return out;
+}
 async function pictureUrl(videoId: string, kind: PictureKind, key: string | undefined): Promise<string | null> {
   if (!key) return null;
   const signed = await getStorage().signedUrlStable(key, PICTURE_WINDOW_SECONDS).catch(() => null);

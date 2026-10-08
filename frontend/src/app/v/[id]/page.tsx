@@ -14,6 +14,7 @@ import { ExportMenu } from "@/components/video/ExportMenu";
 import { SkeletonVideoPage } from "@/components/ui/SkeletonCard";
 import { ExternalLink, MessageSquare, X } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useRef, useState, useCallback } from "react";
 import { clsx } from "clsx";
 
@@ -37,7 +38,8 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
     enabled: hasSpeech, staleTime: Infinity, retry: false,
   });
   // vm_workspace: a link to a moment (?t=90) opens the video there
-  const [startAt] = useState(() => momentFromUrl());
+  const searchParams = useSearchParams();
+  const [startAt] = useState(() => momentFromUrl(searchParams.get("t")));
   const { data: captions } = useQuery({
     queryKey: ["captions", params.id],
     queryFn: () => getCaptions(params.id),

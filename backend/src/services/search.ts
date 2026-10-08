@@ -163,34 +163,59 @@ export async function backfillEmbed(limit = 25): Promise<number> {
 
 // ── searching ─────────────────────────────────────────────────────────────
 
-export interface Hit { videoId: string; title: string; start: number; end: number; text: string; score: number }
+export interface Hit { videoId: string; title: string; start: number; end: number; text: string; score: number; category?: string | null }
+
+/** vm_search_page: narrow a search to some kinds of video, or to one collection. */
+export interface SearchFilter { categories?: string[]; collectionId?: string }
 
 /**
  * The passages of a wallet's ready videos closest to `query`, best first.
  * `score` is the cosine similarity (1 is identical).
  */
-export async function findPassages(wallet: string, query: string, limit = 30): Promise<Hit[]> {
+export async function findPassages(wallet: string, query: string, limit = 30, filter: SearchFilter = {}): Promise<Hit[]> {
   const [q] = await embedTexts([query]);
+  const extra: string[] = [];
+  const extraArgs: Array<string> = [];
+  if (filter.categories?.length) {
+    extra.push(`AND v.category IN (${filter.categories.map(() => "?").join(",")})`);
+    extraArgs.push(...filter.categories);
+  }
+  if (filter.collectionId) {
+    extra.push("AND EXISTS (SELECT 1 FROM collection_items ci WHERE ci.video_id = v.id AND ci.collection_id = ?)");
+    extraArgs.push(filter.collectionId);
+  }
   const res = await getDb().execute({
-    sql: `SELECT p.video_id AS video_id, v.title AS title, p.start_sec AS start_sec, p.end_sec AS end_sec, p.text AS text,
+    sql: `SELECT p.video_id AS video_id, v.title AS title, v.category AS category, p.start_sec AS start_sec, p.end_sec AS end_sec, p.text AS text,
                  vector_distance_cos(p.embedding, vector32(?)) AS distance
             FROM passages p
             JOIN videos v ON v.id = p.video_id
             LEFT JOIN video_shelby s ON s.video_id = v.id
-           WHERE (v.owner_wallet = ? OR s.account_address = ?) AND v.status = 'ready'
+           WHERE (v.owner_wallet = ? OR s.account_address = ?) AND v.status = 'ready' ${extra.join(" ")}
            ORDER BY distance ASC
            LIMIT ?`,
-    args: [asBlob(q), wallet, wallet, limit],
+    args: [asBlob(q), wallet, wallet, ...extraArgs, limit],
   });
+  const floor = minScore();
   return (res.rows as Array<Record<string, unknown>>).map((r) => ({
-    videoId: String(r.video_id), title: String(r.title ?? "Untitled"),
+    videoId: String(r.video_id), title: String(r.title ?? "Untitled"), category: r.category == null ? null : String(r.category),
     start: Number(r.start_sec), end: Number(r.end_sec), text: String(r.text ?? ""),
     score: Math.round((1 - Number(r.distance)) * 1000) / 1000,
-  }));
+  })).filter((h) => h.score >= floor);
+}
+
+/**
+ * vm_search_page: how alike a passage must be to the search to count as a
+ * match (cosine similarity, 0 to 1). Without it every search lists every
+ * video. 0.15 is a first guess, to be checked on real lectures
+ * (SEARCH_MIN_SCORE).
+ */
+export function minScore(): number {
+  const v = Number(process.env.SEARCH_MIN_SCORE);
+  return Number.isFinite(v) && v >= 0 && v < 1 ? v : 0.15;
 }
 
 export interface SearchResult {
-  videoId: string; title: string; score: number;
+  videoId: string; title: string; score: number; category?: string | null; thumbUrl?: string | null;
   matches: Array<{ time: number; end: number; text: string; score: number }>;
 }
 
@@ -199,7 +224,7 @@ export function groupHits(hits: Hit[], perVideo = 3, maxVideos = 10): SearchResu
   const by = new Map<string, SearchResult>();
   for (const h of hits) {
     let r = by.get(h.videoId);
-    if (!r) { if (by.size >= maxVideos) continue; r = { videoId: h.videoId, title: h.title, score: h.score, matches: [] }; by.set(h.videoId, r); }
+    if (!r) { if (by.size >= maxVideos) continue; r = { videoId: h.videoId, title: h.title, score: h.score, category: h.category ?? null, matches: [] }; by.set(h.videoId, r); }
     if (r.matches.length < perVideo) r.matches.push({ time: h.start, end: h.end, text: h.text, score: h.score });
   }
   return [...by.values()];

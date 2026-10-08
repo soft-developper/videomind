@@ -15,6 +15,7 @@ import { ShareButton } from "@/components/video/ShareButton";
 import { SkeletonVideoPage } from "@/components/ui/SkeletonCard";
 import { ArrowLeft, MessageSquare, X, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useState, useRef } from "react";
 import { clsx } from "clsx";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
@@ -55,7 +56,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
     enabled: hasSpeech, staleTime: Infinity, retry: false,
   });
   // vm_workspace: a link to a moment (?t=90) opens the video there
-  const [startAt] = useState(() => momentFromUrl());
+  const searchParams = useSearchParams();
+  const [startAt] = useState(() => momentFromUrl(searchParams.get("t")));
   const { data: captions } = useQuery({
     queryKey: ["captions", params.id, me ?? null],
     queryFn: () => getCaptions(params.id),
