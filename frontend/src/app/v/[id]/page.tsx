@@ -151,6 +151,9 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-6">
           <div className="grid lg:grid-cols-[1fr_360px] gap-5">
             <div className="space-y-4 min-w-0">
+              {/* vm_knowledge: on a phone held upright the player stays in view
+                  under the bar while the transcript and notes scroll beneath it */}
+              <div data-player-dock className="portrait:max-lg:sticky top-14 z-20 bg-void -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 portrait:max-lg:pb-2 portrait:max-lg:border-b portrait:max-lg:border-rule">
               <VideoPlayer
                 ref={player}
                 streamUrl={video.streamUrl ?? null}
@@ -169,6 +172,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 onDuration={setDur}
                 onTimeUpdate={setT}
               />
+              </div>
 
               <IntelligenceStrip
                 duration={duration}

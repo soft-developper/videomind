@@ -243,6 +243,27 @@ router.get("/:id/picture/:kind", async (req, res) => {
   }
 });
 
+// ── GET /api/videos/:id/cover ────────────────────────────────────────────────
+// vm_knowledge: the picture link previews show (Open Graph and Twitter).
+// A page names this one stable address; it sends the reader on to a
+// fresh signed address for the poster, or the thumbnail if there is no
+// poster. Private videos have no cover here, as nothing about them is
+// given to anyone but the owner.
+router.get("/:id/cover", async (req, res) => {
+  try {
+    const video = await store.get(req.params.id);
+    if (!video || (video.visibility ?? "unlisted") === "private") return res.status(404).json({ error: "Not found" });
+    const pics = (await pictureKeys([video.id]).catch(() => new Map())).get(video.id);
+    const kind: PictureKind | null = pics?.poster ? "poster" : pics?.thumb ? "thumb" : null;
+    const url = kind ? await pictureUrl(video.id, kind, pics?.[kind]) : null;
+    if (!url) return res.status(404).json({ error: "Not found" });
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    return res.redirect(302, url);
+  } catch (err: any) {
+    if (!res.headersSent) res.status(404).json({ error: "Not found" });
+  }
+});
+
 // ── GET /api/videos/:id/captions ──────────────────────────────────────────────
 // vm_captions: captions cut from the transcript for reading on screen.
 // WebVTT by default (the player), ?format=srt for SubRip, ?download=1 to

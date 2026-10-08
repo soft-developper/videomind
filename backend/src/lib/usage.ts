@@ -155,3 +155,25 @@ export async function storedBytes(ownerWallet: string): Promise<number> {
   });
   return Math.max(0, Number((res.rows[0] as Record<string, unknown>).bytes));
 }
+
+// vm_knowledge: a shared video answers questions from anyone who has the
+// link, and every answer is paid for by the video's owner. This counts
+// the answers given to people other than the owner in the last day, so a
+// link passed around widely cannot run up the owner's bill without limit.
+// One answer writes one output_tokens row, so rows are answers.
+export const ASK_WINDOW_MS = 24 * 3600_000;
+export function askBudgetPerVideo(): number {
+  const raw = process.env.ASK_BUDGET_PER_VIDEO_DAY;
+  if (raw == null || raw.trim() === "") return 100;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 100;
+}
+export async function visitorAnswersToday(videoId: string, ownerWallet: string | null): Promise<number> {
+  const res = await getDb().execute({
+    sql: `SELECT COUNT(*) AS n FROM usage_ledger
+           WHERE video_id = ? AND feature = 'ask' AND metric = 'output_tokens' AND created_at >= ?
+             AND COALESCE(actor_wallet, '') != ?`,
+    args: [videoId, Date.now() - ASK_WINDOW_MS, ownerWallet ?? ""],
+  });
+  return Number((res.rows[0] as Record<string, unknown> | undefined)?.n ?? 0);
+}

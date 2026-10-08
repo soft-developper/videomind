@@ -22,6 +22,14 @@ import { limitAi } from "../lib/guard.js";
 import { requireAuth, optionalAuth, authOf } from "../lib/auth.js";
 // vm_storage: AI usage is written to the ledger against the video's owner
 import { withUsage, ownerOf } from "../lib/usage.js";
+// vm_knowledge: a daily limit on answers to people other than the owner
+import { askBudgetPerVideo, visitorAnswersToday } from "../lib/usage.js";
+import { sameWallet } from "../lib/auth.js";
+
+const VIDEO_BUDGET = {
+  error: "This video has had many questions today. Try again tomorrow.",
+  code: "video_budget",
+};
 // vm_info: a private video answers questions only for its owner
 import { canView, PRIVATE_VIDEO } from "../lib/videoInfo.js";
 
@@ -38,6 +46,18 @@ router.post("/:videoId", limitAi, optionalAuth, async (req, res) => {
 
     const { question } = req.body as { question: string };
     if (!question?.trim()) return res.status(400).json({ error: "question is required" });
+
+    // vm_knowledge: the owner can always ask. Anyone else shares a daily
+    // allowance per video, since the owner pays for every answer.
+    const owner = ownerOf(video);
+    const asker = authOf(req)?.wallet ?? null;
+    if (!(owner && asker && sameWallet(owner, asker))) {
+      const used = await visitorAnswersToday(video.id, owner);
+      if (used >= askBudgetPerVideo()) {
+        console.warn(`[ask] video ${video.id} reached its daily allowance of ${askBudgetPerVideo()} answers to visitors`);
+        return res.status(429).json(VIDEO_BUDGET);
+      }
+    }
 
     // A question on a video counts against the video's owner. The asker
     // is recorded too, or left empty for a visitor.
