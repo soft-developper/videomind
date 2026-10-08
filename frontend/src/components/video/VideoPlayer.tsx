@@ -2,7 +2,7 @@
 import {
   useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle,
 } from "react";
-import { Play, Pause, Volume2, VolumeX, Maximize, AlertTriangle, Captions, CaptionsOff } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Maximize, AlertTriangle, Captions, CaptionsOff, SkipBack, SkipForward } from "lucide-react";
 import { clsx } from "clsx";
 
 export interface VideoPlayerHandle {
@@ -23,6 +23,10 @@ interface Props {
   format?: string | null;
   /** vm_captions: WebVTT text. A captions button appears when there is some. */
   captions?: string | null;
+  /** vm_workspace: the bar names the chapter playing and steps between chapters */
+  chapters?: Array<{ title: string; startSeconds: number }>;
+  /** vm_workspace: where to start, for a link to a moment (?t=). The video waits for play. */
+  startAt?: number | null;
   onDuration?: (seconds: number) => void;
   onTimeUpdate?: (seconds: number) => void;
 }
@@ -36,7 +40,7 @@ function ccPreference(): boolean {
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
-  function VideoPlayer({ streamUrl, source, poster, format, captions, onDuration, onTimeUpdate }, ref) {
+  function VideoPlayer({ streamUrl, source, poster, format, captions, chapters, startAt, onDuration, onTimeUpdate }, ref) {
     const v = useRef<HTMLVideoElement>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -45,6 +49,23 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
     const [show, setShow] = useState(true);
     const hide = useRef<ReturnType<typeof setTimeout>>();
     const durSent = useRef(false);
+    const started = useRef(false);
+
+    // vm_workspace: the chapter playing, and the ones either side of it.
+    const [now, setNow] = useState(0);
+    const marks = (chapters ?? []).slice().sort((a, b) => a.startSeconds - b.startSeconds);
+    let ch = -1;
+    for (let i = 0; i < marks.length && marks[i].startSeconds <= now + 0.25; i++) ch = i;
+    const jump = (s: number) => {
+      const el = v.current; if (!el) return;
+      el.currentTime = Math.max(0, s); setNow(el.currentTime);
+    };
+    // Back goes to the start of this chapter, or to the one before when it has only just begun.
+    const prevChapter = () => {
+      if (ch < 0) return jump(0);
+      jump(now - marks[ch].startSeconds > 3 || ch === 0 ? marks[ch].startSeconds : marks[ch - 1].startSeconds);
+    };
+    const nextChapter = () => { if (ch + 1 < marks.length) jump(marks[ch + 1].startSeconds); };
 
     // vm_captions: the text becomes a file the browser can load as a track.
     // Captions start off, unless this viewer turned them on last time.
@@ -156,11 +177,16 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
           onCanPlay={() => setLoading(false)}
           onLoadedMetadata={() => {
             const el = v.current;
+            // vm_workspace: a link to a moment opens there, paused
+            if (el && !started.current && startAt && startAt > 0 && (!isFinite(el.duration) || startAt < el.duration)) {
+              started.current = true; el.currentTime = startAt; setNow(startAt);
+            }
             if (!el || durSent.current || !isFinite(el.duration)) return;
             durSent.current = true;
             onDuration?.(el.duration);
           }}
-          onTimeUpdate={() => onTimeUpdate?.(v.current?.currentTime ?? 0)}
+          onTimeUpdate={() => { const t = v.current?.currentTime ?? 0; setNow(t); onTimeUpdate?.(t); }}
+          onSeeked={() => { const t = v.current?.currentTime ?? 0; setNow(t); onTimeUpdate?.(t); }}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
           onError={() => { setError(true); setLoading(false); }}
@@ -194,8 +220,25 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
           >
             {muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
           </button>
-          <span className="tc ml-auto truncate hidden sm:block">Use the timeline below to move through the video</span>
-          <span className="ml-auto sm:hidden" />
+          {marks.length > 0 ? (
+            <>
+              <button onClick={prevChapter} aria-label="Previous chapter" title="Previous chapter" className="text-dim hover:text-paper transition-colors no-min">
+                <SkipBack size={13} />
+              </button>
+              <button onClick={nextChapter} disabled={ch + 1 >= marks.length} aria-label="Next chapter" title="Next chapter" className="text-dim hover:text-paper transition-colors no-min disabled:opacity-40">
+                <SkipForward size={13} />
+              </button>
+              <span className="text-[12.5px] text-paper-2 truncate min-w-0" aria-live="off">
+                {ch >= 0 ? <><span className="tc mr-1.5">{ch + 1}/{marks.length}</span>{marks[ch].title}</> : <span className="text-dim">Before the first chapter</span>}
+              </span>
+              <span className="ml-auto" />
+            </>
+          ) : (
+            <>
+              <span className="tc ml-auto truncate hidden sm:block">Use the timeline below to move through the video</span>
+              <span className="ml-auto sm:hidden" />
+            </>
+          )}
           {ccUrl && (
             <button
               onClick={toggleCaptions}

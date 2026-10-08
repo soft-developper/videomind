@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { getVideo, getCaptions, ApiError } from "@/lib/api";
+import { getVideo, getCaptions, getTranscriptWords, momentFromUrl, ApiError } from "@/lib/api";
 import { categoryLabel } from "@/lib/categories";
 import { formatLabel } from "@/lib/media";
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
@@ -29,6 +29,14 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
   });
   // vm_captions: fetched once the video is ready and something was said
   const hasSpeech = video?.status === "ready" && (video.ai?.transcript?.length ?? 0) > 0;
+  // vm_workspace: the words, for marking the one being said. The page works without them.
+  const { data: words } = useQuery({
+    queryKey: ["words", params.id],
+    queryFn: () => getTranscriptWords(params.id),
+    enabled: hasSpeech, staleTime: Infinity, retry: false,
+  });
+  // vm_workspace: a link to a moment (?t=90) opens the video there
+  const [startAt] = useState(() => momentFromUrl());
   const { data: captions } = useQuery({
     queryKey: ["captions", params.id],
     queryFn: () => getCaptions(params.id),
@@ -141,6 +149,8 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 title={video.title}
                 shelbyAddress={video.shelby.accountAddress}
                 captions={captions ?? null}
+                chapters={video.ai?.chapters}
+                startAt={startAt}
                 onDuration={setDur}
                 onTimeUpdate={setT}
               />
@@ -169,16 +179,17 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
 
               {video.ai?.transcript?.length ? (
                 <TranscriptPanel
-                  transcript={video.ai.transcript}
+                  transcript={words?.length ? words : video.ai.transcript}
                   currentTime={t}
                   onSeek={seek}
+                  chapters={video.ai?.chapters}
                 />
               ) : null}
             </div>
 
             <aside className="hidden lg:block lg:sticky lg:top-[72px] lg:h-[calc(100vh-88px)]">
               <div className="panel h-full flex flex-col overflow-hidden">
-                <ChatPanel videoId={params.id} videoTitle={video.title} />
+                <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={seek} />
               </div>
             </aside>
           </div>
@@ -222,7 +233,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
             </button>
           </div>
           <div className="flex-1 min-h-0">
-            <ChatPanel videoId={params.id} videoTitle={video.title} />
+            <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={(s) => { setChat(false); seek(s); }} />
           </div>
         </div>
       </div>

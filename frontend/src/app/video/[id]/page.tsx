@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { getVideo, getCaptions, setVideoDuration, ApiError } from "@/lib/api";
+import { getVideo, getCaptions, getTranscriptWords, momentFromUrl, setVideoDuration, ApiError } from "@/lib/api";
 import { AppShell } from "@/components/layout/AppShell";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { InsightsPanel } from "@/components/video/InsightsPanel";
@@ -47,6 +47,14 @@ export default function VideoPage({ params }: { params: { id: string } }) {
 
   // vm_captions: fetched once the video is ready and something was said
   const hasSpeech = video?.status === "ready" && (video.ai?.transcript?.length ?? 0) > 0;
+  // vm_workspace: the words, for marking the one being said. The page works without them.
+  const { data: words } = useQuery({
+    queryKey: ["words", params.id, me ?? null],
+    queryFn: () => getTranscriptWords(params.id),
+    enabled: hasSpeech, staleTime: Infinity, retry: false,
+  });
+  // vm_workspace: a link to a moment (?t=90) opens the video there
+  const [startAt] = useState(() => momentFromUrl());
   const { data: captions } = useQuery({
     queryKey: ["captions", params.id, me ?? null],
     queryFn: () => getCaptions(params.id),
@@ -245,6 +253,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   shelbyAddress={video.shelby.accountAddress}
                   blobName={video.shelby.videoBlobName}
                   captions={captions ?? null}
+                  chapters={video.ai?.chapters}
+                  startAt={startAt}
                   onDuration={onDuration}
                   onTimeUpdate={setT}
                 />
@@ -281,10 +291,11 @@ export default function VideoPage({ params }: { params: { id: string } }) {
 
                 {video.ai?.transcript?.length ? (
                   <TranscriptPanel
-                    transcript={video.ai.transcript}
+                    transcript={words?.length ? words : video.ai.transcript}
                     currentTime={t}
                     onSeek={seek}
-                  />
+                  chapters={video.ai?.chapters}
+                />
                 ) : null}
               </div>
 
@@ -292,7 +303,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 <div className={clsx("panel flex flex-col overflow-hidden", !speechless && "h-full")}>
                   {speechless
                     ? <p className="p-5 text-[13.5px] text-dim leading-relaxed">Questions are answered from what is said in a video. This one has no speech.</p>
-                    : <ChatPanel videoId={params.id} videoTitle={video.title} />}
+                    : <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={seek} />}
                 </div>
               </aside>
             </div>
@@ -332,7 +343,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 </button>
               </div>
               <div className="flex-1 min-h-0">
-                <ChatPanel videoId={params.id} videoTitle={video.title} />
+                <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={(s) => { setChatOpen(false); seek(s); }} />
               </div>
             </div>
           </div>

@@ -157,6 +157,27 @@ export async function getCaptions(id: string, format: "vtt" | "srt" = "vtt"): Pr
   return String(res.data ?? "");
 }
 
+/**
+ * vm_workspace: the transcript with every word and its time, for marking
+ * the word being said. Asked for separately because it is several times
+ * larger than the sentences the page loads with.
+ */
+export async function getTranscriptWords(id: string): Promise<Array<{ start: number; end: number; text: string; words?: Array<{ text: string; start: number; end: number }> }>> {
+  const res = await api.get(`/api/videos/${id}`, { params: { words: 1 } });
+  return res.data?.ai?.transcript ?? [];
+}
+
+/** vm_workspace: "?t=90", "?t=1:30" or "?t=1:02:03" as seconds, for a link to a moment. */
+export function momentFromUrl(): number | null {
+  if (typeof window === "undefined") return null;
+  const raw = new URLSearchParams(window.location.search).get("t");
+  if (!raw) return null;
+  const parts = raw.split(":").map(Number);
+  if (parts.some((n) => !Number.isFinite(n) || n < 0) || parts.length > 3) return null;
+  const s = parts.reduce((a, n) => a * 60 + n, 0);
+  return s > 0 ? s : null;
+}
+
 export async function getVideoStatus(id: string) {
   const res = await api.get(`/api/videos/${id}/status`);
   return res.data as { id: string; status: string };

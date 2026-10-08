@@ -19,7 +19,11 @@ const PROMPTS = [
   "Find the most useful moment",
 ];
 
-export function ChatPanel({ videoId, videoTitle }: { videoId: string; videoTitle: string }) {
+export function ChatPanel({ videoId, videoTitle, onSeek }: {
+  videoId: string; videoTitle: string;
+  /** vm_workspace: a source in an answer plays the video from that moment */
+  onSeek?: (seconds: number) => void;
+}) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
@@ -28,15 +32,38 @@ export function ChatPanel({ videoId, videoTitle }: { videoId: string; videoTitle
 
   // vm_shell: keep the newest message in view by scrolling this list only,
   // never the page, and only once there is a message.
-  useEffect(() => {
+  // vm_workspace: and only when the reader is already at the bottom. Someone
+  // reading an earlier answer is not moved; a button takes them down.
+  const atBottom = useRef(true);
+  // True while the list scrolls itself down. Its own scroll events then say
+  // nothing about where the reader is.
+  const gliding = useRef(false);
+  const [unseen, setUnseen] = useState(false);
+  const toBottom = () => {
     const box = end.current?.parentElement;
-    if (box && msgs.length) box.scrollTo({ top: box.scrollHeight, behavior: "smooth" });
+    if (box) { gliding.current = true; box.scrollTo({ top: box.scrollHeight, behavior: "smooth" }); }
+    atBottom.current = true;
+    setUnseen(false);
+  };
+  useEffect(() => {
+    if (!msgs.length) return;
+    if (atBottom.current) toBottom(); else setUnseen(true);
   }, [msgs]);
+  const onListScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const b = e.currentTarget;
+    const bottom = b.scrollHeight - b.scrollTop - b.clientHeight < 40;
+    if (gliding.current) { if (bottom) gliding.current = false; return; }
+    atBottom.current = bottom;
+    if (bottom) setUnseen(false);
+  };
+  // Wheel, touch and keys come only from a person: they end a glide.
+  const byHand = () => { gliding.current = false; };
 
   const ask = async (text: string) => {
     const question = text.trim();
     if (!question || busy) return;
     setQ(""); setLast(question);
+    atBottom.current = true;   // the person just asked: show them their question and the answer
     setMsgs((m) => [...m, { role: "you", text: question }]);
     setBusy(true);
     try {
@@ -53,7 +80,8 @@ export function ChatPanel({ videoId, videoTitle }: { videoId: string; videoTitle
         <h2 className="text-[14px] font-semibold text-paper">Ask about this video</h2>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-4 min-h-0">
+      <div className="relative flex-1 min-h-0 flex flex-col">
+      <div onScroll={onListScroll} onWheel={byHand} onTouchMove={byHand} onKeyDown={byHand} className="flex-1 overflow-y-auto p-3 space-y-4 min-h-0">
         {msgs.length === 0 && (
           <div className="space-y-4 pt-4">
             <p className="text-[13.5px] font-sans text-dim leading-relaxed">
@@ -101,14 +129,20 @@ export function ChatPanel({ videoId, videoTitle }: { videoId: string; videoTitle
             {m.sources && m.sources.length > 0 && (
               <div className="space-y-px pl-2">
                 {m.sources.map((s, j) => (
-                  <div key={j} className="flex items-start gap-2.5 px-2 py-1.5 border-l border-rule">
+                  <button
+                    key={j}
+                    onClick={() => onSeek?.(s.time)}
+                    disabled={!onSeek}
+                    aria-label={`Play from ${readableTime(s.time)}: ${s.text}`}
+                    className="w-full flex items-start gap-2.5 px-2 py-1.5 border-l border-rule text-left hover:border-signal hover:bg-slate-2 transition-colors no-min group/src disabled:hover:bg-transparent"
+                  >
                     <span className="tc tc-signal tabular-nums shrink-0">
                       {readableTime(s.time)}
                     </span>
-                    <p className="text-[11px] font-sans text-dim leading-relaxed line-clamp-2">
+                    <span className="text-[11px] font-sans text-dim leading-relaxed line-clamp-2 group-hover/src:text-paper-2">
                       {s.text}
-                    </p>
-                  </div>
+                    </span>
+                  </button>
                 ))}
               </div>
             )}
@@ -123,6 +157,12 @@ export function ChatPanel({ videoId, videoTitle }: { videoId: string; videoTitle
         )}
 
         <div ref={end} />
+      </div>
+      {unseen && (
+        <button onClick={toBottom} className="absolute bottom-2 left-1/2 -translate-x-1/2 h-8 px-3 rounded-full btn btn-ghost bg-slate-2 text-[12.5px] no-min">
+          New answer below
+        </button>
+      )}
       </div>
 
       <div className="p-3 border-t border-rule shrink-0">
