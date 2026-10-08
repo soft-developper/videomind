@@ -26,6 +26,8 @@ import { INSPECT, makeInspectHandler } from "./inspect.js";
 import { EMBED, embedHandler, queueEmbed } from "./search.js";
 // vm_anchors: confirming a store on Shelby
 import { ANCHOR_CHECK, anchorCheckHandler, anchorCheckGaveUp } from "./anchor.js";
+// vm_clips
+import { CLIP_JOB, clipHandler, clipGaveUp } from "./clip.js";
 
 /**
  * Failure codes that no retry can fix. The retry button is hidden for
@@ -146,6 +148,7 @@ export function registerPipeline(deps: PipelineDeps = { extractSound, cutSound, 
   registerHandler(INSPECT, makeInspectHandler());
   registerHandler(EMBED, embedHandler);
   registerHandler(ANCHOR_CHECK, anchorCheckHandler);
+  registerHandler(CLIP_JOB, clipHandler);
   // A stage that failed for good marks the video, so the page stops waiting.
   setFinalFailureHook(async (job, f) => {
     // vm_media: a video without a thumbnail is not a failed video.
@@ -154,6 +157,8 @@ export function registerPipeline(deps: PipelineDeps = { extractSound, cutSound, 
     if (job.kind === EMBED) return;
     // vm_anchors: nor is a video whose store on Shelby could not be confirmed.
     if (job.kind === ANCHOR_CHECK) { await anchorCheckGaveUp(job, f).catch(() => {}); return; }
+    // vm_clips: a clip that could not be made is a failed clip, not a failed video.
+    if (job.kind === CLIP_JOB) { await clipGaveUp(job, f).catch(() => {}); return; }
     await store.update(job.videoId, { status: "error" }).catch(() => {});
   });
 }

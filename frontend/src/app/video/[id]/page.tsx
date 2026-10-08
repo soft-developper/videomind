@@ -7,6 +7,8 @@ import { InsightsPanel } from "@/components/video/InsightsPanel";
 import { OnChainProof } from "@/components/video/OnChainProof";
 import { TranscriptPanel } from "@/components/video/TranscriptPanel";
 import { NotesPanel } from "@/components/video/NotesPanel";
+// vm_clips
+import { ClipsPanel } from "@/components/video/ClipsPanel";
 import { CourseStrip } from "@/components/video/CourseStrip";
 import { IntelligenceStrip } from "@/components/video/IntelligenceStrip";
 import { ProcessingStatus } from "@/components/video/ProcessingStatus";
@@ -322,6 +324,11 @@ export default function VideoPage({ params }: { params: { id: string } }) {
 
                 {/* vm_notes: this wallet's own bookmarks and notes */}
                 <NotesPanel videoId={params.id} title={video.title} currentTime={t} onSeek={seek} />
+
+                {/* vm_clips: the owner's clips of this video */}
+                {mine && (
+                  <ClipsPanel videoId={params.id} currentTime={t} duration={video.meta.durationSeconds ?? dur} chapters={video.ai?.chapters} onSeek={seek} />
+                )}
               </div>
 
               <aside className="hidden lg:block lg:sticky lg:top-6 lg:h-[calc(100vh-48px)]">

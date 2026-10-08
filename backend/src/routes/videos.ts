@@ -34,6 +34,8 @@ import { listAnchors, addAnchor, latest, canStoreAgain, blobNameFor, isOurBlobNa
 import { queueAnchorCheck } from "../services/anchor.js";
 // vm_profile: who made a video, by the name on their public page
 import { namesOf } from "../lib/profiles.js";
+// vm_clips
+import { deleteClipsForVideo } from "../lib/clips.js";
 import { normalizeWallet } from "../lib/auth.js";
 
 /**
@@ -60,6 +62,7 @@ async function dropVideoWork(id: string): Promise<void> {
   if (src) await fs.unlink(src).catch(() => {});
   await deleteJobsForVideo(id);
   await deleteAnchorsForVideo(id);   // vm_anchors
+  await deleteClipsForVideo(id);     // vm_clips (their files go with the video's other files)
   await abortUpload(id, { keepVideo: true }).catch((err) =>
     console.error(`[uploads] could not discard the unfinished upload of ${id}: ${err?.message ?? err}`));
   // If storage cannot be reached the asset rows stay, and the hourly

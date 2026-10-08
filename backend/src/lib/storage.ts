@@ -57,7 +57,7 @@ export interface Storage {
   /** One line for the startup log. Never contains a secret. */
   describe(): string;
   /** Move a file on disk into storage. On success the source file is gone. */
-  moveIn(key: string, filePath: string, opts?: { contentType?: string }): Promise<{ size: number }>;
+  moveIn(key: string, filePath: string, opts?: { contentType?: string; contentDisposition?: string }): Promise<{ size: number }>;
   /** Size and type of an object, or null if it does not exist. */
   head(key: string): Promise<StoredObject | null>;
   /**
@@ -329,7 +329,7 @@ class S3Storage implements Storage {
     return `S3 compatible, bucket "${this.cfg.bucket}" at ${where}`;
   }
 
-  async moveIn(key: string, filePath: string, opts: { contentType?: string } = {}) {
+  async moveIn(key: string, filePath: string, opts: { contentType?: string; contentDisposition?: string } = {}) {
     assertKey(key);
     const size = (await fsp.stat(filePath)).size;
     // Upload sends small files in one request and large ones in parts,
@@ -341,6 +341,8 @@ class S3Storage implements Storage {
         Key: key,
         Body: fs.createReadStream(filePath),
         ...(opts.contentType ? { ContentType: opts.contentType } : {}),
+        // vm_clips: a clip downloads under its own file name
+        ...(opts.contentDisposition ? { ContentDisposition: opts.contentDisposition } : {}),
       },
       partSize: 8 * 1024 * 1024,
       queueSize: 4,

@@ -18,7 +18,6 @@
 import type { TranscriptSegment } from "../types/video.js";
 
 export const MAX_LINE = 42;
-const MAX_CHARS = MAX_LINE * 2;
 const MAX_SECONDS = 7;
 const MIN_SECONDS = 1;
 const PAUSE = 0.8;
@@ -44,8 +43,8 @@ function tokensOf(seg: TranscriptSegment): Token[] {
 }
 
 /** Two lines of about equal length when the text does not fit on one. */
-export function wrap(text: string): string {
-  if (text.length <= MAX_LINE) return text;
+export function wrap(text: string, maxLine = MAX_LINE): string {
+  if (text.length <= maxLine) return text;
   const mid = text.length / 2;
   let best = -1;
   for (let i = text.indexOf(" "); i !== -1; i = text.indexOf(" ", i + 1)) {
@@ -56,21 +55,24 @@ export function wrap(text: string): string {
 
 const endsSentence = (t: string) => /[.?!…]["')\]]?$/.test(t);
 
-export function buildCues(transcript: TranscriptSegment[]): Cue[] {
+/** vm_clips: maxLine sets a shorter line, for captions drawn into a narrow (vertical) video. */
+export function buildCues(transcript: TranscriptSegment[], opts: { maxLine?: number } = {}): Cue[] {
+  const maxLine = opts.maxLine ?? MAX_LINE;
+  const maxChars = maxLine * 2;
   const tokens = [...(Array.isArray(transcript) ? transcript : [])]
     .sort((a, b) => a.start - b.start)
     .flatMap(tokensOf);
   const cues: Cue[] = [];
   let cur: Token[] = [];
   const flush = () => {
-    if (cur.length) cues.push({ start: cur[0].start, end: cur[cur.length - 1].end, text: wrap(cur.map((t) => t.text).join(" ")) });
+    if (cur.length) cues.push({ start: cur[0].start, end: cur[cur.length - 1].end, text: wrap(cur.map((t) => t.text).join(" "), maxLine) });
     cur = [];
   };
   for (const t of tokens) {
     if (cur.length) {
       const last = cur[cur.length - 1];
       const length = cur.reduce((a, x) => a + x.text.length + 1, 0) + t.text.length;
-      if (length > MAX_CHARS || t.end - cur[0].start > MAX_SECONDS || t.start - last.end >= PAUSE) flush();
+      if (length > maxChars || t.end - cur[0].start > MAX_SECONDS || t.start - last.end >= PAUSE) flush();
     }
     cur.push(t);
     // A sentence ends the caption, unless the caption would be only a word or two.

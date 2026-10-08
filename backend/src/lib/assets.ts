@@ -308,3 +308,44 @@ export function startHousekeeping(everyMs = 60 * 60 * 1000): () => void {
   first.unref(); timer.unref();
   return () => { clearTimeout(first); clearInterval(timer); };
 }
+
+// ── vm_clips: a clip's file ──────────────────────────────────────────────────
+/** Move a finished clip into storage and record it (kind "clip"). It downloads under fileName. */
+export async function saveClipAsset(args: {
+  videoId: string; clipId: string; filePath: string; ext: string; contentType: string; fileName: string; ownerWallet?: string | null;
+}): Promise<MediaAsset> {
+  const storage = getStorage();
+  if (!/^[0-9a-f-]{36}$/.test(args.clipId)) throw new Error("Invalid clip id");
+  const key = `${prefixOf(args.videoId)}clips/${args.clipId}${safeExt(args.ext)}`;
+  const { size } = await storage.moveIn(key, args.filePath, {
+    contentType: args.contentType,
+    contentDisposition: `attachment; filename="${args.fileName.replace(/[^\w.-]/g, "_")}"`,
+  });
+  const asset: MediaAsset = {
+    id: crypto.randomUUID(), videoId: args.videoId, ownerWallet: args.ownerWallet ?? null, kind: "clip",
+    driver: storage.driver, key, bytes: size, contentType: args.contentType, sha256: null, createdAt: Date.now(),
+  };
+  await getDb().execute({
+    sql: `INSERT INTO media_assets (id, video_id, owner_wallet, kind, storage_driver, storage_key, bytes, content_type, sha256, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [asset.id, asset.videoId, asset.ownerWallet, asset.kind, asset.driver, asset.key, asset.bytes, asset.contentType, asset.sha256, asset.createdAt],
+  });
+  await recordUsage({ feature: "storage", metric: "bytes_stored", quantity: asset.bytes, ownerWallet: asset.ownerWallet, actorWallet: asset.ownerWallet,
+    videoId: asset.videoId, provider: asset.driver, key: `stored:${asset.id}`, meta: { kind: "clip" } });
+  return asset;
+}
+
+export async function getAssetById(id: string): Promise<MediaAsset | null> {
+  const r = await getDb().execute({ sql: "SELECT * FROM media_assets WHERE id = ?", args: [id] });
+  return r.rows[0] ? rowToAsset(r.rows[0] as Record<string, unknown>) : null;
+}
+
+/** Remove one stored file (a clip) and write the removal to the ledger. */
+export async function deleteAssetById(id: string): Promise<boolean> {
+  const asset = await getAssetById(id);
+  if (!asset) return false;
+  await getStorage().delete(asset.key);
+  await getDb().execute({ sql: "DELETE FROM media_assets WHERE id = ?", args: [asset.id] });
+  await recordUsage(removedEntry(asset));
+  return true;
+}

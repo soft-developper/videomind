@@ -466,3 +466,25 @@ export const getPublicProfile = (wallet: string) => call<PublicProfile>(() => ra
 export const getMyProfile = () => call<MyProfile>(() => raw.get("/api/me/profile"));
 export const saveMyProfile = (p: { name: string | null; bio: string | null }) => call<MyProfile>(() => raw.put("/api/me/profile", p));
 export const getMyWallet = () => call<WalletOverview>(() => raw.get("/api/me/wallet"));
+
+// ── vm_clips: clips cut from a video, for its owner ─────────────────────────
+export type ClipKind = "cut" | "social";
+export type ClipFrame = "original" | "vertical" | "square" | "landscape";
+export interface ClipInfo {
+  id: string; kind: ClipKind; frame: ClipFrame; captions: boolean; startSeconds: number; endSeconds: number;
+  title: string; status: "queued" | "making" | "ready" | "failed"; note: string | null; error: string | null;
+  sizeBytes: number | null; fileName: string | null; createdAt: number; updatedAt: number;
+}
+export interface ClipList { clips: ClipInfo[]; limits: { cutSeconds: number; socialSeconds: number }; canMake: boolean; captionsDrawn: boolean }
+export const getClips = (videoId: string) => call<ClipList>(() => raw.get(`/api/videos/${videoId}/clips`));
+export const makeClip = (videoId: string, c: { kind: ClipKind; frame?: ClipFrame; captions?: boolean; startSeconds: number; endSeconds: number; title?: string }) =>
+  call<{ clip: ClipInfo }>(() => raw.post(`/api/videos/${videoId}/clips`, c));
+export const retryClip = (videoId: string, clipId: string) => call<{ clip: ClipInfo }>(() => raw.post(`/api/videos/${videoId}/clips/${clipId}/retry`));
+export const deleteClip = (videoId: string, clipId: string) => call<{ deleted: string }>(() => raw.delete(`/api/videos/${videoId}/clips/${clipId}`));
+/** A short lived address for the file. A relative one (local storage) is made absolute here. */
+export async function clipDownload(videoId: string, clipId: string): Promise<{ url: string; fileName: string | null }> {
+  const r = await call<{ url: string; fileName: string | null }>(() => raw.get(`/api/videos/${videoId}/clips/${clipId}/download`));
+  return { ...r, url: absoluteUrl(r.url) };
+}
+export const clipCaptions = (videoId: string, clipId: string) =>
+  call<string>(() => raw.get(`/api/videos/${videoId}/clips/${clipId}/captions`, { responseType: "text", transformResponse: (d) => d }));

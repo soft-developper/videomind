@@ -83,20 +83,32 @@ function failure(r: Ran, what: string): MediaError {
 
 // ── what is installed ─────────────────────────────────────────────────────
 
-let tools: { ffmpeg: string | null; checkedAt: number } | null = null;
+let tools: { ffmpeg: string | null; captions: boolean; checkedAt: number } | null = null;
 
 /** Look for FFmpeg once at startup. Its absence is logged and nothing else stops working. */
 export async function checkMediaTools(): Promise<string | null> {
   const r = await run("ffmpeg", ["-hide_banner", "-version"], 15_000);
   const version = r.code === 0 ? (/ffmpeg version (\S+)/.exec(r.out)?.[1] ?? "unknown") : null;
-  tools = { ffmpeg: version, checkedAt: Date.now() };
+  // vm_clips: drawing captions into a clip needs FFmpeg's subtitles filter (libass) and a font.
+  let captions = false;
+  if (version) {
+    const f = await run("ffmpeg", ["-hide_banner", "-filters"], 15_000);
+    const hasFilter = f.code === 0 && /\bsubtitles\b/.test(f.out);
+    const fontsDir = process.env.CLIP_FONTS_DIR;
+    const hasFonts = fontsDir
+      ? ((await fs.readdir(fontsDir).catch(() => [])) as string[]).some((n) => /\.(ttf|otf)$/i.test(n))
+      : await run("fc-list", [], 15_000).then((x) => x.code === 0 && x.out.trim().length > 0);
+    captions = hasFilter && hasFonts;
+    if (!captions) console.warn(`[media] captions cannot be drawn into clips: ${!hasFilter ? "this FFmpeg has no subtitles filter (libass)" : "no fonts were found (set CLIP_FONTS_DIR)"}`);
+  }
+  tools = { ffmpeg: version, captions, checkedAt: Date.now() };
   if (version) console.log(`[media] ffmpeg ${version}`);
   else console.warn("[media] FFmpeg was not found. Uploads still work; thumbnails and video facts are skipped.");
   return version;
 }
 
-export function mediaHealth(): { ffmpeg: string | null } {
-  return { ffmpeg: tools?.ffmpeg ?? null };
+export function mediaHealth(): { ffmpeg: string | null; captions: boolean } {
+  return { ffmpeg: tools?.ffmpeg ?? null, captions: tools?.captions ?? false };
 }
 
 // ── facts ─────────────────────────────────────────────────────────────────
@@ -276,4 +288,64 @@ export async function cutSound(input: string, startSeconds: number, seconds: num
   if (((await fs.stat(outPath).catch(() => null))?.size ?? 0) === 0) {
     throw new MediaError("media_empty", "Cutting the sound produced nothing.", true);
   }
+}
+
+// ── vm_clips: clips ───────────────────────────────────────────────────────────
+
+/** Copy part of a video without encoding it again. Fast; cuts land on keyframes. */
+export async function cutClip(input: string, startSeconds: number, seconds: number, outPath: string,
+  format: "mp4" | "webm" | "matroska", timeoutMs = 20 * 60_000): Promise<void> {
+  const r = await run("ffmpeg", [
+    "-hide_banner", "-nostdin", "-loglevel", "error", "-y",
+    "-ss", startSeconds.toFixed(3), ...inputArgs(input), "-t", seconds.toFixed(3),
+    "-map", "0:v:0?", "-map", "0:a:0?", "-c", "copy", "-avoid_negative_ts", "make_zero",
+    ...(format === "mp4" ? ["-movflags", "+faststart"] : []), "-f", format, outPath,
+  ], timeoutMs);
+  if (r.code !== 0) throw failure(r, "Cutting the clip");
+  if (((await fs.stat(outPath).catch(() => null))?.size ?? 0) === 0) throw new MediaError("media_empty", "Cutting the clip produced nothing.", true);
+}
+
+export type ClipFrame = "original" | "vertical" | "square" | "landscape";
+const FRAMES: Record<ClipFrame, { w: number; h: number; fill: boolean | null; font: number; margin: number }> = {
+  // Kept as it is, only made smaller when it is over 720p.
+  original:  { w: 1280, h: 720,  fill: null,  font: 14, margin: 16 },
+  vertical:  { w: 720,  h: 1280, fill: true,  font: 11, margin: 40 },
+  square:    { w: 720,  h: 720,  fill: true,  font: 13, margin: 22 },
+  landscape: { w: 1280, h: 720,  fill: false, font: 14, margin: 16 },
+};
+/** Characters per caption line that fit each frame at its font size. */
+export const CAPTION_LINE: Record<ClipFrame, number> = { original: 42, vertical: 22, square: 28, landscape: 42 };
+
+/**
+ * Encode part of a video for social sites: H.264 and AAC in MP4, at most
+ * 720p and 30 frames a second, cropped to fill a vertical or square frame
+ * (from the middle), or fitted into 16:9. Captions are drawn in when an SRT
+ * file is given. Slow on a small server.
+ */
+export async function makeSocialClip(input: string, startSeconds: number, seconds: number, frame: ClipFrame,
+  srtPath: string | null, hasAudio: boolean, outPath: string, timeoutMs = 60 * 60_000): Promise<void> {
+  const f = FRAMES[frame];
+  const fit = f.fill === null
+    ? `scale=w='min(${f.w},iw)':h='min(${f.h},ih)':force_original_aspect_ratio=decrease:force_divisible_by=2`
+    : f.fill
+    ? `scale=${f.w}:${f.h}:force_original_aspect_ratio=increase,crop=${f.w}:${f.h}`
+    : `scale=${f.w}:${f.h}:force_original_aspect_ratio=decrease,pad=${f.w}:${f.h}:(ow-iw)/2:(oh-ih)/2`;
+  const style = [
+    "FontName=DejaVu Sans", `FontSize=${f.font}`, "Bold=1", "PrimaryColour=&H00FFFFFF", "OutlineColour=&H33000000",
+    "BorderStyle=3", "Outline=2", "Shadow=0", "Alignment=2", `MarginV=${f.margin}`,
+  ].join(",");
+  const fontsDir = process.env.CLIP_FONTS_DIR;
+  // The path is one this server made (a temporary folder and a uuid), so it needs no escaping beyond quotes.
+  const subs = srtPath ? `,subtitles=filename='${srtPath}'${fontsDir ? `:fontsdir='${fontsDir}'` : ""}:force_style='${style}'` : "";
+  const r = await run("ffmpeg", [
+    "-hide_banner", "-nostdin", "-loglevel", "error", "-y",
+    "-ss", startSeconds.toFixed(3), ...inputArgs(input), "-t", seconds.toFixed(3),
+    "-map", "0:v:0", ...(hasAudio ? ["-map", "0:a:0?"] : []),
+    "-vf", `${fit},setsar=1${subs}`, "-fpsmax", "30",
+    "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p", "-profile:v", "high",
+    ...(hasAudio ? ["-c:a", "aac", "-b:a", "128k"] : ["-an"]),
+    "-movflags", "+faststart", "-f", "mp4", outPath,
+  ], timeoutMs);
+  if (r.code !== 0) throw failure(r, "Making the clip");
+  if (((await fs.stat(outPath).catch(() => null))?.size ?? 0) === 0) throw new MediaError("media_empty", "Making the clip produced nothing.", true);
 }

@@ -315,6 +315,34 @@ const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    // vm_clips: clips cut from a video. The file itself is a media asset
+    // (kind "clip"), so it is counted, swept and deleted with the video.
+    id: "013_clips",
+    statements: [
+      `CREATE TABLE clips (
+        id          TEXT PRIMARY KEY,
+        video_id    TEXT NOT NULL,
+        wallet      TEXT NOT NULL,
+        kind        TEXT NOT NULL,
+        frame       TEXT NOT NULL,
+        captions    INTEGER NOT NULL DEFAULT 0,
+        start_sec   REAL NOT NULL,
+        end_sec     REAL NOT NULL,
+        title       TEXT NOT NULL,
+        status      TEXT NOT NULL,
+        note        TEXT,
+        error       TEXT,
+        asset_id    TEXT,
+        size_bytes  INTEGER,
+        file_name   TEXT,
+        created_at  INTEGER NOT NULL,
+        updated_at  INTEGER NOT NULL
+      )`,
+      `CREATE INDEX clips_video ON clips(video_id, created_at)`,
+      `CREATE INDEX clips_wallet ON clips(wallet, created_at)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {
