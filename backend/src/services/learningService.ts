@@ -6,14 +6,11 @@
 //  - Library chat   → two-pass: Claude first picks relevant videos from
 //                     summaries, then we send only those transcripts.
 
-import Anthropic from "@anthropic-ai/sdk";
 import "dotenv/config";
 import type { VideoRecord } from "../types/video.js";
-// vm_storage: every provider call reports what it used to the usage ledger
-import { recordClaudeUsage } from "../lib/usage.js";
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const MODEL = "claude-opus-4-5";
+// vm_claude: Claude is called through src/services/claude.ts, which also
+// writes every reply to the usage ledger. Answers are structured outputs.
+import { askClaude, claudeFastModel, obj, str, num, list, transcriptLines } from "./claude.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 export interface LearningPath {
@@ -38,24 +35,29 @@ export interface LibraryAnswer {
   videosUsed: string[];
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-function fmt(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
+// ── Schemas ─────────────────────────────────────────────────────────────────
+const LEVELS = ["Beginner", "Intermediate", "Advanced"] as const;
 
-function parseJson<T>(raw: string, fallback: T): T {
-  try {
-    return JSON.parse(raw.replace(/```json|```/g, "").trim()) as T;
-  } catch {
-    console.error("[Learning] Failed to parse Claude JSON:", raw.slice(0, 300));
-    return fallback;
-  }
-}
+const PATHS_SCHEMA = obj({
+  paths: list(obj({
+    level: { type: "string", enum: [...LEVELS] },
+    title: str("A short name for the path."),
+    description: str("One or two sentences on what the path teaches and who it is for."),
+    steps: list(obj({ videoId: str("An id exactly as given."), title: str(), reason: str("One sentence on why this video comes at this point.") })),
+  }), "One to three paths, Beginner first."),
+});
+const ROUTE_SCHEMA = obj({ videoIds: list(str("An id exactly as given."), "At most four, most relevant first. Empty when none fit.") });
+const LIBRARY_ANSWER_SCHEMA = obj({
+  answer: str("The answer, naming the videos it comes from. Say so plainly when the transcripts do not contain it."),
+  citations: list(obj({
+    videoId: str("An id exactly as given."), videoTitle: str(),
+    time: num("Seconds, from the transcript."), quote: str("A short quote from the transcript."),
+  })),
+});
 
-function textOf(msg: Anthropic.Message): string {
-  return msg.content[0]?.type === "text" ? msg.content[0].text : "{}";
+/** Enum values may come back with a different first letter. */
+function levelOf(v: unknown): LearningPath["level"] {
+  return LEVELS.find((l) => l.toLowerCase() === String(v ?? "").trim().toLowerCase()) ?? "Beginner";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -76,52 +78,28 @@ export async function generateLearningPaths(
       : null,
   }));
 
-  const msg = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 3000,
-    system: `You are a curriculum designer for VideoMind, an AI video knowledge platform.
-Given a library of videos, design ordered learning paths that take someone from
-zero knowledge to advanced mastery of the topics covered.
-Respond with ONLY valid JSON: no markdown fences, no preamble.`,
-    messages: [{
-      role: "user",
-      content: `Here is the user's video library:
+  const parsed = await askClaude<{ paths: LearningPath[] }>({
+    purpose: "design learning paths",
+    system: `You are a curriculum designer for VideoMind. Given a library of videos, design ordered learning paths that take someone from
+no knowledge of its topics to a deep understanding of them. Use only the videos given, with their ids exactly as given.`,
+    user: `The library:
 
 ${JSON.stringify(catalogue, null, 2)}
 
-Design learning paths. Rules:
-- Create 1-3 paths. Use "Beginner" first; add "Intermediate"/"Advanced" only if
-  the library genuinely supports that depth.
-- Every videoId in a step MUST exist in the catalogue above. Never invent IDs.
-- A video may appear in more than one path if it genuinely fits both.
-- Order steps so each builds on the last.
-- "reason" explains WHY this video comes at this point in the path (1 sentence).
-- If the library is too small or too unrelated to form a meaningful path,
-  return a single Beginner path listing the videos in the most sensible order.
-
-Return JSON:
-{
-  "paths": [
-    {
-      "level": "Beginner",
-      "title": "Short path name",
-      "description": "1-2 sentences on what this path teaches and who it's for",
-      "steps": [
-        { "videoId": "...", "title": "...", "reason": "Why this video, why now" }
-      ]
-    }
-  ]
-}`,
-    }],
+Design learning paths.
+- One to three paths. Beginner first; Intermediate or Advanced only if the library supports that depth.
+- A video may appear in more than one path if it fits both.
+- Order the steps so each builds on the one before.
+- If the library is too small or too varied for a real path, give one Beginner path with the videos in the most sensible order.`,
+    schema: PATHS_SCHEMA,
+    maxTokens: 8_000,
   });
-  await recordClaudeUsage(msg);
-
-  const parsed = parseJson<{ paths: LearningPath[] }>(textOf(msg), { paths: [] });
 
   // Defensive: strip any hallucinated video IDs
   const validIds = new Set(videos.map((v) => v.id));
   return (parsed.paths ?? []).map((p) => ({
     ...p,
+    level: levelOf(p.level),
     steps: (p.steps ?? []).filter((s) => validIds.has(s.videoId)),
   })).filter((p) => p.steps.length > 0);
 }
@@ -145,26 +123,15 @@ export async function askLibrary(
     tags: v.ai?.tags ?? [],
   }));
 
-  const routeMsg = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 500,
-    system: "You route questions to relevant videos. Respond with ONLY valid JSON.",
-    messages: [{
-      role: "user",
-      content: `Question: "${question}"
-
-Video library:
-${JSON.stringify(catalogue, null, 2)}
-
-Which videos are likely to contain the answer? Pick at most 4, ordered by relevance.
-If none seem relevant, return an empty array.
-
-Return JSON: { "videoIds": ["id1", "id2"] }`,
-    }],
+  // The fast model is enough to pick videos from their summaries.
+  const routed = await askClaude<{ videoIds: string[] }>({
+    purpose: "choose the videos to read",
+    model: claudeFastModel(),
+    system: "You pick which videos in a library are likely to answer a question, from their titles, summaries and tags. Use ids exactly as given.",
+    user: `Question: "${question}"\n\nThe library:\n${JSON.stringify(catalogue, null, 2)}`,
+    schema: ROUTE_SCHEMA,
+    maxTokens: 2_000,
   });
-  await recordClaudeUsage(routeMsg);
-
-  const routed = parseJson<{ videoIds: string[] }>(textOf(routeMsg), { videoIds: [] });
   const validIds = new Set(videos.map((v) => v.id));
   let selectedIds = (routed.videoIds ?? []).filter((id) => validIds.has(id)).slice(0, 4);
 
@@ -176,62 +143,29 @@ Return JSON: { "videoIds": ["id1", "id2"] }`,
   const selected = videos.filter((v) => selectedIds.includes(v.id));
 
   // ── PASS 2: answer using only the selected transcripts ───────────────────
-  const context = selected.map((v) => {
-    const transcript = (v.ai?.transcript ?? [])
-      .map((s) => `[${fmt(s.start)}] ${s.text}`)
-      .join("\n");
-    return `=== VIDEO ===
+  const context = selected.map((v) => `=== VIDEO ===
 ID: ${v.id}
 Title: ${v.title}
 
 Transcript:
-${transcript}`;
-  }).join("\n\n");
+${transcriptLines(v.ai?.transcript ?? [])}`).join("\n\n");
 
-  const answerMsg = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 1500,
-    system: `You are VideoMind's library assistant. Answer questions using ONLY the
-transcripts provided. Always cite the specific video and timestamp your answer
-comes from. If the transcripts don't contain the answer, say so honestly and
-never invent information. Respond with ONLY valid JSON.`,
-    messages: [{
-      role: "user",
-      content: `Question: "${question}"
+  const parsed = await askClaude<Omit<LibraryAnswer, "videosUsed">>({
+    purpose: "answer the question from the library",
+    system: `You are VideoMind's library assistant. Answer using only the transcripts given, and never invent what is not in them.
+Each transcript line starts with the second it is said at, in square brackets. Cite the video and the second every claim comes from.`,
+    user: `Question: "${question}"
 
 ${context}
 
-Answer the question drawing on these videos. Cite every claim.
-
-Return JSON:
-{
-  "answer": "Your answer. Reference videos naturally, e.g. 'In your talk on X, the speaker explains...'",
-  "citations": [
-    {
-      "videoId": "the exact ID from above",
-      "videoTitle": "the exact title",
-      "time": 123,
-      "quote": "the relevant transcript excerpt (short)"
-    }
-  ]
-}
-
-Rules:
-- videoId must be one of: ${selectedIds.join(", ")}
-- time is in SECONDS (a number), not "mm:ss"
-- If you cannot answer from these transcripts, set answer to explain that and
-  return an empty citations array.`,
-    }],
+The video ids you may cite: ${selectedIds.join(", ")}.`,
+    schema: LIBRARY_ANSWER_SCHEMA,
+    maxTokens: 4_000,
   });
-  await recordClaudeUsage(answerMsg);
 
-  const parsed = parseJson<Omit<LibraryAnswer, "videosUsed">>(
-    textOf(answerMsg),
-    { answer: "Could not process that question. Please try again.", citations: [] }
-  );
-
-  // Defensive: drop citations with bad IDs
-  const citations = (parsed.citations ?? []).filter((c) => validIds.has(c.videoId));
+  // Only the videos that were read can be cited.
+  const read = new Set(selectedIds);
+  const citations = (parsed.citations ?? []).filter((c) => read.has(c.videoId));
 
   return {
     answer: parsed.answer ?? "Could not find an answer.",

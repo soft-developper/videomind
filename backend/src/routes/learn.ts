@@ -3,6 +3,7 @@ import { Router } from "express";
 import { store } from "../lib/store.js";
 import { getDb } from "../lib/db.js";
 import { generateLearningPaths, askLibrary } from "../services/learningService.js";
+import { claudeFailure } from "../services/claude.js";
 // vm_apiguard: wallet checks and rate limits, see src/lib/guard.ts
 import { limitAi, takeBudget, AI_LIMIT } from "../lib/guard.js";
 // vm_signin: the caller is the signed in wallet, never a value they send
@@ -69,6 +70,8 @@ router.get("/paths", requireAuth, async (req, res) => {
 
     return res.json({ paths, videoCount: videos.length, generatedAt: now, cached: false });
   } catch (err: any) {
+    const f = claudeFailure(err);
+    if (f) return res.status(f.status).json({ error: f.error, code: f.code });
     return res.status(500).json({ error: err.message });
   }
 });
@@ -104,6 +107,8 @@ router.post("/paths/regenerate", limitAi, requireAuth, async (req, res) => {
 
     return res.json({ paths, videoCount: videos.length, generatedAt: now, cached: false });
   } catch (err: any) {
+    const f = claudeFailure(err);
+    if (f) return res.status(f.status).json({ error: f.error, code: f.code });
     return res.status(500).json({ error: err.message });
   }
 });
@@ -131,6 +136,8 @@ router.post("/ask", limitAi, requireAuth, async (req, res) => {
       () => askLibrary(question, videos));
     return res.json(result);
   } catch (err: any) {
+    const f = claudeFailure(err);
+    if (f) return res.status(f.status).json({ error: f.error, code: f.code });
     return res.status(500).json({ error: err.message });
   }
 });

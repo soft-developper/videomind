@@ -1,22 +1,20 @@
 // src/services/aiPipeline.ts
 import OpenAI from "openai";
-import Anthropic from "@anthropic-ai/sdk";
-import fs from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
 import "dotenv/config";
 import type { VideoAIData, TranscriptSegment, Chapter, Highlight } from "../types/video.js";
 // vm_storage: every provider call reports what it used to the usage ledger
-import { recordClaudeUsage, recordTranscriptionUsage } from "../lib/usage.js";
+import { recordTranscriptionUsage } from "../lib/usage.js";
 import type { PieceResult } from "./transcribe.js";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 // vm_transcribe: one piece is about ten minutes of sound and comes back in
 // well under a minute. A request that hangs is cut off after five minutes
 // and tried once more by the SDK; after that the job's own retry takes
 // over. Before, a hung request could hold a job for half an hour.
 const openaiTranscribe = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 5 * 60_000, maxRetries: 1 });
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// vm_claude: Claude is called through src/services/claude.ts
+import { askClaude, ClaudeError, obj, str, num, list, transcriptLines } from "./claude.js";
 
 /**
  * vm_transcribe: one piece of sound (see src/services/transcribe.ts).
@@ -45,178 +43,154 @@ export async function transcribePiece(filePath: string, prompt: string): Promise
   };
 }
 
-// ── Claude AI Analysis ──────────────────────────────────────────────────────
-export async function analyzeWithClaude(
-  transcript: TranscriptSegment[],
-  videoTitle: string
-): Promise<Omit<VideoAIData, "transcript">> {
-  const fullText = transcript.map((s) => `[${formatTime(s.start)}] ${s.text}`).join("\n");
+// ── Analysis ────────────────────────────────────────────────────────────────
+// vm_claude: chapters, summary, key moments, tags, an article and a thread,
+// as one structured answer.
 
-  const systemPrompt = `You are an expert video intelligence analyst for VideoMind, an AI-first video knowledge platform.
-Analyze video transcripts and extract rich, actionable intelligence.
-Always respond with ONLY valid JSON: no markdown, no preamble.`;
+const ANALYSIS_SCHEMA = obj({
+  summary: str("Three or four sentences on what the video covers and what a viewer takes away."),
+  chapters: list(obj({
+    title: str("A short title, a few words."),
+    startSeconds: num("The second the chapter starts, taken from the transcript."),
+    summary: str("One or two sentences on what the chapter covers."),
+  }), "Natural topic breaks in order. The first starts at or near 0."),
+  highlights: list(obj({
+    startSeconds: num(), endSeconds: num(),
+    reason: str("Why this moment is worth returning to, in one sentence."),
+    text: str("What is said, quoted from the transcript."),
+  }), "The most insightful or quotable moments, in order."),
+  tags: list(str(), "Topics the video is about, as short keywords."),
+  blogPost: str("An article of 500 to 800 words based on the video, in plain prose with short headings."),
+  tweetThread: str("A thread of 8 to 12 posts numbered 1/ 2/ and so on, each under 280 characters, separated by blank lines."),
+});
 
-  const userPrompt = `Video Title: "${videoTitle}"
+interface RawAnalysis {
+  summary: string;
+  chapters: Array<{ title: string; startSeconds: number; summary: string }>;
+  highlights: Array<{ startSeconds: number; endSeconds: number; reason: string; text: string }>;
+  tags: string[];
+  blogPost: string;
+  tweetThread: string;
+}
+
+/** Keep only what fits the video: times inside it, in order, no empty titles, no repeated tags. */
+export function cleanAnalysis(raw: RawAnalysis, transcript: TranscriptSegment[]): Omit<VideoAIData, "transcript"> {
+  const end = Math.max(0, ...transcript.map((s) => s.end));
+  const inside = (t: unknown) => typeof t === "number" && Number.isFinite(t) && t >= 0 && t <= end + 1;
+  const summary = String(raw?.summary ?? "").trim();
+  if (!summary) throw new ClaudeError("invalid_output", "Claude's analysis came back without a summary.", true);
+
+  const seen = new Set<number>();
+  const chapters: Chapter[] = (Array.isArray(raw.chapters) ? raw.chapters : [])
+    .filter((c) => String(c?.title ?? "").trim() && inside(c.startSeconds))
+    .map((c) => ({ title: String(c.title).trim(), startSeconds: Math.round(Math.min(c.startSeconds, end) * 10) / 10, summary: String(c.summary ?? "").trim() }))
+    .sort((a, b) => a.startSeconds - b.startSeconds)
+    .filter((c) => (seen.has(c.startSeconds) ? false : (seen.add(c.startSeconds), true)));
+
+  const highlights: Highlight[] = (Array.isArray(raw.highlights) ? raw.highlights : [])
+    .filter((h) => inside(h?.startSeconds) && typeof h.endSeconds === "number" && h.endSeconds > h.startSeconds && h.startSeconds < end && String(h.text ?? "").trim())
+    .map((h) => ({ startSeconds: h.startSeconds, endSeconds: Math.min(h.endSeconds, end), reason: String(h.reason ?? "").trim(), text: String(h.text).trim() }))
+    .sort((a, b) => a.startSeconds - b.startSeconds);
+
+  const tagKeys = new Set<string>();
+  const tags = (Array.isArray(raw.tags) ? raw.tags : [])
+    .map((t) => String(t ?? "").replace(/^#+/, "").trim()).filter(Boolean)
+    .filter((t) => (tagKeys.has(t.toLowerCase()) ? false : (tagKeys.add(t.toLowerCase()), true)))
+    .slice(0, 10);
+
+  return { summary, chapters, highlights, tags, blogPost: String(raw.blogPost ?? "").trim(), tweetThread: String(raw.tweetThread ?? "").trim() };
+}
+
+export async function analyzeWithClaude(transcript: TranscriptSegment[], videoTitle: string): Promise<Omit<VideoAIData, "transcript">> {
+  const minutes = Math.round(Math.max(0, ...transcript.map((s) => s.end)) / 60);
+  const raw = await askClaude<RawAnalysis>({
+    purpose: "analyze the video",
+    system: `You analyze recorded talks, lectures and meetings for VideoMind, a video library people search and learn from.
+Work only from the transcript. Each transcript line starts with the second it is said at, in square brackets.
+Every time you give back is a number of seconds taken from those brackets.`,
+    user: `Title: "${videoTitle}"
+Length: ${minutes < 1 ? "under a minute" : `about ${minutes} minute${minutes === 1 ? "" : "s"}`}
 
 Transcript:
-${fullText}
+${transcriptLines(transcript)}
 
-Return a JSON object with EXACTLY these fields:
-{
-  "summary": "A comprehensive 3-4 sentence summary of the video content",
-  "chapters": [
-    {
-      "title": "Chapter title",
-      "startSeconds": 0,
-      "summary": "What this chapter covers in 1-2 sentences"
-    }
-  ],
-  "highlights": [
-    {
-      "startSeconds": 0,
-      "endSeconds": 30,
-      "reason": "Why this moment is notable",
-      "text": "The transcript text for this highlight"
-    }
-  ],
-  "tags": ["tag1", "tag2", "tag3"],
-  "blogPost": "A complete, well-structured blog post (500-800 words) based on this video's content",
-  "tweetThread": "A Twitter/X thread (8-12 tweets, each numbered 1/ 2/ etc.) summarizing key insights"
-}
-
-Rules:
-- chapters: identify 3-8 natural topic breaks in the video
-- highlights: pick 3-6 most insightful or quotable moments (30-90 seconds each)
-- tags: 5-10 relevant keywords/topics
-- All timestamps must match actual transcript times`;
-
-  const message = await anthropic.messages.create({
-    model: "claude-opus-4-5",
-    max_tokens: 4000,
-    messages: [{ role: "user", content: userPrompt }],
-    system: systemPrompt,
+Analyze this recording.
+- chapters: the natural topic breaks, about one for every five to fifteen minutes, at least two when the recording allows it.
+- highlights: three to six moments of 30 to 90 seconds each that are most worth returning to.
+- tags: five to ten topics.`,
+    schema: ANALYSIS_SCHEMA,
+    maxTokens: 16_000,
   });
-  await recordClaudeUsage(message);
-
-  const rawText = message.content[0].type === "text" ? message.content[0].text : "{}";
-  const cleaned = rawText.replace(/```json|```/g, "").trim();
-
-  try {
-    const parsed = JSON.parse(cleaned);
-    return {
-      summary: parsed.summary ?? "",
-      chapters: parsed.chapters ?? [],
-      highlights: parsed.highlights ?? [],
-      tags: parsed.tags ?? [],
-      blogPost: parsed.blogPost ?? "",
-      tweetThread: parsed.tweetThread ?? "",
-    };
-  } catch {
-    console.error("Failed to parse Claude response:", rawText);
-    return { summary: "Analysis pending.", chapters: [], highlights: [], tags: [] };
-  }
+  return cleanAnalysis(raw, transcript);
 }
 
-// ── Chat Q&A ────────────────────────────────────────────────────────────────
+// ── Ask one video ───────────────────────────────────────────────────────────
+// vm_claude: the transcript goes first in the system prompt and is marked
+// for prompt caching, so the second and later questions about the same
+// video read it from the cache.
+
+const ANSWER_SCHEMA = obj({
+  answer: str("The answer, in plain prose. Say so plainly when the transcript does not contain it."),
+  sources: list(obj({ time: num("The second the quoted words start, from the transcript."), text: str("The words quoted from the transcript.") }),
+    "The places in the transcript the answer comes from, up to six."),
+});
+
 export async function chatWithVideo(
   transcript: TranscriptSegment[],
   question: string,
   videoTitle: string
 ): Promise<{ answer: string; sources: Array<{ time: number; text: string }> }> {
-  const fullText = transcript.map((s) => `[${formatTime(s.start)}] ${s.text}`).join("\n");
-
-  const message = await anthropic.messages.create({
-    model: "claude-opus-4-5",
-    max_tokens: 1000,
-    system: `You are a video intelligence assistant for VideoMind. Answer questions about video content using the transcript.
-Always cite specific timestamps when referencing content. Respond with ONLY valid JSON.`,
-    messages: [
-      {
-        role: "user",
-        content: `Video: "${videoTitle}"
-
-Transcript:
-${fullText}
-
-Question: ${question}
-
-Return JSON:
-{
-  "answer": "Your detailed answer here",
-  "sources": [
-    { "time": 123, "text": "relevant transcript excerpt" }
-  ]
-}`,
-      },
+  const end = Math.max(0, ...transcript.map((s) => s.end));
+  const raw = await askClaude<{ answer: string; sources: Array<{ time: number; text: string }> }>({
+    purpose: "answer the question",
+    system: [
+      { type: "text", text: `You answer questions about one recorded video for VideoMind. Use only its transcript, and never invent what is not in it.
+Each transcript line starts with the second it is said at, in square brackets. Source times are those seconds.` },
+      { type: "text", text: `Video: "${videoTitle}"\n\nTranscript:\n${transcriptLines(transcript)}`, cache_control: { type: "ephemeral" } },
     ],
+    user: question,
+    schema: ANSWER_SCHEMA,
+    maxTokens: 4_000,
   });
-  await recordClaudeUsage(message);
-
-  const rawText = message.content[0].type === "text" ? message.content[0].text : "{}";
-  const cleaned = rawText.replace(/```json|```/g, "").trim();
-
-  try {
-    const parsed = JSON.parse(cleaned);
-    return { answer: parsed.answer ?? "Could not find an answer.", sources: parsed.sources ?? [] };
-  } catch {
-    return { answer: "Could not process the question. Please try again.", sources: [] };
-  }
+  const sources = (Array.isArray(raw.sources) ? raw.sources : [])
+    .filter((x) => typeof x?.time === "number" && Number.isFinite(x.time) && x.time >= 0 && x.time <= end + 1 && String(x.text ?? "").trim())
+    .slice(0, 6).map((x) => ({ time: x.time, text: String(x.text).trim() }));
+  return { answer: String(raw.answer ?? "").trim() || "No answer came back. Please ask again.", sources };
 }
 
-// ── Semantic search ──────────────────────────────────────────────────────────
+// ── Search across the library ───────────────────────────────────────────────
+// vm_claude: unchanged in what it reads (the first 50 sentences of each
+// video). Part 4c replaces it with search over every sentence.
+
+const SEARCH_SCHEMA = obj({
+  results: list(obj({
+    videoId: str("An id exactly as given."),
+    title: str(),
+    matches: list(obj({ time: num("Seconds, from the transcript."), text: str("The matching words.") })),
+  }), "Videos with moments that match, most relevant first."),
+});
+
 export async function semanticSearch(
   query: string,
   videos: Array<{ id: string; title: string; transcript: TranscriptSegment[] }>
 ): Promise<Array<{ videoId: string; title: string; matches: Array<{ time: number; text: string }> }>> {
-  const message = await anthropic.messages.create({
-    model: "claude-opus-4-5",
-    max_tokens: 2000,
-    system: "You are a semantic search engine for video content. Respond with ONLY valid JSON.",
-    messages: [
-      {
-        role: "user",
-        content: `Search query: "${query}"
+  const raw = await askClaude<{ results: Array<{ videoId: string; title: string; matches: Array<{ time: number; text: string }> }> }>({
+    purpose: "search the library",
+    system: `You find the moments in a library of video transcripts that match a search. Each transcript line starts with the second it is said at, in square brackets.
+Use only the videos given, with their ids exactly as given.`,
+    user: `Search: "${query}"
 
-Videos:
-${videos
-  .map(
-    (v) =>
-      `Video ID: ${v.id}\nTitle: ${v.title}\nTranscript:\n${v.transcript
-        .slice(0, 50)
-        .map((s) => `[${formatTime(s.start)}] ${s.text}`)
-        .join("\n")}`
-  )
-  .join("\n\n---\n\n")}
-
-Find the most relevant moments across all videos that match the query.
-Return JSON:
-{
-  "results": [
-    {
-      "videoId": "...",
-      "title": "...",
-      "matches": [
-        { "time": 123, "text": "relevant excerpt" }
-      ]
-    }
-  ]
-}`,
-      },
-    ],
+${videos.map((v) => `Video id: ${v.id}\nTitle: ${v.title}\nTranscript:\n${transcriptLines(v.transcript.slice(0, 50))}`).join("\n\n---\n\n")}`,
+    schema: SEARCH_SCHEMA,
+    maxTokens: 4_000,
   });
-  await recordClaudeUsage(message);
-
-  const rawText = message.content[0].type === "text" ? message.content[0].text : "{}";
-  try {
-    const parsed = JSON.parse(rawText.replace(/```json|```/g, "").trim());
-    return parsed.results ?? [];
-  } catch {
-    return [];
-  }
-}
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
+  const byId = new Map(videos.map((v) => [v.id, v]));
+  return (Array.isArray(raw.results) ? raw.results : [])
+    .filter((r) => byId.has(r?.videoId))
+    .map((r) => ({
+      videoId: r.videoId, title: byId.get(r.videoId)!.title,
+      matches: (Array.isArray(r.matches) ? r.matches : []).filter((m) => typeof m?.time === "number" && Number.isFinite(m.time) && m.time >= 0)
+        .map((m) => ({ time: m.time, text: String(m.text ?? "").trim() })),
+    }))
+    .filter((r) => r.matches.length > 0);
 }

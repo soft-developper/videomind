@@ -10,6 +10,7 @@
 // nothing for the parts that already finished.
 import fs from "fs/promises";
 import { transcribePiece, analyzeWithClaude } from "./aiPipeline.js";
+import { ClaudeError } from "./claude.js";
 import { store } from "../lib/store.js";
 import { enqueueJob, retryJob, type Job } from "../lib/jobs.js";
 import { PermanentJobError, registerHandler, setFinalFailureHook, nudgeRunner } from "../lib/runner.js";
@@ -42,6 +43,9 @@ export interface PipelineDeps extends TranscribeDeps {
  * another try.
  */
 function classify(err: any, stage: string): never {
+  // vm_claude: a refusal will not change on a retry. An answer that was
+  // cut off or unreadable may come back whole next time.
+  if (err instanceof ClaudeError && !err.retryable) throw new PermanentJobError(err.code, err.message);
   const status = Number(err?.status);
   if (status >= 400 && status < 500 && ![408, 409, 429].includes(status)) {
     throw new PermanentJobError("bad_request", `${stage} was refused by the AI provider (${status}): ${String(err?.message ?? "").slice(0, 300)}`);
@@ -105,11 +109,9 @@ export function makeHandlers(deps: PipelineDeps) {
           { feature: "analyze", ownerWallet: ownerOf(video), videoId: job.videoId, jobId: job.id },
           () => deps.analyze(transcript, video.title ?? "Untitled"));
       } catch (err) { classify(err, "Analysis"); }
-      // The current analyzer hides an unreadable answer behind a
-      // placeholder. Treat that as a failure worth another attempt.
-      if (!ai!.summary || (ai!.summary === "Analysis pending." && !ai!.chapters?.length)) {
-        throw new Error("The analysis came back unreadable.");
-      }
+      // vm_claude: the analyzer checks its own answer and throws when it
+      // is unusable. An empty summary is still never saved.
+      if (!ai!.summary?.trim()) throw new Error("The analysis came back without a summary.");
       await store.update(job.videoId, { ai: ai! });
     }
 

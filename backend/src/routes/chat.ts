@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { store } from "../lib/store.js";
 import { chatWithVideo, semanticSearch } from "../services/aiPipeline.js";
+import { claudeFailure } from "../services/claude.js";
 // vm_apiguard: wallet checks and rate limits, see src/lib/guard.ts
 import { limitAi } from "../lib/guard.js";
 // vm_signin: the caller is the signed in wallet, never a value they send
@@ -31,6 +32,8 @@ router.post("/:videoId", limitAi, optionalAuth, async (req, res) => {
       () => chatWithVideo(video.ai!.transcript!, question, video.title));
     return res.json(result);
   } catch (err: any) {
+    const f = claudeFailure(err);
+    if (f) return res.status(f.status).json({ error: f.error, code: f.code });
     return res.status(500).json({ error: err.message });
   }
 });
@@ -58,6 +61,8 @@ router.post("/search/all", limitAi, requireAuth, async (req, res) => {
 
     return res.json({ results });
   } catch (err: any) {
+    const f = claudeFailure(err);
+    if (f) return res.status(f.status).json({ error: f.error, code: f.code });
     return res.status(500).json({ error: err.message });
   }
 });
