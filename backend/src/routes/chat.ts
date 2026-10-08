@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { store } from "../lib/store.js";
-import { chatWithVideo, semanticSearch } from "../services/aiPipeline.js";
+import { chatWithVideo } from "../services/aiPipeline.js";
+import { findPassages, groupHits, notIndexed } from "../services/search.js";
 import { claudeFailure } from "../services/claude.js";
 // vm_apiguard: wallet checks and rate limits, see src/lib/guard.ts
 import { limitAi } from "../lib/guard.js";
@@ -39,31 +40,25 @@ router.post("/:videoId", limitAi, optionalAuth, async (req, res) => {
 });
 
 // POST /api/chat/search/all
-// Searches the signed in wallet's videos only.
+// vm_search: searches every passage of the signed in wallet's ready videos
+// and returns the moments that match, best first, grouped by video.
+// Claude is not called; the question is embedded and compared.
 router.post("/search/all", limitAi, requireAuth, async (req, res) => {
   try {
-    const { query } = req.body as { query: string };
-    if (!query?.trim()) return res.status(400).json({ error: "query is required" });
+    const query = String((req.body as { query?: unknown })?.query ?? "").trim();
+    if (!query) return res.status(400).json({ error: "query is required" });
+    if (query.length > 500) return res.status(400).json({ error: "Keep the search under 500 characters.", code: "too_long" });
     const wallet = authOf(req)!.wallet;
 
-    const readyVideos = (await store.getReady(wallet)).filter((v) => v.ai?.transcript);
-
-    if (readyVideos.length === 0) {
-      return res.json({ results: [], message: "No videos available for search" });
-    }
-
-    const results = await withUsage(
-      { feature: "search", ownerWallet: wallet, actorWallet: wallet },
-      () => semanticSearch(
-        query,
-        readyVideos.map((v) => ({ id: v.id, title: v.title, transcript: v.ai!.transcript! }))
-      ));
-
-    return res.json({ results });
+    const hits = await withUsage({ feature: "search", ownerWallet: wallet, actorWallet: wallet }, () => findPassages(wallet, query));
+    return res.json({ results: groupHits(hits), notIndexed: await notIndexed(wallet) });
   } catch (err: any) {
-    const f = claudeFailure(err);
-    if (f) return res.status(f.status).json({ error: f.error, code: f.code });
-    return res.status(500).json({ error: err.message });
+    const status = Number(err?.status);
+    if (status === 429 || status >= 500 || err?.name === "APIConnectionError" || err?.name === "APIConnectionTimeoutError") {
+      return res.status(503).json({ error: "Search is busy. Please try again in a minute.", code: "busy" });
+    }
+    console.error(`[search] failed: ${err?.message ?? err}`);
+    return res.status(500).json({ error: "Search hit a problem. Please try again." });
   }
 });
 

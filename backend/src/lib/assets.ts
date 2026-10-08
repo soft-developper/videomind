@@ -292,6 +292,11 @@ export function startHousekeeping(everyMs = 60 * 60 * 1000): () => void {
       const { nudgeRunner } = await import("./runner.js");
       if (await backfillInspect()) nudgeRunner();
     }).catch((err) => console.error(`[media] backfill failed: ${err?.message ?? err}`));
+    // vm_search: videos transcribed before search existed.
+    import("../services/search.js").then(async (m) => {
+      const { nudgeRunner } = await import("./runner.js");
+      if (await m.backfillEmbed()) nudgeRunner();
+    }).catch((err) => console.error(`[search] backfill failed: ${err?.message ?? err}`));
   };
   const first = setTimeout(run, 30_000);
   const timer = setInterval(run, everyMs);

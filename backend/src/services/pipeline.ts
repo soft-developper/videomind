@@ -23,6 +23,7 @@ import { withUsage, ownerOf } from "../lib/usage.js";
 import type { TranscriptSegment, VideoAIData } from "../types/video.js";
 // vm_media: thumbnails and video facts, a job of its own next to these stages
 import { INSPECT, makeInspectHandler } from "./inspect.js";
+import { EMBED, embedHandler, queueEmbed } from "./search.js";
 
 /**
  * Failure codes that no retry can fix. The retry button is hidden for
@@ -92,6 +93,9 @@ export function makeHandlers(deps: PipelineDeps) {
     if (!created && next.status === "failed") await retryJob(job.videoId, "analyze");
     const done = !created && next.status === "succeeded";
     await store.update(job.videoId, { status: done ? "ready" : "analyzing" });
+    // vm_search: make the transcript searchable. Queued after the analysis,
+    // which the page waits for; search is not a step the page lists.
+    await queueEmbed(job.videoId).catch((err) => console.error(`[search] could not queue ${job.videoId}: ${err?.message ?? err}`));
     nudgeRunner();
   }
 
@@ -138,10 +142,13 @@ export function registerPipeline(deps: PipelineDeps = { extractSound, cutSound, 
   registerHandler("transcribe", h.transcribe);
   registerHandler("analyze", h.analyze);
   registerHandler(INSPECT, makeInspectHandler());
+  registerHandler(EMBED, embedHandler);
   // A stage that failed for good marks the video, so the page stops waiting.
   setFinalFailureHook(async (job) => {
     // vm_media: a video without a thumbnail is not a failed video.
     if (job.kind === INSPECT) return;
+    // vm_search: nor is a video that cannot be searched yet.
+    if (job.kind === EMBED) return;
     await store.update(job.videoId, { status: "error" }).catch(() => {});
   });
 }

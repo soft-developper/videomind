@@ -133,7 +133,7 @@ router.post("/ask", limitAi, requireAuth, async (req, res) => {
 
     const result = await withUsage(
       { feature: "learn_ask", ownerWallet: wallet, actorWallet: wallet },
-      () => askLibrary(question, videos));
+      () => askLibrary(question, videos, wallet));
     return res.json(result);
   } catch (err: any) {
     const f = claudeFailure(err);

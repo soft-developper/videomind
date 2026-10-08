@@ -159,38 +159,5 @@ Each transcript line starts with the second it is said at, in square brackets. S
 }
 
 // ── Search across the library ───────────────────────────────────────────────
-// vm_claude: unchanged in what it reads (the first 50 sentences of each
-// video). Part 4c replaces it with search over every sentence.
-
-const SEARCH_SCHEMA = obj({
-  results: list(obj({
-    videoId: str("An id exactly as given."),
-    title: str(),
-    matches: list(obj({ time: num("Seconds, from the transcript."), text: str("The matching words.") })),
-  }), "Videos with moments that match, most relevant first."),
-});
-
-export async function semanticSearch(
-  query: string,
-  videos: Array<{ id: string; title: string; transcript: TranscriptSegment[] }>
-): Promise<Array<{ videoId: string; title: string; matches: Array<{ time: number; text: string }> }>> {
-  const raw = await askClaude<{ results: Array<{ videoId: string; title: string; matches: Array<{ time: number; text: string }> }> }>({
-    purpose: "search the library",
-    system: `You find the moments in a library of video transcripts that match a search. Each transcript line starts with the second it is said at, in square brackets.
-Use only the videos given, with their ids exactly as given.`,
-    user: `Search: "${query}"
-
-${videos.map((v) => `Video id: ${v.id}\nTitle: ${v.title}\nTranscript:\n${transcriptLines(v.transcript.slice(0, 50))}`).join("\n\n---\n\n")}`,
-    schema: SEARCH_SCHEMA,
-    maxTokens: 4_000,
-  });
-  const byId = new Map(videos.map((v) => [v.id, v]));
-  return (Array.isArray(raw.results) ? raw.results : [])
-    .filter((r) => byId.has(r?.videoId))
-    .map((r) => ({
-      videoId: r.videoId, title: byId.get(r.videoId)!.title,
-      matches: (Array.isArray(r.matches) ? r.matches : []).filter((m) => typeof m?.time === "number" && Number.isFinite(m.time) && m.time >= 0)
-        .map((m) => ({ time: m.time, text: String(m.text ?? "").trim() })),
-    }))
-    .filter((r) => r.matches.length > 0);
-}
+// vm_search: moved to services/search.ts. It searches every passage of
+// every video with embeddings and no longer asks Claude.

@@ -11,6 +11,7 @@ import type { VideoRecord } from "../types/video.js";
 // vm_claude: Claude is called through src/services/claude.ts, which also
 // writes every reply to the usage ledger. Answers are structured outputs.
 import { askClaude, claudeFastModel, obj, str, num, list, transcriptLines } from "./claude.js";
+import { findPassages, type Hit } from "./search.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 export interface LearningPath {
@@ -104,15 +105,69 @@ Design learning paths.
   })).filter((p) => p.steps.length > 0);
 }
 
+/** At most this many passages, and this many from one video, go to Claude. */
+const MAX_PASSAGES = 24, MAX_PER_VIDEO = 6;
+
+async function answerFromPassages(question: string, hits: Hit[], ready: Set<string>): Promise<LibraryAnswer> {
+  const per = new Map<string, number>();
+  const chosen = hits.filter((h) => {
+    if (!ready.has(h.videoId)) return false;
+    const n = per.get(h.videoId) ?? 0;
+    if (n >= MAX_PER_VIDEO) return false;
+    per.set(h.videoId, n + 1);
+    return true;
+  }).slice(0, MAX_PASSAGES);
+  const ids = [...new Set(chosen.map((h) => h.videoId))];
+  // Each video once, its passages in the order they are said.
+  const context = ids.map((id) => {
+    const mine = chosen.filter((h) => h.videoId === id).sort((a, b) => a.start - b.start);
+    return `=== VIDEO ===
+ID: ${id}
+Title: ${mine[0].title}
+
+Passages:
+${mine.map((h) => `[${Math.floor(h.start)}] ${h.text}`).join("\n")}`;
+  }).join("\n\n");
+
+  const parsed = await askClaude<Omit<LibraryAnswer, "videosUsed">>({
+    purpose: "answer the question from the library",
+    system: `You are VideoMind's library assistant. Answer using only the passages given, and never invent what is not in them. If they do not answer the question, say so.
+Each passage starts with the second it is said at, in square brackets. Cite the video and the second every claim comes from.`,
+    user: `Question: "${question}"
+
+${context}
+
+The video ids you may cite: ${ids.join(", ")}.`,
+    schema: LIBRARY_ANSWER_SCHEMA,
+    maxTokens: 4_000,
+  });
+  const read = new Set(ids);
+  const citations = (parsed.citations ?? []).filter((c) => read.has(c.videoId));
+  return { answer: parsed.answer ?? "Could not find an answer.", citations, videosUsed: ids };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CROSS-VIDEO LIBRARY ASSISTANT  (two-pass)
 // ═══════════════════════════════════════════════════════════════════════════
 export async function askLibrary(
   question: string,
-  videos: VideoRecord[]
+  videos: VideoRecord[],
+  wallet?: string
 ): Promise<LibraryAnswer> {
   if (videos.length === 0) {
     return { answer: "You have no processed videos yet. Upload a video to get started.", citations: [], videosUsed: [] };
+  }
+
+  // vm_search: when the library is searchable, read the passages that
+  // match the question, from every video, instead of the whole transcripts
+  // of up to four videos. A four hour lecture no longer fills the request.
+  // If the question cannot be embedded, the answer comes the earlier way.
+  if (wallet) {
+    const hits = await findPassages(wallet, question, 60).catch((err) => {
+      console.error(`[search] library question falls back to whole transcripts: ${err?.message ?? err}`);
+      return [] as Hit[];
+    });
+    if (hits.length) return answerFromPassages(question, hits, new Set(videos.map((v) => v.id)));
   }
 
   // ── PASS 1: which videos are relevant? (summaries only, cheap) ──────────

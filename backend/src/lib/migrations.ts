@@ -209,6 +209,26 @@ const MIGRATIONS: Migration[] = [
         WHERE kind = 'transcribe' AND status = 'failed' AND error_code = 'too_large'`,
     ],
   },
+  {
+    // vm_search: transcripts cut into passages of about a minute, each with
+    // its embedding (text-embedding-3-small, 1536 numbers) as a libSQL
+    // vector column. Search compares a question with every passage of the
+    // wallet's videos. Videos transcribed before this part are queued by
+    // the hourly housekeeping.
+    id: "008_search",
+    statements: [
+      `CREATE TABLE passages (
+        id          INTEGER PRIMARY KEY,
+        video_id    TEXT NOT NULL,
+        seq         INTEGER NOT NULL,
+        start_sec   REAL NOT NULL,
+        end_sec     REAL NOT NULL,
+        text        TEXT NOT NULL,
+        embedding   F32_BLOB(1536) NOT NULL
+      )`,
+      `CREATE INDEX passages_video ON passages(video_id, seq)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {
