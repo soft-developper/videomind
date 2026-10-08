@@ -14,6 +14,9 @@ import { ChatPanel } from "@/components/chat/ChatPanel";
 import { ExportMenu } from "@/components/video/ExportMenu";
 import { SkeletonVideoPage } from "@/components/ui/SkeletonCard";
 import { ExternalLink, MessageSquare, X } from "lucide-react";
+// vm_present
+import { Presentation } from "lucide-react";
+import { ShareButton } from "@/components/video/ShareButton";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -121,6 +124,14 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 {/* vm_courses: its place in its course */}
                 {video.course && <div className="mt-4 max-w-[860px]"><CourseStrip course={video.course} base="/v" owner={false} /></div>}
               </div>
+              <div className="flex items-center gap-2 flex-wrap">
+              {/* vm_present: show it to a room, or share it (last, so its panel opens leftwards) */}
+              <Link
+                href={`/present/${params.id}${t >= 1 ? `?t=${Math.floor(t)}` : ""}`}
+                className="flex items-center gap-1.5 h-8 px-3 btn-ghost text-[12px] no-min"
+              >
+                <Presentation size={11} /> Present
+              </Link>
               <ExportMenu
                 videoId={params.id}
                 title={video.title}
@@ -130,6 +141,8 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 highlights={video.ai?.highlights}
                 tags={video.ai?.tags}
               />
+              <ShareButton videoId={params.id} title={video.title} currentTime={t} align="right" />
+              </div>
             </div>
 
             {video.shelby.accountAddress && (

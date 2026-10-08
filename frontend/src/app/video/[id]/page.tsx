@@ -26,6 +26,8 @@ import { VideoDetails } from "@/components/video/VideoDetails";
 import { WalletButton } from "@/components/layout/WalletButton";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { Lock } from "lucide-react";
+// vm_present
+import { Presentation } from "lucide-react";
 // vm_media: the picture before playback, and what to say about a format browsers cannot all play
 import { formatLabel, playbackNote } from "@/lib/media";
 
@@ -190,7 +192,14 @@ export default function VideoPage({ params }: { params: { id: string } }) {
               <div className="flex items-center gap-2 mt-4 flex-wrap">
                 {isPrivate
                   ? <span className="text-[13px] text-dim">Private videos have no share link. Use Edit details to change who can watch.</span>
-                  : <ShareButton videoId={params.id} />}
+                  : <ShareButton videoId={params.id} title={video.title} currentTime={t} />}
+                {/* vm_present: a projector view for a room */}
+                <Link
+                  href={`/present/${params.id}${t >= 1 ? `?t=${Math.floor(t)}` : ""}`}
+                  className="flex items-center gap-1.5 h-8 px-3 btn-ghost text-[12px] no-min"
+                >
+                  <Presentation size={11} /> Present
+                </Link>
                 <ExportMenu
                   videoId={params.id}
                   title={video.title}
