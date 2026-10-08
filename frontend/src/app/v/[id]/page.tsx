@@ -198,16 +198,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
 
               <InsightsPanel video={video} onSeek={seek} />
 
-              <OnChainProof
-
-
-                owner={video.onShelby === false ? undefined : video.shelby.accountAddress}
-
-
-                blobName={video.shelby.videoBlobName}
-
-
-              />
+              <OnChainProof videoId={params.id} isOwner={!!video.isOwner} storeHref={video.isOwner ? `/upload?anchor=${params.id}` : undefined} />
 
               {video.ai?.transcript?.length ? (
                 <TranscriptPanel

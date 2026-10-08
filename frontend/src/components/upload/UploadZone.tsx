@@ -24,6 +24,8 @@ import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { useUploadBlobs } from "@shelby-protocol/react";
 import {
   createUpload, listOpenUploads, discardUpload, anchorVideo, getVideo, ApiError, type UploadInfo,
+  // vm_anchors
+  startAnchor,
 } from "@/lib/api";
 import { ResumableUpload, StorageBlockedError, UploadStopped, type UploadProgress } from "@/lib/uploader";
 // vm_shelby09: expiration removed from blob registration (sdk >= 0.8.0)
@@ -149,20 +151,23 @@ export function UploadZone() {
     if (f.size > SHELBY_LIMIT) { setShelby({ at: "too_large" }); return; }
     setShelby({ at: "wallet" });
     try {
+      // vm_anchors: the server names each store (a store after the first gets a new name).
+      const { blobName } = await startAnchor(t.videoId);
       const buf = new Uint8Array(await f.arrayBuffer());
       await new Promise<void>((res, rej) => {
         blobs.mutate(
           {
             // Official docs pass the AccountAddress object, not a string.
             signer: { account: account.address as any, signAndSubmitTransaction },
-            blobs: [{ blobName: t.videoBlobName, blobData: buf }],
+            blobs: [{ blobName, blobData: buf }],
             // Explicit location. Without one the contract rejects the write.
             options: { locationHint: SHELBY_LOCATION },
           },
           { onSuccess: () => res(), onError: (e) => rej(e) }
         );
       });
-      await anchorVideo(t.videoId, { accountAddress: account.address.toString(), txHash: `wallet-${Date.now()}` });
+      await anchorVideo(t.videoId, { accountAddress: account.address.toString(), txHash: `wallet-${Date.now()}`, blobName });
+      qc.invalidateQueries({ queryKey: ["anchors", t.videoId] });
       setShelby({ at: "stored" });
       qc.invalidateQueries({ queryKey: ["video", t.videoId] });
       router.push(`/video/${t.videoId}`);

@@ -29,6 +29,9 @@ import { buildCues, toVtt, toSrt } from "../lib/captions.js";
 import { parseChapters, ChapterError } from "../lib/chapters.js";
 // vm_courses
 import { courseOf } from "../lib/course.js";
+// vm_anchors
+import { listAnchors, addAnchor, latest, canStoreAgain, blobNameFor, isOurBlobName, checkAnchor, deleteAnchorsForVideo, type Anchor } from "../lib/anchors.js";
+import { queueAnchorCheck } from "../services/anchor.js";
 
 /**
  * vm_transcribe: a library list needs chapters and a summary, not every
@@ -53,6 +56,7 @@ async function dropVideoWork(id: string): Promise<void> {
   const src = await store.getSourcePath(id);
   if (src) await fs.unlink(src).catch(() => {});
   await deleteJobsForVideo(id);
+  await deleteAnchorsForVideo(id);   // vm_anchors
   await abortUpload(id, { keepVideo: true }).catch((err) =>
     console.error(`[uploads] could not discard the unfinished upload of ${id}: ${err?.message ?? err}`));
   // If storage cannot be reached the asset rows stay, and the hourly
@@ -118,15 +122,44 @@ function fileSignatureOk(id: string, exp: number, sig: unknown): boolean {
 
 const NOT_OWNER = { error: "This video belongs to a different wallet.", code: "not_owner" };
 
-// ── POST /api/videos/:id/anchor ──────────────────────────────────────────────
-// vm_upload: the owner's wallet has stored the file on Shelby. Record
-// where, so the ownership proof can be shown. Storing on Shelby is its
-// own step after the upload, and can be done or repeated at any time.
+// ── Storing on Shelby (vm_anchors) ─────────────────────────────────────────────
+// The owner's wallet writes the file to Shelby in the browser. Before it
+// does, it asks which name to use (a store after the first gets a new
+// name, since Shelby has no renew call). After it does, it reports the
+// store and the server confirms it from the chain in a job.
+
+/** A store as the page shows it. The failure text is for the owner only. */
+function anchorView(a: Anchor, owner: boolean) {
+  return {
+    id: a.id, state: a.state, network: a.network, wallet: a.wallet, blobName: a.blobName, objectName: a.objectName,
+    blobUid: a.blobUid, commitment: a.commitment, sizeBytes: a.sizeBytes, paidUntil: a.paidUntil,
+    committedAt: a.committedAt, sameAsFirst: a.sameAsFirst, createdAt: a.createdAt, checkedAt: a.checkedAt,
+    error: owner ? a.error : null,
+  };
+}
+
+// POST /api/videos/:id/anchor/start: the blob name for the next store.
+router.post("/:id/anchor/start", limitUpload, requireAuth, async (req, res) => {
+  try {
+    const video = await store.get(req.params.id);
+    if (!video) return res.status(404).json({ error: "Video not found" });
+    if (!ownsVideo(video, authOf(req)!.wallet)) return res.status(403).json(NOT_OWNER);
+    if (video.status === "uploading") return res.status(409).json({ error: "Finish the upload first.", code: "not_uploaded" });
+    const list = await listAnchors(video.id);
+    const may = canStoreAgain(list);
+    if (!may.ok) return res.status(409).json({ error: may.reason, code: "already_stored" });
+    return res.json({ blobName: blobNameFor(video.id, video.shelby.videoBlobName, list.length + 1) });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/videos/:id/anchor: the owner's wallet has stored the file.
 router.post("/:id/anchor", limitUpload, requireAuth, async (req, res) => {
   try {
     const wallet = authOf(req)!.wallet;
-    const { accountAddress, txHash } = (req.body ?? {}) as { accountAddress?: string; txHash?: string };
-    if (!accountAddress || !txHash) return res.status(400).json({ error: "accountAddress and txHash are required" });
+    const { accountAddress, txHash, blobName: sent } = (req.body ?? {}) as { accountAddress?: string; txHash?: string; blobName?: string };
+    if (!accountAddress) return res.status(400).json({ error: "accountAddress is required" });
     // The Shelby blob must belong to the signed in wallet.
     if (!sameWallet(accountAddress, wallet)) {
       return res.status(403).json({ error: "accountAddress must be the signed in wallet.", code: "not_owner" });
@@ -136,10 +169,59 @@ router.post("/:id/anchor", limitUpload, requireAuth, async (req, res) => {
     if (!ownsVideo(video, wallet)) return res.status(403).json(NOT_OWNER);
     if (video.status === "uploading") return res.status(409).json({ error: "Finish the upload first.", code: "not_uploaded" });
 
+    const blobName = typeof sent === "string" && sent ? sent : video.shelby.videoBlobName;
+    if (!isOurBlobName(video.id, blobName)) return res.status(400).json({ error: "That is not a name this video is stored under.", code: "bad_blob_name" });
+    const list = await listAnchors(video.id);
+    const cur = latest(list);
+    // The same report twice (a retry) does not add a second store.
+    const anchor = cur && cur.blobName === blobName && sameWallet(cur.wallet, wallet) ? cur : await addAnchor({ videoId: video.id, wallet, blobName });
+    if (anchor.state === "checking") await queueAnchorCheck(video.id, anchor.id);
+
+    // The video points at its newest store, for the proof and for playing from Shelby.
     await store.update(video.id, {
-      shelby: { videoBlobName: video.shelby.videoBlobName, accountAddress: wallet, videoTxHash: String(txHash).slice(0, 200) },
+      shelby: { videoBlobName: blobName, accountAddress: wallet, videoTxHash: String(txHash ?? `wallet-${Date.now()}`).slice(0, 200) },
     });
-    return res.json({ id: video.id, onShelby: true });
+    return res.json({ id: video.id, onShelby: true, anchor: anchorView(anchor, true) });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/videos/:id/anchors: every store of this video, newest last.
+router.get("/:id/anchors", optionalAuth, async (req, res) => {
+  try {
+    const video = await store.get(req.params.id);
+    if (!video) return res.status(404).json({ error: "Video not found" });
+    const wallet = authOf(req)?.wallet;
+    if (!canView(video, wallet)) return res.status(403).json(PRIVATE_VIDEO);
+    const owner = ownsVideo(video, wallet);
+    const list = await listAnchors(video.id);
+    const may = canStoreAgain(list);
+    return res.json({
+      current: latest(list) ? anchorView(latest(list)!, owner) : null,
+      history: list.map((a) => anchorView(a, owner)),
+      canStoreAgain: owner ? may.ok : false,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/videos/:id/anchors/check: look the newest store up on the chain now.
+router.post("/:id/anchors/check", limitPipeline, requireAuth, async (req, res) => {
+  try {
+    const video = await store.get(req.params.id);
+    if (!video) return res.status(404).json({ error: "Video not found" });
+    if (!ownsVideo(video, authOf(req)!.wallet)) return res.status(403).json(NOT_OWNER);
+    const cur = latest(await listAnchors(video.id));
+    if (!cur) return res.status(409).json({ error: "This video has not been stored on Shelby.", code: "not_stored" });
+    try {
+      await checkAnchor(cur.id, { lastTry: true, expectedSize: video.meta?.sizeBytes ?? null });
+    } catch (err: any) {
+      return res.status(503).json({ error: "Shelby could not be reached. Try again in a minute.", code: "chain_unreachable" });
+    }
+    const list = await listAnchors(video.id);
+    return res.json({ current: anchorView(latest(list)!, true), history: list.map((a) => anchorView(a, true)), canStoreAgain: canStoreAgain(list).ok });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

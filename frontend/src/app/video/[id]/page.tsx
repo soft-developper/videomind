@@ -248,8 +248,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   />
                 )}
                 <OnChainProof
-                  owner={shelbyOwner}
-                  blobName={video.shelby.videoBlobName}
+                  videoId={video.id}
+                  isOwner={!!mine}
                   storeHref={mine ? `/upload?anchor=${video.id}` : undefined}
                 />
               </div>
@@ -306,8 +306,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 )}
 
                 <OnChainProof
-                  owner={shelbyOwner}
-                  blobName={video.shelby.videoBlobName}
+                  videoId={video.id}
+                  isOwner={!!mine}
                   storeHref={mine ? `/upload?anchor=${video.id}` : undefined}
                 />
 

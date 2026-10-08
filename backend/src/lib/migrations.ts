@@ -265,6 +265,44 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX watch_progress_video ON watch_progress(video_id)`,
     ],
   },
+  {
+    // vm_anchors: each time a video is stored on Shelby, and what the
+    // chain says about it. A row is added when the owner's wallet reports
+    // a store, and the server confirms it from the Shelby object index.
+    // Rows are kept when a store lapses or the network is reset, so the
+    // history and the first commitment stay.
+    id: "011_anchors",
+    statements: [
+      `CREATE TABLE anchors (
+        id            TEXT PRIMARY KEY,
+        video_id      TEXT NOT NULL,
+        wallet        TEXT NOT NULL,
+        network       TEXT NOT NULL,
+        blob_name     TEXT NOT NULL,
+        object_name   TEXT NOT NULL,
+        state         TEXT NOT NULL,
+        blob_uid      TEXT,
+        commitment    TEXT,
+        size_bytes    INTEGER,
+        paid_until    INTEGER,
+        committed_at  INTEGER,
+        same_as_first INTEGER,
+        error         TEXT,
+        created_at    INTEGER NOT NULL,
+        checked_at    INTEGER,
+        updated_at    INTEGER NOT NULL
+      )`,
+      `CREATE INDEX anchors_video ON anchors(video_id, created_at)`,
+      `CREATE INDEX anchors_state ON anchors(state, checked_at)`,
+      // Videos stored on Shelby before this table existed are checked like new ones.
+      `INSERT INTO anchors (id, video_id, wallet, network, blob_name, object_name, state, created_at, updated_at)
+         SELECT lower(hex(randomblob(16))), video_id, lower(account_address), 'shelbynet', video_blob_name,
+                '@' || lower(substr(account_address, 3)) || '/' || video_blob_name,
+                'checking', CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000
+           FROM video_shelby
+          WHERE COALESCE(account_address, '') != '' AND COALESCE(video_tx_hash, '') != '' AND COALESCE(video_blob_name, '') != ''`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

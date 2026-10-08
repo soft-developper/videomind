@@ -86,8 +86,23 @@ export const discardUpload = (id: string) => call<{ success: boolean }>(() => ra
 export const absoluteUrl = (u: string) => (u.startsWith("/") ? BASE + u : u);
 
 /** Record that the owner's wallet has stored the file on Shelby. */
-export const anchorVideo = (id: string, b: { accountAddress: string; txHash: string }) =>
+export const anchorVideo = (id: string, b: { accountAddress: string; txHash: string; blobName?: string }) =>
   call<{ id: string; onShelby: boolean }>(() => raw.post(`/api/videos/${id}/anchor`, b));
+
+// ── vm_anchors: each store of a video on Shelby, as the chain confirmed it ──
+export type AnchorState = "checking" | "anchored" | "lapsed" | "missing" | "unverified";
+export interface AnchorInfo {
+  id: string; state: AnchorState; network: string; wallet: string; blobName: string; objectName: string;
+  blobUid: string | null; commitment: string | null; sizeBytes: number | null;
+  /** milliseconds */ paidUntil: number | null; committedAt: number | null;
+  sameAsFirst: boolean | null; createdAt: number; checkedAt: number | null;
+  /** owner only */ error: string | null;
+}
+export interface Anchors { current: AnchorInfo | null; history: AnchorInfo[]; canStoreAgain: boolean }
+/** The name the next store uses. Refused (409 already_stored) while the last store is fine. */
+export const startAnchor = (id: string) => call<{ blobName: string }>(() => raw.post(`/api/videos/${id}/anchor/start`));
+export const getAnchors = (id: string) => call<Anchors>(() => raw.get(`/api/videos/${id}/anchors`));
+export const checkAnchorsNow = (id: string) => call<Anchors>(() => raw.post(`/api/videos/${id}/anchors/check`));
 
 // ── Video details and collections ───────────────────────────────────────────
 // vm_info: what the owner says about a video, and who may open it.

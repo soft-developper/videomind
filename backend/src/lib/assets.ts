@@ -297,6 +297,11 @@ export function startHousekeeping(everyMs = 60 * 60 * 1000): () => void {
       const { nudgeRunner } = await import("./runner.js");
       if (await m.backfillEmbed()) nudgeRunner();
     }).catch((err) => console.error(`[search] backfill failed: ${err?.message ?? err}`));
+    // vm_anchors: stores from before tracking get checked, and confirmed stores are looked at
+    // again twice a day so a lapsed or reset store shows as such.
+    import("../services/anchor.js").then((m) => m.backfillAnchorChecks())
+      .then(() => import("./anchors.js")).then((m) => m.recheckAnchors())
+      .catch((err) => console.error(`[anchors] housekeeping failed: ${err?.message ?? err}`));
   };
   const first = setTimeout(run, 30_000);
   const timer = setInterval(run, everyMs);
