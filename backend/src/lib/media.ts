@@ -214,3 +214,66 @@ export async function makePictures(input: string, atSeconds: number, dir: string
   if (!(await made())) throw new MediaError("no_picture", "No picture could be taken from this video.", false);
   return { poster, thumb };
 }
+
+// ── sound, for transcription ──────────────────────────────────────────────
+// vm_transcribe: the sound of a video is taken out once, as small mono
+// AAC (16 kHz, 48 kbit/s: about 21 MB an hour). The same pass notes every
+// pause, so the sound can later be cut where nobody is speaking.
+
+export interface Pause { start: number; end: number }
+export interface Sound { durationSeconds: number; pauses: Pause[] }
+
+/** Read the pauses silencedetect wrote. A pause still open at the end of the file ends there. */
+export function parsePauses(text: string, durationSeconds: number): Pause[] {
+  const out: Pause[] = [];
+  let open: number | null = null;
+  for (const line of text.split(/\r?\n/)) {
+    const s = /lavfi\.silence_start=(-?[\d.]+)/.exec(line);
+    if (s) { open = Math.max(0, Number(s[1])); continue; }
+    const e = /lavfi\.silence_end=([\d.]+)/.exec(line);
+    if (e && open !== null) { out.push({ start: open, end: Number(e[1]) }); open = null; }
+  }
+  if (open !== null && durationSeconds > open) out.push({ start: open, end: durationSeconds });
+  return out.filter((p) => Number.isFinite(p.start) && Number.isFinite(p.end) && p.end > p.start);
+}
+
+/**
+ * Write the sound of `input` to outPath (an .m4a file) and return its
+ * length and its pauses. A video without sound fails with "no_audio".
+ */
+export async function extractSound(input: string, outPath: string, timeoutMs = 3 * 3600_000): Promise<Sound> {
+  const pausesFile = `${outPath}.pauses.txt`;
+  const r = await run("ffmpeg", [
+    "-hide_banner", "-nostdin", "-loglevel", "error", "-y", "-threads", "1",
+    ...inputArgs(input),
+    "-map", "0:a:0", "-vn", "-sn", "-dn",
+    "-ac", "1", "-ar", "16000",
+    // A pause is at least 0.4 seconds below -35 dB. The filter only listens; the sound passes through unchanged.
+    "-af", `silencedetect=noise=-35dB:d=0.4,ametadata=mode=print:file=${pausesFile}`,
+    "-c:a", "aac", "-b:a", "48k", "-movflags", "+faststart", "-f", "mp4", outPath,
+  ], timeoutMs);
+  if (r.code !== 0) {
+    if (/matches no streams|does not contain any stream|Output file .* does not contain/i.test(r.err)) {
+      throw new MediaError("no_audio", "This video has no sound.", false);
+    }
+    throw failure(r, "Taking out the sound");
+  }
+  const facts = await probeFile(outPath);
+  const durationSeconds = facts.durationSeconds ?? 0;
+  const text = await fs.readFile(pausesFile, "utf8").catch(() => "");
+  await fs.rm(pausesFile, { force: true }).catch(() => {});
+  return { durationSeconds, pauses: parsePauses(text, durationSeconds) };
+}
+
+/** Copy one stretch of an .m4a sound file into its own file, without re-encoding it. */
+export async function cutSound(input: string, startSeconds: number, seconds: number, outPath: string, timeoutMs = 5 * 60_000): Promise<void> {
+  const r = await run("ffmpeg", [
+    "-hide_banner", "-nostdin", "-loglevel", "error", "-y",
+    "-ss", startSeconds.toFixed(3), ...inputArgs(input), "-t", seconds.toFixed(3),
+    "-map", "0:a:0", "-c", "copy", "-movflags", "+faststart", "-f", "mp4", outPath,
+  ], timeoutMs);
+  if (r.code !== 0) throw failure(r, "Cutting the sound");
+  if (((await fs.stat(outPath).catch(() => null))?.size ?? 0) === 0) {
+    throw new MediaError("media_empty", "Cutting the sound produced nothing.", true);
+  }
+}

@@ -8,45 +8,41 @@ import "dotenv/config";
 import type { VideoAIData, TranscriptSegment, Chapter, Highlight } from "../types/video.js";
 // vm_storage: every provider call reports what it used to the usage ledger
 import { recordClaudeUsage, recordTranscriptionUsage } from "../lib/usage.js";
+import type { PieceResult } from "./transcribe.js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// vm_transcribe: one piece is about ten minutes of sound and comes back in
+// well under a minute. A request that hangs is cut off after five minutes
+// and tried once more by the SDK; after that the job's own retry takes
+// over. Before, a hung request could hold a job for half an hour.
+const openaiTranscribe = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 5 * 60_000, maxRetries: 1 });
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// ── Helper: read a stream into a Buffer ─────────────────────────────────────
-async function fileToBuffer(filePath: string): Promise<Buffer> {
-  return fsPromises.readFile(filePath);
-}
-
-// ── Transcription with Whisper ──────────────────────────────────────────────
-export async function transcribeVideo(videoFilePath: string): Promise<TranscriptSegment[]> {
-  // Read the file into a Buffer and wrap in a File object so OpenAI SDK
-  // sends the correct filename in the multipart upload. Whisper uses the
-  // filename extension to detect format. Without it you get a 400 error.
-  const buffer = await fileToBuffer(videoFilePath);
-  const fileName = path.basename(videoFilePath); // e.g. "abc123.mp4"
-  // Copy Buffer into a fresh ArrayBuffer (not SharedArrayBuffer) so TypeScript
-  // accepts it as BlobPart. Buffer.buffer is ArrayBufferLike which is too broad.
-  const arrayBuffer = buffer.buffer.slice(
-    buffer.byteOffset,
-    buffer.byteOffset + buffer.byteLength
-  ) as ArrayBuffer;
-  const file = new File([arrayBuffer], fileName);
-
-  const response = await openai.audio.transcriptions.create({
+/**
+ * vm_transcribe: one piece of sound (see src/services/transcribe.ts).
+ * whisper-1 is the model that returns word and segment times, which the
+ * transcript and captions need. `prompt` is the end of the text before
+ * this piece, so a sentence or a name carries over the cut.
+ */
+export async function transcribePiece(filePath: string, prompt: string): Promise<PieceResult> {
+  const buffer = await fsPromises.readFile(filePath);
+  const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
+  const file = new File([arrayBuffer], path.basename(filePath), { type: "audio/mp4" });
+  const response = await openaiTranscribe.audio.transcriptions.create({
     file,
     model: "whisper-1",
     response_format: "verbose_json",
-    timestamp_granularities: ["segment"],
+    timestamp_granularities: ["word", "segment"],
+    ...(prompt.trim() ? { prompt: prompt.trim() } : {}),
   });
   await recordTranscriptionUsage(response.duration, "whisper-1");
-
-  const segments: TranscriptSegment[] = (response.segments ?? []).map((seg) => ({
-    start: seg.start,
-    end: seg.end,
-    text: seg.text.trim(),
-  }));
-
-  return segments;
+  return {
+    text: (response.text ?? "").trim(),
+    segments: (response.segments ?? []).map((s) => ({ start: Number(s.start), end: Number(s.end), text: String(s.text ?? "") })),
+    words: (response.words ?? []).map((w) => ({ text: String(w.word ?? ""), start: Number(w.start), end: Number(w.end) })),
+    duration: Number(response.duration ?? 0),
+    language: response.language ? String(response.language) : undefined,
+  };
 }
 
 // ── Claude AI Analysis ──────────────────────────────────────────────────────

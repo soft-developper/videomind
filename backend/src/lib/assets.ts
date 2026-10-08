@@ -67,6 +67,15 @@ export async function listAssets(videoId: string): Promise<MediaAsset[]> {
   return res.rows.map((r) => rowToAsset(r as Record<string, unknown>));
 }
 
+/** vm_transcribe: the newest asset of one kind, or null. */
+export async function getAsset(videoId: string, kind: string): Promise<MediaAsset | null> {
+  const res = await getDb().execute({
+    sql: "SELECT * FROM media_assets WHERE video_id = ? AND kind = ? ORDER BY created_at DESC LIMIT 1",
+    args: [videoId, kind],
+  });
+  return res.rows[0] ? rowToAsset(res.rows[0] as Record<string, unknown>) : null;
+}
+
 export async function getOriginal(videoId: string): Promise<MediaAsset | null> {
   const res = await getDb().execute({
     sql: "SELECT * FROM media_assets WHERE video_id = ? AND kind = 'original' ORDER BY created_at DESC LIMIT 1",
@@ -156,15 +165,20 @@ export async function registerOriginal(args: {
 export const PICTURE_KINDS = ["poster", "thumb"] as const;
 export type PictureKind = (typeof PICTURE_KINDS)[number];
 
+/** vm_transcribe: the sound of a video, taken out once for transcription. */
+export type DerivedKind = PictureKind | "audio";
+const DERIVED_EXT: Record<DerivedKind, string> = { poster: ".jpg", thumb: ".jpg", audio: ".m4a" };
+
 /**
- * vm_media: move a file made FROM a video (a thumbnail) into storage and
- * record it. One asset per kind and video: a second one replaces the first.
+ * vm_media: move a file made FROM a video (a thumbnail, its sound) into
+ * storage and record it. One asset per kind and video: a second one
+ * replaces the first.
  */
 export async function saveDerived(args: {
-  videoId: string; kind: PictureKind; filePath: string; contentType: string; ownerWallet?: string | null;
+  videoId: string; kind: DerivedKind; filePath: string; contentType: string; ownerWallet?: string | null;
 }): Promise<MediaAsset> {
   const storage = getStorage();
-  const key = `${prefixOf(args.videoId)}${args.kind}.jpg`;
+  const key = `${prefixOf(args.videoId)}${args.kind}${DERIVED_EXT[args.kind]}`;
   const earlier = (await listAssets(args.videoId)).filter((a) => a.kind === args.kind);
   const { size } = await storage.moveIn(key, args.filePath, { contentType: args.contentType });
   const asset: MediaAsset = {

@@ -47,6 +47,8 @@ export function ProcessingStatus({
   }, [videoId, status, sessionWallet]);
 
   const idx = ORDER.indexOf(status);
+  // vm_transcribe: a long recording is transcribed in pieces; say which one is being worked on
+  const pieces = jobs.find((j) => j.kind === "transcribe")?.progress;
   const failed = jobs.find((j) => j.status === "failed");
   // A stage that failed but will be tried again by itself.
   const waiting = jobs.find((j) => j.status === "queued" && j.attempts > 0);
@@ -82,9 +84,9 @@ export function ProcessingStatus({
             Steps that already finished are kept. Only this step runs again.
           </p>
         )}
-        {failed?.errorCode === "too_large" && (
+        {failed?.errorCode === "too_long" && (
           <p className="text-[13px] text-dim">
-            The video itself is fine and plays normally. Transcription of long recordings is not available yet.
+            The video itself is fine and plays normally. It only has no transcript.
           </p>
         )}
         {retryErr && <p role="alert" className="text-[13px] font-sans text-error">{retryErr}</p>}
@@ -93,7 +95,7 @@ export function ProcessingStatus({
             <button onClick={retry} disabled={retrying} className="btn btn-signal h-9 px-4 flex items-center">
               {retrying ? "Starting" : `Retry ${failed.label.toLowerCase()}`}
             </button>
-          ) : failed?.errorCode === "too_large" ? null : (
+          ) : failed?.errorCode === "too_long" ? null : (
             <Link href="/upload" className="btn btn-signal h-9 px-4 flex items-center">
               Upload again
             </Link>
@@ -141,6 +143,11 @@ export function ProcessingStatus({
                   {s.n}
                 </p>
                 <p className="text-[13px] font-sans text-dim mt-0.5">{s.d}</p>
+                {on && s.k === "transcribing" && pieces && pieces.total > 1 && (
+                  <p className="tc text-paper-2 mt-1.5">
+                    Part {Math.min(pieces.done + 1, pieces.total)} of {pieces.total}
+                  </p>
+                )}
               </div>
               {on && <span className="dot dot-work ml-auto mt-2" />}
             </div>

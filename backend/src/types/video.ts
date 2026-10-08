@@ -76,6 +76,15 @@ export interface TranscriptSegment {
   start: number;
   end: number;
   text: string;
+  /** vm_transcribe: each word with the moment it is said. Videos transcribed before word timing have none. */
+  words?: TranscriptWord[];
+}
+
+/** vm_transcribe: one spoken word. Times are seconds from the start of the video. */
+export interface TranscriptWord {
+  text: string;
+  start: number;
+  end: number;
 }
 
 export interface Chapter {

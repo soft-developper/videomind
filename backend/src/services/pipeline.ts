@@ -1,27 +1,27 @@
 // src/services/pipeline.ts
 // vm_jobs: the processing stages, as job handlers.
 //
-//   transcribe  Whisper reads the stored original -> transcript saved
+//   transcribe  the sound is taken out, cut into pieces and transcribed
+//               with word timing -> transcript saved (src/services/transcribe.ts)
 //   analyze     Claude reads the transcript      -> summary, chapters, highlights
 //
 // Each handler first checks whether its work is already saved and skips
 // it if so. That makes a retry, or a job taken over after a crash, cost
 // nothing for the parts that already finished.
 import fs from "fs/promises";
-import { transcribeVideo, analyzeWithClaude } from "./aiPipeline.js";
+import { transcribePiece, analyzeWithClaude } from "./aiPipeline.js";
 import { store } from "../lib/store.js";
 import { enqueueJob, retryJob, type Job } from "../lib/jobs.js";
 import { PermanentJobError, registerHandler, setFinalFailureHook, nudgeRunner } from "../lib/runner.js";
 // vm_storage: the original is read from storage, and AI usage is attributed to the owner
-import { getStorage, ObjectMissingError } from "../lib/storage.js";
 import { getOriginal, deleteOriginal, keepOriginal } from "../lib/assets.js";
+// vm_transcribe: recordings of any length, in pieces
+import { transcribeLong, clearPieces, type TranscribeDeps } from "./transcribe.js";
+import { extractSound, cutSound } from "../lib/media.js";
 import { withUsage, ownerOf } from "../lib/usage.js";
 import type { TranscriptSegment, VideoAIData } from "../types/video.js";
 // vm_media: thumbnails and video facts, a job of its own next to these stages
 import { INSPECT, makeInspectHandler } from "./inspect.js";
-
-/** OpenAI's documented limit for one transcription file. */
-export const TRANSCRIBE_MAX_BYTES = 25 * 1024 * 1024;
 
 /**
  * Failure codes that no retry can fix. The retry button is hidden for
@@ -29,10 +29,9 @@ export const TRANSCRIBE_MAX_BYTES = 25 * 1024 * 1024;
  * by itself, but once the operator fixes the cause (an API key, a model
  * name) the owner must be able to run the stage again.
  */
-export const NOT_RETRYABLE = new Set(["too_large", "source_missing", "video_gone", "no_transcript", "no_handler"]);
+export const NOT_RETRYABLE = new Set(["too_long", "source_missing", "video_gone", "no_transcript", "no_handler", "unreadable"]);
 
-export interface PipelineDeps {
-  transcribe: (filePath: string) => Promise<TranscriptSegment[]>;
+export interface PipelineDeps extends TranscribeDeps {
   analyze: (transcript: TranscriptSegment[], title: string) => Promise<Omit<VideoAIData, "transcript">>;
 }
 
@@ -55,30 +54,31 @@ export function makeHandlers(deps: PipelineDeps) {
     const video = await store.get(job.videoId);
     if (!video) throw new PermanentJobError("video_gone", "The video was deleted.");
 
-    if (!video.ai?.transcript?.length) {
+    // vm_transcribe: an empty transcript is a finished one (a video with no sound or no speech)
+    if (!Array.isArray(video.ai?.transcript)) {
       // The original lives in storage. A video confirmed before storage
       // existed may still point at a file on this machine's disk.
       const original = await getOriginal(job.videoId);
-      const diskPath = original ? "" : ((job.payload.filePath as string | undefined) ?? (await store.getSourcePath(job.videoId)) ?? "");
-      const size = original ? original.bytes : (diskPath ? (await fs.stat(diskPath).catch(() => null))?.size : undefined);
-      const gone = () => new PermanentJobError("source_missing", "The uploaded file is no longer in storage. Upload the video again.");
-      if (size === undefined) throw gone();
-      if (size > TRANSCRIBE_MAX_BYTES) {
-        throw new PermanentJobError("too_large",
-          `This file is ${(size / 1024 / 1024).toFixed(1)} MB, which is over the 25 MB transcription limit.`);
-      }
+      const diskPath = original ? undefined : ((job.payload.filePath as string | undefined) ?? (await store.getSourcePath(job.videoId)) ?? undefined);
+      if (!original && !diskPath) throw new PermanentJobError("source_missing", "The uploaded file is no longer in storage. Upload the video again.");
       await store.update(job.videoId, { status: "transcribing" });
-      const run = (filePath: string) => withUsage(
-        { feature: "transcribe", ownerWallet: ownerOf(video), videoId: job.videoId, jobId: job.id },
-        () => deps.transcribe(filePath));
       let transcript: TranscriptSegment[];
       try {
-        transcript = original ? await getStorage().withLocalFile(original.key, run) : await run(diskPath);
+        transcript = await withUsage(
+          { feature: "transcribe", ownerWallet: ownerOf(video), videoId: job.videoId, jobId: job.id },
+          () => transcribeLong({ videoId: job.videoId, original, diskPath, ownerWallet: ownerOf(video), deps }));
       } catch (err) {
-        if (err instanceof ObjectMissingError) throw gone();
+        if (err instanceof PermanentJobError) throw err;
         classify(err, "Transcription");
       }
       await store.update(job.videoId, { ai: { transcript: transcript! } });
+      await clearPieces(job.videoId);
+    }
+
+    // vm_transcribe: nothing was said, so there is nothing to analyze. The video is ready as it is.
+    if (!(await store.get(job.videoId))?.ai?.transcript?.length) {
+      await store.update(job.videoId, { status: "ready" });
+      return;
     }
 
     // Hand over to analysis. If an analyze job is already there from an
@@ -131,7 +131,7 @@ export function makeHandlers(deps: PipelineDeps) {
 }
 
 /** Register the real handlers. Called once at startup. */
-export function registerPipeline(deps: PipelineDeps = { transcribe: transcribeVideo, analyze: analyzeWithClaude }) {
+export function registerPipeline(deps: PipelineDeps = { extractSound, cutSound, transcribePiece, analyze: analyzeWithClaude }) {
   const h = makeHandlers(deps);
   registerHandler("transcribe", h.transcribe);
   registerHandler("analyze", h.analyze);

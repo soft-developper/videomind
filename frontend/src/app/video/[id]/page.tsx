@@ -108,6 +108,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
   const mine = video.isOwner ?? (!!me && !!video.ownerWallet && me.toLowerCase() === video.ownerWallet.toLowerCase());
   const isPrivate = video.visibility === "private";
   const note = playbackNote(video.media);
+  // vm_transcribe: transcribed, and nothing was said. There is nothing to analyze or to ask about.
+  const speechless = ready && Array.isArray(video.ai?.transcript) && video.ai!.transcript!.length === 0;
   const source = video.source;
   const shelbyOwner = video.onShelby === false ? undefined : video.shelby.accountAddress;
 
@@ -247,7 +249,19 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   onSeek={seek}
                 />
 
-                <InsightsPanel video={video} onSeek={seek} />
+                {speechless ? (
+                  <div className="panel p-5">
+                    <p className="text-[14.5px] font-medium text-paper">No speech was found in this video</p>
+                    <p className="text-[13.5px] text-dim mt-1 leading-relaxed max-w-[62ch]">
+                      {video.media && !video.media.hasAudio
+                        ? "It has no sound, so there is nothing to transcribe."
+                        : "Its sound was transcribed and no words came back."}{" "}
+                      Chapters, the summary and questions all come from what is said, so this video has none.
+                    </p>
+                  </div>
+                ) : (
+                  <InsightsPanel video={video} onSeek={seek} />
+                )}
 
                 <OnChainProof
                   owner={shelbyOwner}
@@ -265,8 +279,10 @@ export default function VideoPage({ params }: { params: { id: string } }) {
               </div>
 
               <aside className="hidden lg:block lg:sticky lg:top-6 lg:h-[calc(100vh-48px)]">
-                <div className="panel h-full flex flex-col overflow-hidden">
-                  <ChatPanel videoId={params.id} videoTitle={video.title} />
+                <div className={clsx("panel flex flex-col overflow-hidden", !speechless && "h-full")}>
+                  {speechless
+                    ? <p className="p-5 text-[13.5px] text-dim leading-relaxed">Questions are answered from what is said in a video. This one has no speech.</p>
+                    : <ChatPanel videoId={params.id} videoTitle={video.title} />}
                 </div>
               </aside>
             </div>
@@ -275,7 +291,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* Mobile chat */}
-      {ready && (
+      {ready && !speechless && (
         <>
           <button
             onClick={() => setChatOpen(true)}

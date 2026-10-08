@@ -21,6 +21,24 @@ import { getOriginal, deleteAssetsForVideo, pictureKeys, PICTURE_KINDS, type Pic
 import { abortUpload } from "../lib/uploads.js";
 // vm_info: category, collection, tags, and who may open a video
 import { ownsVideo, canView, parseInfo, applyInfo, InfoError, PRIVATE_VIDEO } from "../lib/videoInfo.js";
+// vm_transcribe: how far a long transcription has come
+import { transcriptionProgress } from "../services/transcribe.js";
+
+/**
+ * vm_transcribe: a library list needs chapters and a summary, not every
+ * sentence of every video. A two hour lecture with word timing is close
+ * to a megabyte, so the list leaves transcripts out.
+ */
+function forList(v: VideoRecord): VideoRecord {
+  if (!v.ai?.transcript) return v;
+  const { transcript: _t, ...ai } = v.ai;
+  return { ...v, ai };
+}
+/** One video carries its sentences. The words in them are sent only when asked for (?words=1). */
+function withoutWords(v: VideoRecord): VideoRecord {
+  if (!v.ai?.transcript?.some((s) => s.words)) return v;
+  return { ...v, ai: { ...v.ai, transcript: v.ai.transcript.map(({ words: _w, ...s }) => s) } };
+}
 
 const router = Router();
 
@@ -122,7 +140,7 @@ router.get("/", requireAuth, async (req, res) => {
     const list = await store.getAll(authOf(req)!.wallet);
     // vm_media: each card's thumbnail. One query for the keys; signing needs no network.
     const keys = await pictureKeys(list.map((v) => v.id)).catch(() => new Map());
-    const videos = await Promise.all(list.map(async (v) => ({ ...v, thumbUrl: await pictureUrl(v.id, "thumb", keys.get(v.id)?.thumb) })));
+    const videos = await Promise.all(list.map(async (v) => ({ ...forList(v), thumbUrl: await pictureUrl(v.id, "thumb", keys.get(v.id)?.thumb) })));
     return res.json({ videos });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
@@ -157,7 +175,8 @@ router.get("/:id", optionalAuth, async (req, res) => {
     const posterUrl = await pictureUrl(video.id, "poster", pics?.poster);
     const thumbUrl = await pictureUrl(video.id, "thumb", pics?.thumb);
 
-    return res.json({ ...video, streamUrl, source, posterUrl, thumbUrl, onShelby: onShelby(video), isOwner: ownsVideo(video, wallet) });
+    const body = req.query.words === "1" ? video : withoutWords(video);
+    return res.json({ ...body, streamUrl, source, posterUrl, thumbUrl, onShelby: onShelby(video), isOwner: ownsVideo(video, wallet) });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
@@ -232,8 +251,11 @@ router.get("/:id/jobs", optionalAuth, async (req, res) => {
     const wallet = authOf(req)?.wallet;
     if (!canView(video, wallet)) return res.status(403).json(PRIVATE_VIDEO);
     const owner = !!wallet && ownsVideo(video, wallet);
+    // vm_transcribe: a long transcription says how many of its pieces are done
+    const progress = await transcriptionProgress(req.params.id).catch(() => null);
     // vm_media: the thumbnail job is not a step anyone waits for, so it is not listed
     const jobs = (await listJobs(req.params.id)).filter((j) => STAGE_LABEL[j.kind]).map((j) => ({
+      progress: j.kind === "transcribe" && j.status !== "succeeded" ? progress : null,
       kind: j.kind,
       label: STAGE_LABEL[j.kind] ?? j.kind,
       status: j.status,

@@ -181,6 +181,34 @@ const MIGRATIONS: Migration[] = [
       `DROP TABLE IF EXISTS media_probe_steps`,
     ],
   },
+  {
+    // vm_transcribe: long recordings are transcribed in pieces of about ten
+    // minutes, cut where nobody is speaking. Each piece is saved the moment
+    // it is done, so a restart only repeats the piece that was in progress.
+    id: "007_transcription",
+    statements: [
+      `CREATE TABLE transcript_chunks (
+        video_id        TEXT NOT NULL,
+        idx             INTEGER NOT NULL,
+        start_sec       REAL NOT NULL,
+        end_sec         REAL NOT NULL,
+        status          TEXT NOT NULL DEFAULT 'pending',
+        text            TEXT,
+        segments_json   TEXT,
+        words_json      TEXT,
+        language        TEXT,
+        billed_seconds  REAL,
+        updated_at      INTEGER NOT NULL,
+        PRIMARY KEY (video_id, idx)
+      )`,
+      // Videos that were refused only for being over 25 MB are transcribed now.
+      `UPDATE videos SET status = 'transcribing'
+        WHERE id IN (SELECT video_id FROM jobs WHERE kind = 'transcribe' AND status = 'failed' AND error_code = 'too_large')`,
+      `UPDATE jobs SET status = 'queued', attempts = 0, run_after = 0, error = NULL, error_code = NULL, finished_at = NULL,
+              updated_at = CAST(strftime('%s', 'now') AS INTEGER) * 1000
+        WHERE kind = 'transcribe' AND status = 'failed' AND error_code = 'too_large'`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

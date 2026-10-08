@@ -49,7 +49,6 @@ function saveDefaults(d: InfoDraft) {
 
 const GB = 1024 ** 3;
 /** Transcription reads the file in one request for now, and that request has a size limit. */
-const TRANSCRIBE_LIMIT = 25 * 1024 * 1024;
 /** The Shelby step loads the whole file into the browser's memory. */
 const SHELBY_LIMIT = 2 * GB;
 const MAX_BYTES = 10 * GB;
@@ -505,11 +504,6 @@ export function UploadZone() {
       {file && step.at === "details" && (
         <div className="space-y-4">
           <VideoInfoForm value={draft} onChange={setDraft} idPrefix="upload" />
-          {file.size > TRANSCRIBE_LIMIT && (
-            <p className="text-[13px] text-paper-2 leading-relaxed rounded-md border border-rule px-3.5 py-2.5">
-              This file is {bytes(file.size)}. It will upload and play, but it cannot be transcribed yet: transcription is limited to 25 MB until long recordings are supported.
-            </p>
-          )}
         </div>
       )}
 

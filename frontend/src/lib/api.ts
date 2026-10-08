@@ -161,8 +161,10 @@ export interface VideoJob {
   nextAttemptAt: number | null;
   /** why it failed. Only sent to the video's owner. */
   error: string | null;
-  /** the kind of failure, e.g. "too_large". Only sent to the video's owner. */
+  /** the kind of failure, e.g. "too_long". Only sent to the video's owner. */
   errorCode?: string | null;
+  /** vm_transcribe: pieces of a long transcription done out of all of them, while it runs */
+  progress?: { done: number; total: number } | null;
   /** true only for the owner, and only when a retry can help */
   canRetry: boolean;
 }
