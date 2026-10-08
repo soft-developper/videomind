@@ -17,12 +17,16 @@ interface Props {
   blobName?: string;
   /** vm_upload: where the file is served from */
   source?: "storage" | "shelby" | null;
+  /** vm_media: the picture shown until playback starts */
+  poster?: string | null;
+  /** what the file is ("HEVC in MOV") when browsers cannot all play it */
+  format?: string | null;
   onDuration?: (seconds: number) => void;
   onTimeUpdate?: (seconds: number) => void;
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
-  function VideoPlayer({ streamUrl, source, onDuration, onTimeUpdate }, ref) {
+  function VideoPlayer({ streamUrl, source, poster, format, onDuration, onTimeUpdate }, ref) {
     const v = useRef<HTMLVideoElement>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -73,8 +77,8 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
         onMouseLeave={() => playing && setShow(false)}
       >
         {loading && !error && (
-          <div className="absolute inset-0 flex items-center justify-center z-10 bg-screen">
-            <div className="flex items-center gap-2.5">
+          <div className={clsx("absolute inset-0 flex items-center justify-center z-10 pointer-events-none", !poster && "bg-screen")}>
+            <div className={clsx("flex items-center gap-2.5", poster && "px-3 py-1.5 rounded bg-screen/85 border border-rule")}>
               <span className="dot dot-work" />
               <span className="tc">Loading the video</span>
             </div>
@@ -90,7 +94,9 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
             <p className="text-[12px] font-sans text-dim max-w-xs leading-relaxed">
               {source === "shelby"
                 ? "The network may be unreachable right now, or the paid storage period may have ended."
-                : "The file may be in a format this browser cannot play, or storage may be unreachable right now."}
+                : format
+                  ? `This file is ${format}, which this browser cannot play. An MP4 with H.264 video plays everywhere.`
+                  : "The file may be in a format this browser cannot play, or storage may be unreachable right now."}
             </p>
           </div>
         )}
@@ -98,6 +104,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
         <video
           ref={v}
           src={streamUrl}
+          poster={poster ?? undefined}
           className="w-full h-full object-contain"
           preload="metadata"
           onClick={toggle}

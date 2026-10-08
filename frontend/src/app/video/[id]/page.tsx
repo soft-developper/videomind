@@ -22,6 +22,8 @@ import { VideoDetails } from "@/components/video/VideoDetails";
 import { WalletButton } from "@/components/layout/WalletButton";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { Lock } from "lucide-react";
+// vm_media: the picture before playback, and what to say about a format browsers cannot all play
+import { formatLabel, playbackNote } from "@/lib/media";
 
 export default function VideoPage({ params }: { params: { id: string } }) {
   const [chatOpen, setChatOpen] = useState(false);
@@ -105,6 +107,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
   const unfinished = video.status === "uploading";
   const mine = video.isOwner ?? (!!me && !!video.ownerWallet && me.toLowerCase() === video.ownerWallet.toLowerCase());
   const isPrivate = video.visibility === "private";
+  const note = playbackNote(video.media);
+  const source = video.source;
   const shelbyOwner = video.onShelby === false ? undefined : video.shelby.accountAddress;
 
   // Prefer stored duration, fall back to what the player reports
@@ -134,6 +138,10 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   </p>
                 )}
                 <VideoDetails video={video} owner={mine} />
+                {/* vm_media: only the owner can do something about the format, so only the owner is told */}
+                {mine && source === "storage" && note && (
+                  <p className={clsx("text-[13px] mt-3 max-w-[70ch] leading-relaxed", note.tone === "warn" ? "text-warn" : "text-dim")}>{note.text}</p>
+                )}
               </div>
 
               {shelbyOwner && (
@@ -195,6 +203,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                     ref={player}
                     streamUrl={video.streamUrl}
                     source={video.source}
+                    poster={video.posterUrl}
+                    format={video.media && video.media.playable !== "yes" ? formatLabel(video.media) : null}
                     title={video.title}
                     onDuration={onDuration}
                     onTimeUpdate={setT}
@@ -218,6 +228,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   ref={player}
                   streamUrl={video.streamUrl ?? null}
                   source={video.source}
+                  poster={video.posterUrl}
+                  format={video.media && video.media.playable !== "yes" ? formatLabel(video.media) : null}
                   title={video.title}
                   shelbyAddress={video.shelby.accountAddress}
                   blobName={video.shelby.videoBlobName}

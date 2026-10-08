@@ -17,6 +17,8 @@ import { getStorage, ObjectMissingError } from "../lib/storage.js";
 import { getOriginal, deleteOriginal, keepOriginal } from "../lib/assets.js";
 import { withUsage, ownerOf } from "../lib/usage.js";
 import type { TranscriptSegment, VideoAIData } from "../types/video.js";
+// vm_media: thumbnails and video facts, a job of its own next to these stages
+import { INSPECT, makeInspectHandler } from "./inspect.js";
 
 /** OpenAI's documented limit for one transcription file. */
 export const TRANSCRIBE_MAX_BYTES = 25 * 1024 * 1024;
@@ -133,8 +135,11 @@ export function registerPipeline(deps: PipelineDeps = { transcribe: transcribeVi
   const h = makeHandlers(deps);
   registerHandler("transcribe", h.transcribe);
   registerHandler("analyze", h.analyze);
+  registerHandler(INSPECT, makeInspectHandler());
   // A stage that failed for good marks the video, so the page stops waiting.
   setFinalFailureHook(async (job) => {
+    // vm_media: a video without a thumbnail is not a failed video.
+    if (job.kind === INSPECT) return;
     await store.update(job.videoId, { status: "error" }).catch(() => {});
   });
 }

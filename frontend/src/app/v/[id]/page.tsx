@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getVideo, ApiError } from "@/lib/api";
 import { categoryLabel } from "@/lib/categories";
+import { formatLabel } from "@/lib/media";
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
 import { IntelligenceStrip } from "@/components/video/IntelligenceStrip";
 import { InsightsPanel } from "@/components/video/InsightsPanel";
@@ -127,6 +128,8 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 ref={player}
                 streamUrl={video.streamUrl ?? null}
                   source={video.source}
+                poster={video.posterUrl}
+                format={video.media && video.media.playable !== "yes" ? formatLabel(video.media) : null}
                 title={video.title}
                 shelbyAddress={video.shelby.accountAddress}
                 onDuration={setDur}

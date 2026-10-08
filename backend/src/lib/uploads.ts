@@ -286,6 +286,9 @@ export async function completeUpload(videoId: string): Promise<{ id: string; sta
 
 /** Queue processing for a completed upload. One job per video, however often this runs. */
 async function finish(u: UploadRow): Promise<{ id: string; status: string }> {
+  // vm_media: thumbnail and video facts (see src/services/inspect.ts). Queued
+  // first because it is short: the card gets its picture while transcription runs.
+  await enqueueJob({ videoId: u.videoId, kind: "inspect" });
   const { created } = await enqueueJob({ videoId: u.videoId, kind: "transcribe" });
   if (created) await store.update(u.videoId, { status: "transcribing" });
   nudgeRunner();

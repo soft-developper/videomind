@@ -9,10 +9,11 @@ import { api } from "@/lib/api";
 import type { VideoRecord } from "@/lib/api";
 import { categoryLabel } from "@/lib/categories";
 
-// vm_shell: the card shows what is known about the video instead of a
-// thumbnail it does not have yet: its first chapters as a small table of
-// contents, and under it a ruler cut at the chapter boundaries. Once
-// thumbnails exist they take the place of the table of contents.
+// vm_shell: under every card is a ruler cut at the chapter boundaries.
+// vm_media: the tile shows the video's thumbnail. Pointing at it (or
+// reaching it with the keyboard) brings up the first chapters as a small
+// table of contents. A video without a thumbnail shows the table of
+// contents all the time, as every card did before thumbnails existed.
 
 /** The grid every list of video cards uses. */
 export const VIDEO_GRID = "grid gap-x-5 gap-y-9 grid-cols-[repeat(auto-fill,minmax(248px,1fr))]";
@@ -91,6 +92,10 @@ export function VideoCard({ video }: { video: VideoRecord }) {
   const [confirm, setConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [gone, setGone] = useState(false);
+  // vm_media: a picture that fails to load gives way to the table of contents
+  const [noPicture, setNoPicture] = useState(false);
+  const picture = !noPicture && video.thumbUrl ? video.thumbUrl : null;
+  const upright = !!video.media?.width && !!video.media?.height && video.media.height > video.media.width;
 
   const del = async (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -124,11 +129,29 @@ export function VideoCard({ video }: { video: VideoRecord }) {
             "relative aspect-video overflow-hidden rounded-md bg-screen border transition-colors",
             failed ? "border-error/40" : "border-rule group-hover:border-rule-lit"
           )}>
-            {working && <div className="absolute inset-0 scan rounded-none opacity-60" />}
+            {picture && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={picture}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                onError={() => setNoPicture(true)}
+                className={clsx(
+                  "absolute inset-0 w-full h-full transition-opacity",
+                  upright ? "object-contain" : "object-cover",
+                  (working || failed) && "opacity-30"
+                )}
+              />
+            )}
+            {working && !picture && <div className="absolute inset-0 scan rounded-none opacity-60" />}
 
-            {/* Table of contents */}
-            {!working && !failed && (
-              <ol className="absolute inset-0 p-3.5 pr-10 flex flex-col gap-[5px] text-[12.5px] leading-snug">
+            {/* Table of contents. Over a picture it waits for the pointer or the keyboard. */}
+            {!working && !failed && (!picture || chapters.length > 0) && (
+              <ol className={clsx(
+                "absolute inset-0 p-3.5 pr-10 flex flex-col gap-[5px] text-[12.5px] leading-snug",
+                picture && "bg-screen/90 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity [@media(pointer:coarse)]:hidden"
+              )}>
                 {chapters.slice(0, 4).map((c, i) => (
                   <li key={i} className="flex gap-2.5 min-w-0">
                     <span className="tc w-[38px] shrink-0 text-dim-2 group-hover:text-dim transition-colors">{clock(c.startSeconds)}</span>

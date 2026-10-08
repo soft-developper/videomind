@@ -8,6 +8,7 @@ import { Pencil } from "lucide-react";
 import { clsx } from "clsx";
 import { updateVideo, type VideoRecord } from "@/lib/api";
 import { categoryLabel, visibilityLabel } from "@/lib/categories";
+import { factsLine } from "@/lib/media";
 import { VideoInfoForm, draftFromVideo, draftToPatch, VISIBILITY_ICON, type InfoDraft } from "./VideoInfoForm";
 
 export function VideoDetails({ video, owner }: { video: VideoRecord; owner: boolean }) {
@@ -56,6 +57,8 @@ export function VideoDetails({ video, owner }: { video: VideoRecord; owner: bool
           </li>
         )}
         {tags.map((t) => <li key={t.toLowerCase()} className="text-[12.5px] text-dim">#{t}</li>)}
+        {/* vm_media: what the file is, as the server measured it */}
+        {factsLine(video.media) && <li className="tc" title="Picture size, frame rate, video format and file type">{factsLine(video.media)}</li>}
         {owner && !draft && (
           <li>
             <button

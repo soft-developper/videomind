@@ -14,8 +14,8 @@ import { limitUpload, limitPipeline, limitDelete, rateLimit } from "../lib/guard
 // vm_signin: the caller is the signed in wallet, never a value they send
 import { requireAuth, optionalAuth, authOf, sameWallet } from "../lib/auth.js";
 // vm_storage: every file of a video lives in storage
-import { getStorage, ObjectMissingError } from "../lib/storage.js";
-import { getOriginal, deleteAssetsForVideo } from "../lib/assets.js";
+import { getStorage, ObjectMissingError, stableWindow } from "../lib/storage.js";
+import { getOriginal, deleteAssetsForVideo, pictureKeys, PICTURE_KINDS, type PictureKind } from "../lib/assets.js";
 // vm_upload: files arrive through /api/uploads (see src/routes/uploads.ts).
 // The old reserve, prepare and confirm routes are gone.
 import { abortUpload } from "../lib/uploads.js";
@@ -44,6 +44,20 @@ const PLAY_URL_SECONDS = 12 * 60 * 60;
 const onShelby = (v: VideoRecord) => !!v.shelby.accountAddress && !!v.shelby.videoTxHash;
 
 const STAGE_LABEL: Record<string, string> = { transcribe: "Transcription", analyze: "Analysis" };
+
+// vm_media: thumbnails. An address stays the same for six hours, so the
+// browser keeps the picture instead of loading it again every time the
+// library refreshes. A private video's pictures are as private as it is:
+// the address is only ever given to someone allowed to open the video.
+const PICTURE_WINDOW_SECONDS = 6 * 3600;
+async function pictureUrl(videoId: string, kind: PictureKind, key: string | undefined): Promise<string | null> {
+  if (!key) return null;
+  const signed = await getStorage().signedUrlStable(key, PICTURE_WINDOW_SECONDS).catch(() => null);
+  if (signed) return signed;
+  // Local disk storage: through this API, under a signature of our own.
+  const exp = stableWindow(PICTURE_WINDOW_SECONDS).end;
+  return `/api/videos/${videoId}/picture/${kind}?exp=${exp}&sig=${fileSignature(`${videoId}|${kind}`, exp)}`;
+}
 
 /** Saving a video's details is cheap, but it is still a write. */
 const limitEdit = rateLimit({
@@ -105,7 +119,10 @@ router.post("/:id/anchor", limitUpload, requireAuth, async (req, res) => {
 // caller is ignored.
 router.get("/", requireAuth, async (req, res) => {
   try {
-    const videos = await store.getAll(authOf(req)!.wallet);
+    const list = await store.getAll(authOf(req)!.wallet);
+    // vm_media: each card's thumbnail. One query for the keys; signing needs no network.
+    const keys = await pictureKeys(list.map((v) => v.id)).catch(() => new Map());
+    const videos = await Promise.all(list.map(async (v) => ({ ...v, thumbUrl: await pictureUrl(v.id, "thumb", keys.get(v.id)?.thumb) })));
     return res.json({ videos });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
@@ -135,7 +152,12 @@ router.get("/:id", optionalAuth, async (req, res) => {
       source = "shelby";
     }
 
-    return res.json({ ...video, streamUrl, source, onShelby: onShelby(video), isOwner: ownsVideo(video, wallet) });
+    // vm_media: the picture shown before playback starts, and the small one for cards
+    const pics = (await pictureKeys([video.id]).catch(() => new Map())).get(video.id);
+    const posterUrl = await pictureUrl(video.id, "poster", pics?.poster);
+    const thumbUrl = await pictureUrl(video.id, "thumb", pics?.thumb);
+
+    return res.json({ ...video, streamUrl, source, posterUrl, thumbUrl, onShelby: onShelby(video), isOwner: ownsVideo(video, wallet) });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
@@ -164,6 +186,29 @@ router.get("/:id/file", async (req, res) => {
   }
 });
 
+// ── GET /api/videos/:id/picture/:kind ───────────────────────────────────────
+// vm_media: local disk storage only. With S3 storage the page gets a
+// signed address to the bucket instead and this answers 404.
+router.get("/:id/picture/:kind", async (req, res) => {
+  try {
+    const kind = req.params.kind as PictureKind;
+    if (!PICTURE_KINDS.includes(kind)) return res.status(404).json({ error: "Not found" });
+    if (!fileSignatureOk(`${req.params.id}|${kind}`, Number(req.query.exp), req.query.sig)) {
+      return res.status(403).json({ error: "This picture address is not valid or has run out." });
+    }
+    const storage = getStorage();
+    const key = storage.driver === "local" ? (await pictureKeys([req.params.id])).get(req.params.id)?.[kind] : undefined;
+    if (!key) return res.status(404).json({ error: "Not found" });
+    await storage.withLocalFile(key, async (filePath) => {
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Cache-Control", "private, max-age=3600");
+      res.end(await fs.readFile(filePath));
+    });
+  } catch (err: any) {
+    if (!res.headersSent) res.status(404).json({ error: "Not found" });
+  }
+});
+
 // ── GET /api/videos/:id/status ──────────────────────────────────────────────
 router.get("/:id/status", optionalAuth, async (req, res) => {
   try {
@@ -187,7 +232,8 @@ router.get("/:id/jobs", optionalAuth, async (req, res) => {
     const wallet = authOf(req)?.wallet;
     if (!canView(video, wallet)) return res.status(403).json(PRIVATE_VIDEO);
     const owner = !!wallet && ownsVideo(video, wallet);
-    const jobs = (await listJobs(req.params.id)).map((j) => ({
+    // vm_media: the thumbnail job is not a step anyone waits for, so it is not listed
+    const jobs = (await listJobs(req.params.id)).filter((j) => STAGE_LABEL[j.kind]).map((j) => ({
       kind: j.kind,
       label: STAGE_LABEL[j.kind] ?? j.kind,
       status: j.status,
@@ -214,6 +260,7 @@ router.post("/:id/jobs/:kind/retry", limitPipeline, requireAuth, async (req, res
     if (!video) return res.status(404).json({ error: "Video not found" });
     if (!ownsVideo(video, authOf(req)!.wallet)) return res.status(403).json(NOT_OWNER);
 
+    if (!STAGE_LABEL[req.params.kind]) return res.status(404).json({ error: "There is no such step." });
     const failed = (await listJobs(video.id)).find((j) => j.kind === req.params.kind && j.status === "failed");
     if (!failed) return res.status(409).json({ error: "That step is not in a failed state." });
     if (NOT_RETRYABLE.has(failed.errorCode ?? "")) {

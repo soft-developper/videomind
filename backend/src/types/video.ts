@@ -15,6 +15,8 @@ export interface VideoRecord {
   tags?: string[];
   /** position is the video's place in the collection's order */
   collection?: { id: string; name: string; position?: number } | null;
+  /** vm_media: what FFmpeg found in the file. Absent until the video has been looked at. */
+  media?: MediaFacts;
   shelby: {
     videoBlobName: string;
     transcriptBlobName?: string;
@@ -30,6 +32,26 @@ export interface VideoRecord {
     mimeType: string;
     durationSeconds?: number;
   };
+}
+
+/** vm_media: the facts of the uploaded file. See src/lib/media.ts */
+export interface MediaFacts {
+  hasVideo: boolean;
+  hasAudio: boolean;
+  durationSeconds?: number;
+  /** as shown on screen: a phone video recorded upright is taller than wide */
+  width?: number;
+  height?: number;
+  fps?: number;
+  videoCodec?: string;
+  audioCodec?: string;
+  pixelFormat?: string;
+  /** mp4, mov, webm, mkv or avi */
+  container?: string;
+  bitrateKbps?: number;
+  /** can browsers play the file as it is: all of them, some of them, or none */
+  playable: "yes" | "some" | "no";
+  inspectedAt: number;
 }
 
 export type VideoStatus =

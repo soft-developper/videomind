@@ -18,8 +18,8 @@ import { checkStorage, storageHealth } from "./lib/storage.js";
 import { startHousekeeping } from "./lib/assets.js";
 // vm_info: collections of videos
 import collectionsRouter from "./routes/collections.js";
-// vm_media_probe: measures whether this server can run FFmpeg, before transcoding is built
-import mediaProbeRouter from "./routes/mediaProbe.js";
+// vm_media: thumbnails and video facts need FFmpeg
+import { checkMediaTools, mediaHealth } from "./lib/media.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -48,7 +48,6 @@ app.use("/api/shelby", statsRouter);
 app.use("/api/learn", learnRouter);
 app.use("/api/usage", usageRouter);
 app.use("/api/collections", collectionsRouter);
-app.use("/api/health/media", mediaProbeRouter);
 
 app.get("/api/health", (_req, res) => {
   const s = storageHealth();
@@ -56,6 +55,8 @@ app.get("/api/health", (_req, res) => {
     status: "ok", service: "VideoMind API", timestamp: new Date().toISOString(),
     // vm_storage: which storage is in use and whether its startup check passed
     storage: { driver: s.driver, durable: s.durable, ok: s.ok },
+    // vm_media: the FFmpeg version found at startup, or null
+    media: mediaHealth(),
   });
 });
 
@@ -69,6 +70,9 @@ async function main() {
   // missing settings stop the start with a clear message. A storage that
   // cannot be reached is logged and the server still starts.
   await checkStorage();
+
+  // vm_media: note which FFmpeg is installed. Its absence stops nothing.
+  await checkMediaTools().catch(() => null);
 
   // vm_jobs: the job runner lives in this service by default.
   // JOBS_RUNNER=off turns it off here (see src/worker.ts).

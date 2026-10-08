@@ -170,6 +170,17 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX video_tags_key_idx ON video_tags(tag_key)`,
     ],
   },
+  {
+    // vm_media: the facts FFmpeg reads from a file (length, size, codecs),
+    // kept as one JSON value. Thumbnails are rows in media_assets and
+    // need no new table. The table of the FFmpeg measurement goes: it
+    // has done its job.
+    id: "006_media",
+    statements: [
+      `ALTER TABLE videos ADD COLUMN media_json TEXT`,
+      `DROP TABLE IF EXISTS media_probe_steps`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

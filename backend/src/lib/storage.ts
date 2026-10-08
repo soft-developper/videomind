@@ -72,6 +72,13 @@ export interface Storage {
   deletePrefix(prefix: string): Promise<number>;
   /** A time limited download address, or null if the driver has none. */
   signedUrl(key: string, expiresSeconds: number): Promise<string | null>;
+  /**
+   * vm_media: like signedUrl, but the address is the SAME for everyone who
+   * asks within one window, so a browser can cache what it points at (a
+   * thumbnail in a list that reloads every few seconds). It works for at
+   * least one window and at most two.
+   */
+  signedUrlStable(key: string, windowSeconds: number): Promise<string | null>;
   /** Write, read back and delete a tiny object. Throws if any step fails. */
   check(): Promise<void>;
 
@@ -92,6 +99,13 @@ export interface Storage {
   completeMultipart(key: string, uploadId: string, parts: PartInfo[]): Promise<void>;
   /** Throw the parts away. Aborting an unknown upload is not an error. */
   abortMultipart(key: string, uploadId: string): Promise<void>;
+}
+
+/** vm_media: the window the current moment falls in. Seven days is the longest a signed address may live. */
+export function stableWindow(windowSeconds: number, now = Date.now()): { start: number; end: number; seconds: number } {
+  const seconds = Math.min(Math.max(60, Math.floor(windowSeconds)), 3 * 24 * 3600);
+  const start = Math.floor(now / (seconds * 1000)) * seconds * 1000;
+  return { start, end: start + seconds * 2000, seconds };
 }
 
 export class UploadMissingError extends Error {
@@ -192,6 +206,7 @@ class LocalStorage implements Storage {
   }
 
   async signedUrl() { return null; }
+  async signedUrlStable() { return null; }
 
   // Parts are kept as numbered files in a folder per upload, and joined
   // in order when the upload is completed.
@@ -397,6 +412,15 @@ class S3Storage implements Storage {
     assertKey(key);
     return getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.cfg.bucket, Key: key }), {
       expiresIn: Math.max(1, Math.floor(expiresSeconds)),
+    });
+  }
+
+  async signedUrlStable(key: string, windowSeconds: number) {
+    assertKey(key);
+    const { start, seconds } = stableWindow(windowSeconds);
+    // Signed as if at the start of the window: the address then depends on the window, not on the moment.
+    return getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.cfg.bucket, Key: key }), {
+      expiresIn: seconds * 2, signingDate: new Date(start),
     });
   }
 

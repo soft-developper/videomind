@@ -129,13 +129,18 @@ export const deleteCollection = (id: string) => call<{ success: boolean }>(() =>
 export async function getVideos(walletAddress?: string): Promise<VideoRecord[]> {
   if (!walletAddress) return [];
   const res = await api.get("/api/videos", { params: { wallet: walletAddress } });
-  return res.data.videos as VideoRecord[];
+  const videos = res.data.videos as VideoRecord[];
+  // vm_media: with local disk storage the picture addresses point at this API
+  for (const v of videos) if (v.thumbUrl) v.thumbUrl = absoluteUrl(v.thumbUrl);
+  return videos;
 }
 
 export async function getVideo(id: string) {
   const res = await api.get(`/api/videos/${id}`);
   const v = res.data as VideoRecord & { streamUrl: string | null };
   if (v.streamUrl) v.streamUrl = absoluteUrl(v.streamUrl);
+  if (v.posterUrl) v.posterUrl = absoluteUrl(v.posterUrl);
+  if (v.thumbUrl) v.thumbUrl = absoluteUrl(v.thumbUrl);
   return v;
 }
 
@@ -283,4 +288,26 @@ export interface VideoRecord {
   collection?: { id: string; name: string; position?: number } | null;
   /** true when the signed in wallet owns this video. Only sent with one video, not with the list. */
   isOwner?: boolean;
+  /** vm_media: what the server read from the file. Absent until it has looked. */
+  media?: MediaFacts;
+  /** a small picture for cards. The address stays the same for hours, so the browser keeps it. */
+  thumbUrl?: string | null;
+  /** the picture shown in the player before playback. Only sent with one video. */
+  posterUrl?: string | null;
+}
+
+/** vm_media: the facts of the uploaded file. */
+export interface MediaFacts {
+  hasVideo: boolean;
+  hasAudio: boolean;
+  durationSeconds?: number;
+  width?: number;
+  height?: number;
+  fps?: number;
+  videoCodec?: string;
+  audioCodec?: string;
+  container?: string;
+  bitrateKbps?: number;
+  /** can browsers play the file as it is: all of them, some of them, or none */
+  playable: "yes" | "some" | "no";
 }

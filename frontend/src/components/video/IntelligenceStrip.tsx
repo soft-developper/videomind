@@ -238,7 +238,7 @@ export function IntelligenceStrip({
         <span className="tc tabular-nums">0:00</span>
         <div className="flex items-center gap-4">
           {(chapters?.length ?? 0) > 0 && (
-            <span className="tc">{chapters!.length} chapters</span>
+            <span className="tc">{chapters!.length} {chapters!.length === 1 ? "chapter" : "chapters"}</span>
           )}
           {(highlights?.length ?? 0) > 0 && (
             <span className="tc tc-marker">{highlights!.length} key moments</span>

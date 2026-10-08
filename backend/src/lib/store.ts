@@ -46,6 +46,8 @@ function rowToVideo(v: Record<string, unknown>, shelby: Record<string, unknown>,
     visibility:  ((v.visibility as string | null | undefined) ?? "unlisted") as VideoRecord["visibility"],
     tags:        extra.tags,
     collection:  extra.collection,
+    // vm_media
+    media:       parseJson<VideoRecord["media"]>(v.media_json, undefined),
     meta: {
       sizeBytes:       Number(v.size_bytes),
       mimeType:        v.mime_type as string,
@@ -144,6 +146,17 @@ export const store = {
     const a = aRes.rows[0] as Record<string, unknown> | undefined ?? null;
 
     return rowToVideo(v, s, a, extrasByVideo(tRes.rows as Row[], cRes.rows as Row[]).get(id));
+  },
+
+  /**
+   * vm_media: save what FFmpeg found. The length it measured replaces
+   * the one the browser reported, which can be off for some files.
+   */
+  async setMedia(id: string, media: NonNullable<VideoRecord["media"]>): Promise<void> {
+    await getDb().execute({
+      sql: "UPDATE videos SET media_json = ?, duration_sec = COALESCE(?, duration_sec) WHERE id = ?",
+      args: [JSON.stringify(media), media.durationSeconds ?? null, id],
+    });
   },
 
   /** Partial update, only supply what changed. */

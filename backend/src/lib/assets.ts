@@ -152,6 +152,62 @@ export async function registerOriginal(args: {
   return asset;
 }
 
+/** vm_media: the pictures made from a video. */
+export const PICTURE_KINDS = ["poster", "thumb"] as const;
+export type PictureKind = (typeof PICTURE_KINDS)[number];
+
+/**
+ * vm_media: move a file made FROM a video (a thumbnail) into storage and
+ * record it. One asset per kind and video: a second one replaces the first.
+ */
+export async function saveDerived(args: {
+  videoId: string; kind: PictureKind; filePath: string; contentType: string; ownerWallet?: string | null;
+}): Promise<MediaAsset> {
+  const storage = getStorage();
+  const key = `${prefixOf(args.videoId)}${args.kind}.jpg`;
+  const earlier = (await listAssets(args.videoId)).filter((a) => a.kind === args.kind);
+  const { size } = await storage.moveIn(key, args.filePath, { contentType: args.contentType });
+  const asset: MediaAsset = {
+    id: crypto.randomUUID(), videoId: args.videoId, ownerWallet: args.ownerWallet ?? null, kind: args.kind,
+    driver: storage.driver, key, bytes: size, contentType: args.contentType, sha256: null, createdAt: Date.now(),
+  };
+  await getDb().batch([
+    { sql: "DELETE FROM media_assets WHERE video_id = ? AND kind = ?", args: [args.videoId, args.kind] },
+    {
+      sql: `INSERT INTO media_assets (id, video_id, owner_wallet, kind, storage_driver, storage_key, bytes, content_type, sha256, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [asset.id, asset.videoId, asset.ownerWallet, asset.kind, asset.driver, asset.key, asset.bytes, asset.contentType, asset.sha256, asset.createdAt],
+    },
+  ], "write");
+  await recordUsage([
+    ...earlier.map((old) => removedEntry(old)),
+    { feature: "storage", metric: "bytes_stored" as const, quantity: asset.bytes, ownerWallet: asset.ownerWallet, actorWallet: asset.ownerWallet,
+      videoId: asset.videoId, provider: asset.driver, key: `stored:${asset.id}`, meta: { kind: asset.kind } },
+  ]);
+  return asset;
+}
+
+/** vm_media: where the pictures of these videos are kept. One query for a whole library. */
+export async function pictureKeys(videoIds: string[]): Promise<Map<string, Partial<Record<PictureKind, string>>>> {
+  const map = new Map<string, Partial<Record<PictureKind, string>>>();
+  const driver = getStorage().driver;
+  for (let i = 0; i < videoIds.length; i += 400) {
+    const ids = videoIds.slice(i, i + 400);
+    const res = await getDb().execute({
+      sql: `SELECT video_id, kind, storage_key FROM media_assets
+             WHERE kind IN ('poster', 'thumb') AND storage_driver = ? AND video_id IN (${ids.map(() => "?").join(",")})`,
+      args: [driver, ...ids],
+    });
+    for (const r of res.rows as Array<Record<string, unknown>>) {
+      const id = String(r.video_id);
+      const entry = map.get(id) ?? {};
+      entry[String(r.kind) as PictureKind] = String(r.storage_key);
+      map.set(id, entry);
+    }
+  }
+  return map;
+}
+
 function removedEntry(a: MediaAsset) {
   return { feature: "storage", metric: "bytes_deleted" as const, quantity: a.bytes, ownerWallet: a.ownerWallet,
     videoId: a.videoId, provider: a.driver, key: `deleted:${a.id}`, meta: { kind: a.kind } };
@@ -215,6 +271,13 @@ export function startHousekeeping(everyMs = 60 * 60 * 1000): () => void {
     sweepStorage().catch((err) => console.error(`[storage] sweep failed: ${err?.message ?? err}`));
     // vm_upload: uploads nobody came back to. Loaded here on demand because uploads.ts imports this file.
     import("./uploads.js").then((m) => m.sweepUploads()).catch((err) => console.error(`[uploads] sweep failed: ${err?.message ?? err}`));
+    // vm_media: videos uploaded before thumbnails existed. Only when FFmpeg is there to make them.
+    import("./media.js").then(async (m) => {
+      if (!m.mediaHealth().ffmpeg) return;
+      const { backfillInspect } = await import("../services/inspect.js");
+      const { nudgeRunner } = await import("./runner.js");
+      if (await backfillInspect()) nudgeRunner();
+    }).catch((err) => console.error(`[media] backfill failed: ${err?.message ?? err}`));
   };
   const first = setTimeout(run, 30_000);
   const timer = setInterval(run, everyMs);
