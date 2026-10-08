@@ -6,6 +6,8 @@ import { Router, type Response } from "express";
 import { rateLimit } from "../lib/guard.js";
 import { requireAuth, authOf } from "../lib/auth.js";
 import { listCollections, getCollection, createCollection, updateCollection, deleteCollection, InfoError } from "../lib/videoInfo.js";
+// vm_courses
+import { reorderCourse } from "../lib/course.js";
 
 const router = Router();
 
@@ -49,6 +51,12 @@ router.post("/", limitWrite, requireAuth, async (req, res) => {
 // PATCH /api/collections/:id  { name?, description? }
 router.patch("/:id", limitWrite, requireAuth, async (req, res) => {
   try { return res.json(await updateCollection(req.params.id, authOf(req)!.wallet, req.body)); }
+  catch (err) { return fail(res, err); }
+});
+
+// PUT /api/collections/:id/order  { videoIds }: vm_courses, the lessons in a new order
+router.put("/:id/order", limitWrite, requireAuth, async (req, res) => {
+  try { return res.json({ videoIds: await reorderCourse(req.params.id, authOf(req)!.wallet, (req.body ?? {}).videoIds) }); }
   catch (err) { return fail(res, err); }
 });
 

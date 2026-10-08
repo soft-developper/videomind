@@ -9,6 +9,7 @@ import { InsightsPanel } from "@/components/video/InsightsPanel";
 import { OnChainProof } from "@/components/video/OnChainProof";
 import { TranscriptPanel } from "@/components/video/TranscriptPanel";
 import { NotesPanel } from "@/components/video/NotesPanel";
+import { CourseStrip } from "@/components/video/CourseStrip";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { ExportMenu } from "@/components/video/ExportMenu";
 import { SkeletonVideoPage } from "@/components/ui/SkeletonCard";
@@ -117,6 +118,8 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                     {(video.tags ?? []).map((t) => <li key={t.toLowerCase()} className="text-[12.5px] text-dim">#{t}</li>)}
                   </ul>
                 )}
+                {/* vm_courses: its place in its course */}
+                {video.course && <div className="mt-4 max-w-[860px]"><CourseStrip course={video.course} base="/v" owner={false} /></div>}
               </div>
               <ExportMenu
                 videoId={params.id}
@@ -162,6 +165,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                   resumed={startAt == null && progress.resumeAt != null}
                   onStartOver={progress.startOver}
                   onProgress={progress.report}
+                  upNext={video.course?.next ? { title: video.course.next.title, href: `/v/${video.course.next.id}` } : null}
                 onDuration={setDur}
                 onTimeUpdate={setT}
               />

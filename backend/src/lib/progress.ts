@@ -7,17 +7,21 @@ export interface Progress { videoId: string; positionSeconds: number; durationSe
 
 /** Closer than this to the start, nothing is worth resuming. */
 export const RESUME_AFTER = 15;
-/** Closer than this to the end (or past 95 percent), the video counts as finished. */
+/** Closer than this to the end of a video over a minute long (or past 95 percent), it counts as finished. */
 export const DONE_BEFORE_END = 30;
 
 export class ProgressError extends Error {
   constructor(public code: string, message: string) { super(message); this.name = "ProgressError"; }
 }
 
-/** Has the viewer finished this video? Then it starts from the beginning next time. */
+/**
+ * Has the viewer finished this video? Then it starts from the beginning
+ * next time. The last 30 seconds count only for videos over a minute; a
+ * short clip is finished at 95 percent.
+ */
 export function finished(position: number, duration: number | null | undefined): boolean {
   if (!duration || duration <= 0) return false;
-  return position >= duration - DONE_BEFORE_END || position >= duration * 0.95;
+  return position >= duration * 0.95 || (duration > 60 && position >= duration - DONE_BEFORE_END);
 }
 
 const rowTo = (r: Record<string, unknown>): Progress => ({

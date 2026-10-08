@@ -123,6 +123,10 @@ export const getCollections = () =>
   call<{ collections: Collection[] }>(() => raw.get("/api/collections")).then((d) => d.collections);
 export const createCollection = (name: string) => call<Collection>(() => raw.post("/api/collections", { name }));
 export const renameCollection = (id: string, name: string) => call<Collection>(() => raw.patch(`/api/collections/${id}`, { name }));
+/** vm_courses: change a course's name or description */
+export const updateCollection = (id: string, change: { name?: string; description?: string | null }) => call<Collection>(() => raw.patch(`/api/collections/${id}`, change));
+/** vm_courses: the lessons of a course in a new order (every video in it, each once) */
+export const reorderCourse = (id: string, videoIds: string[]) => call<{ videoIds: string[] }>(() => raw.put(`/api/collections/${id}/order`, { videoIds }));
 export const deleteCollection = (id: string) => call<{ success: boolean }>(() => raw.delete(`/api/collections/${id}`));
 
 // ── Video queries ───────────────────────────────────────────────────────────
@@ -391,6 +395,8 @@ export interface VideoRecord {
   /** the owner's own tags (the AI's are in ai.tags) */
   tags?: string[];
   collection?: { id: string; name: string; position?: number } | null;
+  /** vm_courses: this video's place in its course, among the lessons the viewer may open */
+  course?: { id: string; name: string; lesson: number; lessons: number; prev: { id: string; title: string } | null; next: { id: string; title: string } | null } | null;
   /** true when the signed in wallet owns this video. Only sent with one video, not with the list. */
   isOwner?: boolean;
   /** vm_media: what the server read from the file. Absent until it has looked. */

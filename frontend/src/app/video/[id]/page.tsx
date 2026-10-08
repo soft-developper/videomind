@@ -7,6 +7,7 @@ import { InsightsPanel } from "@/components/video/InsightsPanel";
 import { OnChainProof } from "@/components/video/OnChainProof";
 import { TranscriptPanel } from "@/components/video/TranscriptPanel";
 import { NotesPanel } from "@/components/video/NotesPanel";
+import { CourseStrip } from "@/components/video/CourseStrip";
 import { IntelligenceStrip } from "@/components/video/IntelligenceStrip";
 import { ProcessingStatus } from "@/components/video/ProcessingStatus";
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
@@ -162,6 +163,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   </p>
                 )}
                 <VideoDetails video={video} owner={mine} />
+                {/* vm_courses: its place in its course */}
+                {video.course && <div className="mt-4 max-w-[860px]"><CourseStrip course={video.course} base="/video" owner={mine} /></div>}
                 {/* vm_media: only the owner can do something about the format, so only the owner is told */}
                 {mine && source === "storage" && note && (
                   <p className={clsx("text-[13px] mt-3 max-w-[70ch] leading-relaxed", note.tone === "warn" ? "text-warn" : "text-dim")}>{note.text}</p>
@@ -264,6 +267,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   resumed={startAt == null && progress.resumeAt != null}
                   onStartOver={progress.startOver}
                   onProgress={progress.report}
+                  upNext={video.course?.next ? { title: video.course.next.title, href: `/video/${video.course.next.id}` } : null}
                   onDuration={onDuration}
                   onTimeUpdate={setT}
                 />

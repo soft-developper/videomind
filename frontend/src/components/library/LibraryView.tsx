@@ -6,6 +6,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getVideos, getCollections, deleteAllVideos, getMyProgress, type VideoRecord } from "@/lib/api";
 import { VideoCard, VIDEO_GRID } from "@/components/video/VideoCard";
+import { CourseView } from "./CourseView";
 import { SkeletonCard } from "@/components/ui/SkeletonCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AppShell } from "@/components/layout/AppShell";
@@ -146,7 +147,8 @@ export function LibraryView({ scope }: { scope: LibraryScope }) {
         description={description}
         back={scope.kind === "collection" ? { href: "/library/courses", label: "Courses" } : undefined}
         actions={connected && wallet ? (
-          <Link href="/upload" className="btn btn-signal h-9 px-3.5 inline-flex items-center">Upload video</Link>
+          // vm_courses: on a course, "Continue the course" is the one primary button
+          <Link href="/upload" className={`btn ${scope.kind === "collection" ? "btn-ghost" : "btn-signal"} h-9 px-3.5 inline-flex items-center`}>Upload video</Link>
         ) : undefined}
       />
 
@@ -232,7 +234,17 @@ export function LibraryView({ scope }: { scope: LibraryScope }) {
           </EmptyState>
         )}
 
-        {loaded && !unknownView && !missingCollection && videos.length > 0 && (
+        {/* vm_courses: a collection is shown as a course, its videos as lessons in order */}
+        {loaded && scope.kind === "collection" && collection && videos.length > 0 && (
+          <CourseView
+            collection={collection}
+            videos={videos}
+            watched={mine?.watched}
+            onChanged={() => { refetch(); collections.refetch(); }}
+          />
+        )}
+
+        {loaded && scope.kind !== "collection" && !unknownView && !missingCollection && videos.length > 0 && (
           <>
             <div className="flex items-center gap-2.5 flex-wrap mb-6">
               <label className="relative">
@@ -268,7 +280,7 @@ export function LibraryView({ scope }: { scope: LibraryScope }) {
                   onChange={(e) => setSort(e.target.value as Sort)}
                   className="h-9 px-2.5 text-[13.5px] text-paper-2"
                 >
-                  {scope.kind === "collection" && <option value="order">Order added</option>}
+
                   <option value="recent">Recently added</option>
                   <option value="title">Title</option>
                   <option value="longest">Longest first</option>

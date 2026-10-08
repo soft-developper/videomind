@@ -4,6 +4,7 @@ import {
 } from "react";
 import { Play, Pause, Volume2, VolumeX, Maximize, AlertTriangle, Captions, CaptionsOff, SkipBack, SkipForward } from "lucide-react";
 import { clsx } from "clsx";
+import Link from "next/link";
 
 export interface VideoPlayerHandle {
   seekTo: (seconds: number) => void;
@@ -32,6 +33,8 @@ interface Props {
   onStartOver?: () => void;
   /** vm_progress: where the viewer is, for remembering it */
   onProgress?: (seconds: number, duration: number, reason: "tick" | "pause" | "end") => void;
+  /** vm_courses: the next lesson, offered when this one ends */
+  upNext?: { title: string; href: string } | null;
   onDuration?: (seconds: number) => void;
   onTimeUpdate?: (seconds: number) => void;
 }
@@ -47,7 +50,7 @@ function ccPreference(): boolean {
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
-  function VideoPlayer({ streamUrl, source, poster, format, captions, chapters, startAt, resumed, onStartOver, onProgress, onDuration, onTimeUpdate }, ref) {
+  function VideoPlayer({ streamUrl, source, poster, format, captions, chapters, startAt, resumed, onStartOver, onProgress, upNext, onDuration, onTimeUpdate }, ref) {
     const v = useRef<HTMLVideoElement>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -59,6 +62,8 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
     const started = useRef(false);
     // vm_progress: "Resumed at 12:30", until a few seconds into playing or Start over.
     const [chip, setChip] = useState<number | null>(null);
+    // vm_courses: the video has played to its end
+    const [ended, setEnded] = useState(false);
     const begin = useCallback((at: number) => {
       const el = v.current;
       if (!el || started.current || !(at > 0) || (isFinite(el.duration) && at >= el.duration)) return;
@@ -210,10 +215,10 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
           }}
           onTimeUpdate={() => { const el = v.current; const t = el?.currentTime ?? 0; setNow(t); onTimeUpdate?.(t); if (el && !el.paused) onProgress?.(t, el.duration, "tick"); }}
           onSeeked={() => { const t = v.current?.currentTime ?? 0; setNow(t); onTimeUpdate?.(t); }}
-          onPlay={() => setPlaying(true)}
+          onPlay={() => { setPlaying(true); setEnded(false); }}
           onPause={() => { setPlaying(false); const el = v.current; if (el && !el.ended) onProgress?.(el.currentTime, el.duration, "pause"); }}
           onError={() => { setError(true); setLoading(false); }}
-          onEnded={() => { setPlaying(false); const el = v.current; if (el) onProgress?.(el.duration, el.duration, "end"); }}
+          onEnded={() => { setPlaying(false); setEnded(true); const el = v.current; if (el) onProgress?.(el.duration, el.duration, "end"); }}
         >
           {ccUrl && (
             <track
@@ -294,6 +299,20 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
             >
               Start over
             </button>
+          </div>
+        )}
+
+        {/* vm_courses: at the end of a lesson, the next one */}
+        {ended && upNext && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-screen/80 px-6">
+            <div className="text-center space-y-3 max-w-sm">
+              <p className="tc">Up next in this course</p>
+              <p className="text-[16px] font-medium text-paper leading-snug">{upNext.title}</p>
+              <div className="flex items-center justify-center gap-2">
+                <Link href={upNext.href} className="btn btn-signal h-9 px-4 inline-flex items-center">Play next lesson</Link>
+                <button onClick={() => setEnded(false)} className="btn btn-ghost h-9 px-3.5">Stay here</button>
+              </div>
+            </div>
           </div>
         )}
 

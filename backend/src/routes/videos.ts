@@ -27,6 +27,8 @@ import { transcriptionProgress } from "../services/transcribe.js";
 import { buildCues, toVtt, toSrt } from "../lib/captions.js";
 // vm_chapters
 import { parseChapters, ChapterError } from "../lib/chapters.js";
+// vm_courses
+import { courseOf } from "../lib/course.js";
 
 /**
  * vm_transcribe: a library list needs chapters and a summary, not every
@@ -187,7 +189,9 @@ router.get("/:id", optionalAuth, async (req, res) => {
     const thumbUrl = await pictureUrl(video.id, "thumb", pics?.thumb);
 
     const body = req.query.words === "1" ? video : withoutWords(video);
-    return res.json({ ...body, streamUrl, source, posterUrl, thumbUrl, onShelby: onShelby(video), isOwner: ownsVideo(video, wallet) });
+    // vm_courses: its place in its course, among the lessons this wallet may open
+    const course = await courseOf(video, wallet).catch(() => null);
+    return res.json({ ...body, streamUrl, source, posterUrl, thumbUrl, onShelby: onShelby(video), isOwner: ownsVideo(video, wallet), course });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
