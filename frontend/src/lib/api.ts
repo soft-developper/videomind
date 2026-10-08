@@ -167,15 +167,29 @@ export async function getTranscriptWords(id: string): Promise<Array<{ start: num
   return res.data?.ai?.transcript ?? [];
 }
 
+/** vm_chapters: "90", "1:30" or "1:02:03" as seconds; null when it is not a time. */
+export function parseClock(text: string): number | null {
+  const raw = text.trim();
+  if (!raw || !/^\d+(\.\d+)?(:\d{1,2}(\.\d+)?){0,2}$/.test(raw)) return null;
+  const parts = raw.split(":").map(Number);
+  if (parts.slice(1).some((n) => n >= 60)) return null;
+  return parts.reduce((a, n) => a * 60 + n, 0);
+}
+
 /** vm_workspace: "?t=90", "?t=1:30" or "?t=1:02:03" as seconds, for a link to a moment. */
 export function momentFromUrl(): number | null {
   if (typeof window === "undefined") return null;
   const raw = new URLSearchParams(window.location.search).get("t");
   if (!raw) return null;
-  const parts = raw.split(":").map(Number);
-  if (parts.some((n) => !Number.isFinite(n) || n < 0) || parts.length > 3) return null;
-  const s = parts.reduce((a, n) => a * 60 + n, 0);
-  return s > 0 ? s : null;
+  const s = parseClock(raw);
+  return s && s > 0 ? s : null;
+}
+
+/** vm_chapters: the owner's own chapters replace the suggested ones. Answers the chapters as saved. */
+export async function saveChapters(id: string, chapters: Array<{ title: string; startSeconds: number; summary: string }>) {
+  // A refusal arrives as an ApiError whose data says which chapter (data.index).
+  const res = await api.put(`/api/videos/${id}/chapters`, { chapters });
+  return res.data as { chapters: Array<{ title: string; startSeconds: number; summary: string }> };
 }
 
 export async function getVideoStatus(id: string) {

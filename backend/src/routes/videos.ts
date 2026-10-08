@@ -25,6 +25,8 @@ import { ownsVideo, canView, parseInfo, applyInfo, InfoError, PRIVATE_VIDEO } fr
 import { transcriptionProgress } from "../services/transcribe.js";
 // vm_captions
 import { buildCues, toVtt, toSrt } from "../lib/captions.js";
+// vm_chapters
+import { parseChapters, ChapterError } from "../lib/chapters.js";
 
 /**
  * vm_transcribe: a library list needs chapters and a summary, not every
@@ -322,6 +324,27 @@ router.post("/:id/jobs/:kind/retry", limitPipeline, requireAuth, async (req, res
     nudgeRunner();
     return res.status(202).json({ id: video.id, status: statusForStage(job.kind) });
   } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT /api/videos/:id/chapters ─────────────────────────────────────────────
+// vm_chapters: the owner replaces the video's chapters with their own.
+// Body: { chapters: [{ title, startSeconds, summary? }] }. An empty list
+// removes them all. The answer is the chapters as saved, in order.
+router.put("/:id/chapters", limitEdit, requireAuth, async (req, res) => {
+  try {
+    const video = await store.get(req.params.id);
+    if (!video) return res.status(404).json({ error: "Video not found" });
+    if (!ownsVideo(video, authOf(req)!.wallet)) return res.status(403).json(NOT_OWNER);
+    if (video.status !== "ready") return res.status(409).json({ error: "Chapters can be edited once the video is ready.", code: "not_ready" });
+    const transcriptEnd = Math.max(0, ...(video.ai?.transcript ?? []).map((s) => s.end));
+    const length = video.meta?.durationSeconds ?? video.media?.durationSeconds ?? (transcriptEnd > 0 ? transcriptEnd + 1 : null);
+    const chapters = parseChapters(req.body, length);
+    await store.update(video.id, { ai: { chapters } });
+    return res.json({ chapters });
+  } catch (err: any) {
+    if (err instanceof ChapterError) return res.status(400).json({ error: err.message, code: err.code, index: err.index });
     return res.status(500).json({ error: err.message });
   }
 });

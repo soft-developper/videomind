@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
-import { Copy, Check, Play } from "lucide-react";
+import { Copy, Check, Play, Pencil } from "lucide-react";
 import { clsx } from "clsx";
 import type { VideoRecord } from "@/lib/api";
 import { readableTime } from "@/lib/exports";
+// vm_chapters
+import { ChapterEditor } from "./ChapterEditor";
 
 type Tab = "summary" | "cuts" | "found" | "blog" | "thread";
 
@@ -33,12 +35,19 @@ function Copyable({ text, label }: { text: string; label: string }) {
 }
 
 export function InsightsPanel({
-  video, onSeek,
+  video, onSeek, owner, currentTime = 0, duration, onChaptersSaved,
 }: {
   video: VideoRecord;
   onSeek?: (s: number) => void;
+  /** vm_chapters: the owner can edit the chapters */
+  owner?: boolean;
+  currentTime?: number;
+  duration?: number;
+  onChaptersSaved?: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("summary");
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
   const ai = video.ai;
   if (!ai) return null;
   const canSeek = typeof onSeek === "function";
@@ -80,9 +89,28 @@ export function InsightsPanel({
           </div>
         )}
 
+        {/* vm_chapters: the owner's editor */}
+        {tab === "cuts" && editing && (
+          <ChapterEditor
+            videoId={video.id}
+            chapters={ai.chapters ?? []}
+            currentTime={currentTime}
+            duration={duration}
+            onDone={(done) => { setEditing(false); if (done) { setSaved(true); onChaptersSaved?.(); setTimeout(() => setSaved(false), 2500); } }}
+          />
+        )}
+
         {/* Cuts */}
-        {tab === "cuts" && (
+        {tab === "cuts" && !editing && (
           <div className="-mx-5 -my-5">
+            {owner && (
+              <div className="flex items-center gap-3 px-5 py-2.5 border-b border-rule">
+                {saved && <span className="text-[12.5px] text-marker" role="status">Chapters saved</span>}
+                <button onClick={() => setEditing(true)} className="ml-auto btn btn-ghost h-8 px-3 inline-flex items-center gap-1.5 text-[12.5px] no-min">
+                  <Pencil size={12} /> Edit chapters
+                </button>
+              </div>
+            )}
             {(ai.chapters ?? []).length === 0 && (
               <p className="p-5 text-[13.5px] text-dim">No chapters were found in this video.</p>
             )}

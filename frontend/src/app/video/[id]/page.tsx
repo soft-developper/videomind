@@ -280,7 +280,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                     </p>
                   </div>
                 ) : (
-                  <InsightsPanel video={video} onSeek={seek} />
+                  <InsightsPanel video={video} onSeek={seek} owner={mine} currentTime={t} duration={duration || undefined} onChaptersSaved={() => refetch()} />
                 )}
 
                 <OnChainProof
