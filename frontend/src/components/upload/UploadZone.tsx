@@ -89,7 +89,8 @@ type Shelby =
 
 interface Target { videoId: string; videoBlobName: string; title: string; size: number }
 
-export function UploadZone() {
+/** vm_record: initialFile starts the form with a file already chosen (a recording made on this site). */
+export function UploadZone({ initialFile, initialTitle }: { initialFile?: File; initialTitle?: string } = {}) {
   const router = useRouter();
   const params = useSearchParams();
   const anchorId = params.get("anchor");
@@ -98,10 +99,10 @@ export function UploadZone() {
   // vm_signin: uploads need a signed in wallet
   const sessionWallet = useSessionWallet();
 
-  const [file, setFile] = useState<File | null>(null);
-  const [draft, setDraft] = useState<InfoDraft>(() => emptyDraft());
+  const [file, setFile] = useState<File | null>(initialFile ?? null);
+  const [draft, setDraft] = useState<InfoDraft>(() => initialFile ? emptyDraft({ ...readDefaults(), title: initialTitle ?? initialFile.name }) : emptyDraft());
   const title = draft.title;
-  const [step, setStep] = useState<Step>({ at: "choose" });
+  const [step, setStep] = useState<Step>(initialFile ? { at: "details" } : { at: "choose" });
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [target, setTarget] = useState<Target | null>(null);
   const [shelby, setShelby] = useState<Shelby>({ at: "idle" });

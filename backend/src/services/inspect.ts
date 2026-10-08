@@ -17,7 +17,7 @@ import { enqueueJob, type Job } from "../lib/jobs.js";
 import { PermanentJobError } from "../lib/runner.js";
 import { getStorage, ObjectMissingError } from "../lib/storage.js";
 import { getOriginal, listAssets, saveDerived } from "../lib/assets.js";
-import { probeFile, makePictures, pictureTime, MediaError } from "../lib/media.js";
+import { probeFile, makePictures, pictureTime, MediaError, measureDuration } from "../lib/media.js";
 import { ownerOf } from "../lib/usage.js";
 
 export const INSPECT = "inspect";
@@ -28,6 +28,8 @@ const READ_SECONDS = 15 * 60;
 export interface InspectDeps {
   probe: typeof probeFile;
   pictures: typeof makePictures;
+  /** vm_record: measures a file whose header has no duration */
+  measure?: typeof measureDuration;
 }
 
 /** Queue the job. Asking twice for the same video creates one job. */
@@ -61,6 +63,11 @@ export function makeInspectHandler(deps: InspectDeps = { probe: probeFile, pictu
     let facts = video.media;
     if (!facts) {
       try { facts = await withInput((input) => deps.probe(input)); } catch (err) { rethrow(err); }
+      // vm_record: a browser recording may not say how long it is. Measure it.
+      if (facts && !facts.durationSeconds) {
+        const measured = await withInput((input) => (deps.measure ?? measureDuration)(input)).catch(() => undefined);
+        if (measured) facts = { ...facts, durationSeconds: measured };
+      }
       await store.setMedia(job.videoId, facts!);
     }
     if (!facts!.hasVideo) return;                       // sound only: there is nothing to take a picture of

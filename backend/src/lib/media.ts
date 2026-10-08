@@ -349,3 +349,19 @@ export async function makeSocialClip(input: string, startSeconds: number, second
   if (r.code !== 0) throw failure(r, "Making the clip");
   if (((await fs.stat(outPath).catch(() => null))?.size ?? 0) === 0) throw new MediaError("media_empty", "Making the clip produced nothing.", true);
 }
+
+// ── vm_record: files that do not say how long they are ────────────────────────
+/**
+ * A recording made in a browser (WebM from MediaRecorder) often carries
+ * no duration in its header. Read the whole file without decoding it and
+ * take the time of the last packet. Returns undefined when that fails.
+ */
+export async function measureDuration(input: string, timeoutMs = 20 * 60_000): Promise<number | undefined> {
+  const r = await run("ffmpeg", ["-hide_banner", "-nostdin", "-loglevel", "info", ...inputArgs(input), "-map", "0", "-c", "copy", "-f", "null", "-"], timeoutMs);
+  if (r.code !== 0) return undefined;
+  const times = [...r.err.matchAll(/time=(\d+):(\d{2}):(\d{2}(?:\.\d+)?)/g)];
+  const last = times[times.length - 1];
+  if (!last) return undefined;
+  const sec = Number(last[1]) * 3600 + Number(last[2]) * 60 + Number(last[3]);
+  return sec > 0 ? Math.round(sec * 1000) / 1000 : undefined;
+}

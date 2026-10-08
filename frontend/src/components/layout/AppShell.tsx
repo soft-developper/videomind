@@ -45,7 +45,7 @@ const NAV: Group[] = [
     label: "Create",
     items: [
       { label: "Upload", href: "/upload", icon: Upload },
-      { label: "Record", icon: Disc },
+      { label: "Record", href: "/record", icon: Disc },   // vm_record
       { label: "Go live", icon: Radio },
     ],
   },
