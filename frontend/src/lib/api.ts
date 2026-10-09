@@ -488,3 +488,21 @@ export async function clipDownload(videoId: string, clipId: string): Promise<{ u
 }
 export const clipCaptions = (videoId: string, clipId: string) =>
   call<string>(() => raw.get(`/api/videos/${videoId}/clips/${clipId}/captions`, { responseType: "text", transformResponse: (d) => d }));
+
+// ── vm_live: live events ─────────────────────────────────────────────────────
+export type LiveStatus = "scheduled" | "live" | "ended";
+export interface LiveEventInfo {
+  id: string; title: string; status: LiveStatus; wallet: string; hostName: string | null;
+  startedAt: number | null; endedAt: number | null; videoId: string | null; createdAt: number;
+  restreaming?: boolean; peakViewers?: number;
+}
+export const getLiveConfig = () => call<{ enabled: boolean; maxViewers: number }>(() => raw.get("/api/live/config"));
+export const getMyLiveEvents = () => call<{ events: LiveEventInfo[]; enabled: boolean }>(() => raw.get("/api/live/mine"));
+export const createLiveEvent = (title: string) => call<{ event: LiveEventInfo }>(() => raw.post("/api/live", { title }));
+export const getLiveEvent = (id: string) => call<{ event: LiveEventInfo }>(() => raw.get(`/api/live/${id}`));
+export const liveHostToken = (id: string) => call<{ url: string; token: string }>(() => raw.post(`/api/live/${id}/host-token`));
+export const liveViewerToken = (id: string) => call<{ url: string; token: string }>(() => raw.post(`/api/live/${id}/viewer-token`));
+export const startLive = (id: string, restream: string[]) => call<{ event: LiveEventInfo; restreamError: string | null }>(() => raw.post(`/api/live/${id}/start`, { restream }));
+export const endLive = (id: string) => call<{ event: LiveEventInfo }>(() => raw.post(`/api/live/${id}/end`));
+export const liveStats = (id: string) => call<{ viewers: number; peakViewers: number; status: LiveStatus }>(() => raw.get(`/api/live/${id}/stats`));
+export const linkLiveRecording = (id: string, videoId: string) => call<{ event: LiveEventInfo }>(() => raw.post(`/api/live/${id}/recording`, { videoId }));

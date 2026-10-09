@@ -90,7 +90,11 @@ type Shelby =
 interface Target { videoId: string; videoBlobName: string; title: string; size: number }
 
 /** vm_record: initialFile starts the form with a file already chosen (a recording made on this site). */
-export function UploadZone({ initialFile, initialTitle }: { initialFile?: File; initialTitle?: string } = {}) {
+export function UploadZone({ initialFile, initialTitle, onUploaded }: {
+  initialFile?: File; initialTitle?: string;
+  /** vm_live: told the new video's id once the file is uploaded */
+  onUploaded?: (videoId: string) => void;
+} = {}) {
   const router = useRouter();
   const params = useSearchParams();
   const anchorId = params.get("anchor");
@@ -191,6 +195,7 @@ export function UploadZone({ initialFile, initialTitle }: { initialFile?: File; 
       await r.start();
       if (runNo.current !== mine) return;
       setStep({ at: "uploaded" });
+      onUploaded?.(u.videoId);
       qc.invalidateQueries({ queryKey: ["videos"] });
       qc.invalidateQueries({ queryKey: ["open-uploads"] });
       qc.invalidateQueries({ queryKey: ["collections"] });
@@ -208,7 +213,7 @@ export function UploadZone({ initialFile, initialTitle }: { initialFile?: File; 
       else if (e instanceof ApiError && e.code === "expired") setErr("This upload expired in storage. Discard it and start again.");
       else setErr(e?.message ?? "The upload stopped.");
     }
-  }, [qc, storeOnShelby]);
+  }, [qc, storeOnShelby, onUploaded]);
 
   const begin = async () => {
     if (!file || !title.trim() || starting) return;

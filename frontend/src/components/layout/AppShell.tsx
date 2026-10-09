@@ -46,7 +46,7 @@ const NAV: Group[] = [
     items: [
       { label: "Upload", href: "/upload", icon: Upload },
       { label: "Record", href: "/record", icon: Disc },   // vm_record
-      { label: "Go live", icon: Radio },
+      { label: "Go live", href: "/live", icon: Radio, match: (p) => p === "/live" || p.endsWith("/studio") },   // vm_live
     ],
   },
   {

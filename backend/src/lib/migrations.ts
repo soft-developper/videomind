@@ -343,6 +343,30 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX clips_wallet ON clips(wallet, created_at)`,
     ],
   },
+  {
+    // vm_live: live events. The video and sound go through LiveKit; the
+    // recording is made in the host's browser and uploaded as a video.
+    id: "014_live",
+    statements: [
+      `CREATE TABLE live_events (
+        id            TEXT PRIMARY KEY,
+        wallet        TEXT NOT NULL,
+        title         TEXT NOT NULL,
+        room          TEXT NOT NULL UNIQUE,
+        status        TEXT NOT NULL,
+        started_at    INTEGER,
+        ended_at      INTEGER,
+        egress_id     TEXT,
+        restream      INTEGER NOT NULL DEFAULT 0,
+        peak_viewers  INTEGER NOT NULL DEFAULT 0,
+        video_id      TEXT,
+        created_at    INTEGER NOT NULL,
+        updated_at    INTEGER NOT NULL
+      )`,
+      `CREATE INDEX live_events_wallet ON live_events(wallet, created_at)`,
+      `CREATE INDEX live_events_status ON live_events(status)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

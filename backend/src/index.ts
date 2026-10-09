@@ -23,6 +23,7 @@ import notesRouter from "./routes/notes.js";
 // vm_progress
 import progressRouter from "./routes/progress.js";
 import clipsRouter from "./routes/clips.js";
+import liveRouter from "./routes/live.js";
 import profilesRouter from "./routes/profiles.js";
 // vm_media: thumbnails and video facts need FFmpeg
 import { checkMediaTools, mediaHealth } from "./lib/media.js";
@@ -52,7 +53,8 @@ app.use("/api/videos", videosRouter);
 app.use("/api/videos", notesRouter);   // vm_notes: /api/videos/:id/notes
 app.use("/api/videos", clipsRouter);   // vm_clips: /api/videos/:id/clips
 app.use("/api", progressRouter);          // vm_progress: /api/videos/:id/progress, /api/progress
-app.use("/api", profilesRouter);          // vm_profile: /api/profiles/:wallet, /api/me/profile, /api/me/wallet
+app.use("/api", profilesRouter);
+app.use("/api/live", liveRouter);           // vm_live: live events          // vm_profile: /api/profiles/:wallet, /api/me/profile, /api/me/wallet
 app.use("/api/chat", chatRouter);
 app.use("/api/shelby", statsRouter);
 app.use("/api/learn", learnRouter);
