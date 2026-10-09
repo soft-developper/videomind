@@ -402,6 +402,45 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX publications_wallet ON publications(wallet, created_at)`,
     ],
   },
+  {
+    // vm_livechat: live captions and chat. The host chooses per event who
+    // may write (anyone with a name, signed in wallets, or nobody) and
+    // whether captions are made. Finished caption lines and chat messages
+    // are kept with the event.
+    id: "016_live_chat",
+    statements: [
+      `ALTER TABLE live_events ADD COLUMN chat_mode TEXT NOT NULL DEFAULT 'anyone'`,
+      `ALTER TABLE live_events ADD COLUMN captions INTEGER NOT NULL DEFAULT 1`,
+      `ALTER TABLE live_events ADD COLUMN caption_seconds INTEGER NOT NULL DEFAULT 0`,
+      `CREATE TABLE live_captions (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id    TEXT NOT NULL,
+        item        TEXT NOT NULL,
+        at_ms       INTEGER NOT NULL,
+        text        TEXT NOT NULL,
+        created_at  INTEGER NOT NULL
+      )`,
+      `CREATE INDEX live_captions_event ON live_captions(event_id, id)`,
+      `CREATE TABLE live_chat (
+        id          TEXT PRIMARY KEY,
+        event_id    TEXT NOT NULL,
+        sender      TEXT NOT NULL,
+        name        TEXT NOT NULL,
+        wallet      TEXT,
+        host        INTEGER NOT NULL DEFAULT 0,
+        text        TEXT NOT NULL,
+        deleted     INTEGER NOT NULL DEFAULT 0,
+        created_at  INTEGER NOT NULL
+      )`,
+      `CREATE INDEX live_chat_event ON live_chat(event_id, created_at)`,
+      `CREATE TABLE live_blocks (
+        event_id    TEXT NOT NULL,
+        sender      TEXT NOT NULL,
+        created_at  INTEGER NOT NULL,
+        PRIMARY KEY (event_id, sender)
+      )`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

@@ -495,6 +495,9 @@ export interface LiveEventInfo {
   id: string; title: string; status: LiveStatus; wallet: string; hostName: string | null;
   startedAt: number | null; endedAt: number | null; videoId: string | null; createdAt: number;
   restreaming?: boolean; peakViewers?: number;
+  // vm_livechat
+  chatMode: ChatMode; captions: boolean;
+  captionsAvailable?: boolean; captionSeconds?: number; captionLimitMinutes?: number;
 }
 export const getLiveConfig = () => call<{ enabled: boolean; maxViewers: number }>(() => raw.get("/api/live/config"));
 export const getMyLiveEvents = () => call<{ events: LiveEventInfo[]; enabled: boolean }>(() => raw.get("/api/live/mine"));
@@ -527,3 +530,21 @@ export const disconnectYouTube = () => call<{ ok: boolean }>(() => raw.post("/ap
 export const getPublications = (videoId: string) => call<PublicationList>(() => raw.get(`/api/videos/${videoId}/youtube`));
 export const publishToYouTube = (videoId: string, p: PublishRequest) => call<{ publication: PublicationInfo }>(() => raw.post(`/api/videos/${videoId}/youtube`, p));
 export const retryPublication = (videoId: string, pubId: string) => call<{ publication: PublicationInfo }>(() => raw.post(`/api/videos/${videoId}/youtube/${pubId}/retry`));
+
+// ── vm_livechat: live captions and chat ──────────────────────────────────────
+export type ChatMode = "anyone" | "wallets" | "off";
+export interface ChatMessageInfo { id: string; name: string; host: boolean; wallet: boolean; text: string; at: number; from: string }
+export interface ChatPassInfo { token: string; name: string; host: boolean; from: string }
+export const updateLiveSettings = (id: string, s: { chatMode?: ChatMode; captions?: boolean }) =>
+  call<{ event: LiveEventInfo }>(() => raw.patch(`/api/live/${id}/settings`, s));
+export const joinLiveChat = (id: string, name?: string) => call<ChatPassInfo>(() => raw.post(`/api/live/${id}/chat/join`, name ? { name } : {}));
+export const getLiveChat = (id: string) => call<{ messages: ChatMessageInfo[]; chatMode: ChatMode; status: LiveStatus }>(() => raw.get(`/api/live/${id}/chat`));
+export const sendLiveChat = (id: string, token: string, text: string) => call<{ message: ChatMessageInfo }>(() => raw.post(`/api/live/${id}/chat`, { token, text }));
+export const deleteLiveChat = (id: string, msgId: string) => call<{ deleted: string[] }>(() => raw.delete(`/api/live/${id}/chat/${msgId}`));
+export const blockLiveChat = (id: string, msgId: string) => call<{ removed: number }>(() => raw.post(`/api/live/${id}/chat/${msgId}/block`));
+export const getLiveCaptions = (id: string) => call<{ lines: Array<{ at: number; text: string }> }>(() => raw.get(`/api/live/${id}/captions`));
+/** The WebSocket address for sending the studio's sound, with its one use ticket. */
+export async function liveCaptionsSocket(id: string): Promise<string> {
+  const r = await call<{ ticket: string; path: string }>(() => raw.post(`/api/live/${id}/captions/ticket`));
+  return `${absoluteUrl(r.path).replace(/^http/, "ws")}?ticket=${encodeURIComponent(r.ticket)}`;
+}

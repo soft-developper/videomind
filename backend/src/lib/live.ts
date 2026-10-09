@@ -16,18 +16,22 @@
 // LIVEKIT_API_KEY, LIVEKIT_API_SECRET. Without them live is switched off.
 import crypto from "crypto";
 import {
-  AccessToken, RoomServiceClient, EgressClient, StreamOutput, StreamProtocol, TrackSource, TrackType,
+  AccessToken, RoomServiceClient, EgressClient, StreamOutput, StreamProtocol, TrackSource, TrackType, DataPacket_Kind,
   type ParticipantInfo,
 } from "livekit-server-sdk";
 import { getDb } from "./db.js";
 import { normalizeWallet } from "./auth.js";
 
 export type LiveStatus = "scheduled" | "live" | "ended";
+/** vm_livechat: who may write in the chat. */
+export type ChatMode = "anyone" | "wallets" | "off";
+export const CHAT_MODES: ChatMode[] = ["anyone", "wallets", "off"];
 
 export interface LiveEvent {
   id: string; wallet: string; title: string; room: string; status: LiveStatus;
   startedAt: number | null; endedAt: number | null; egressId: string | null; restream: boolean;
   peakViewers: number; videoId: string | null; createdAt: number; updatedAt: number;
+  chatMode: ChatMode; captions: boolean; captionSeconds: number;
 }
 
 const n = (v: unknown) => (v === null || v === undefined ? null : Number(v));
@@ -37,6 +41,9 @@ function rowToEvent(r: Record<string, unknown>): LiveEvent {
     startedAt: n(r.started_at), endedAt: n(r.ended_at), egressId: r.egress_id ? String(r.egress_id) : null,
     restream: Number(r.restream) === 1, peakViewers: Number(r.peak_viewers ?? 0), videoId: r.video_id ? String(r.video_id) : null,
     createdAt: Number(r.created_at), updatedAt: Number(r.updated_at),
+    chatMode: (CHAT_MODES.includes(r.chat_mode as ChatMode) ? r.chat_mode : "anyone") as ChatMode,
+    captions: r.captions === undefined || r.captions === null ? true : Number(r.captions) === 1,
+    captionSeconds: Number(r.caption_seconds ?? 0),
   };
 }
 
@@ -91,7 +98,7 @@ export async function eventsOf(wallet: string): Promise<LiveEvent[]> {
   const r = await getDb().execute({ sql: "SELECT * FROM live_events WHERE wallet = ? ORDER BY created_at DESC LIMIT 100", args: [normalizeWallet(wallet) ?? wallet] });
   return r.rows.map((x) => rowToEvent(x as Record<string, unknown>));
 }
-async function save(id: string, patch: Record<string, unknown>) {
+export async function save(id: string, patch: Record<string, unknown>) {
   const keys = Object.keys(patch);
   await getDb().execute({ sql: `UPDATE live_events SET ${keys.map((k) => `${k} = ?`).join(", ")}, updated_at = ? WHERE id = ?`, args: [...keys.map((k) => patch[k] as any), Date.now(), id] });
 }
@@ -214,6 +221,20 @@ export async function settle(e: LiveEvent): Promise<LiveEvent> {
   const since = hostMissingSince.get(e.id) ?? Date.now();
   hostMissingSince.set(e.id, since);
   return Date.now() - since > HOST_GRACE_MS ? endEvent(e) : e;
+}
+
+/**
+ * vm_livechat: send a small message to everyone in the event's room
+ * (captions, chat, settings). Viewers cannot send; only the server does.
+ * Never throws: a missed message is not worth failing a request over.
+ */
+export async function broadcast(e: LiveEvent, topic: "captions" | "chat" | "settings", body: unknown): Promise<boolean> {
+  if (e.status !== "live" || !liveConfig()) return false;
+  try {
+    const { rooms } = clients();
+    await rooms.sendData(e.room, new TextEncoder().encode(JSON.stringify(body)), DataPacket_Kind.RELIABLE, { topic });
+    return true;
+  } catch { return false; }
 }
 
 export async function linkRecording(e: LiveEvent, videoId: string): Promise<LiveEvent> {

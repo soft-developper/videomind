@@ -5,9 +5,14 @@
 // room, and recorded in this browser at the same time (as on the Record
 // page). When the event ends the recording can be uploaded as a video,
 // and the event's page then points to it.
+//
+// vm_livechat: the host chooses who may write in the chat and whether
+// captions are made, before or during the event. Captions take the sound
+// that goes live (see lib/liveaudio.ts). The host's chat sits beside the
+// picture, with delete and block.
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Room, Track } from "livekit-client";
+import { Room, RoomEvent, Track } from "livekit-client";
 import { Monitor, Camera, Copy, Check } from "lucide-react";
 import { clsx } from "clsx";
 import { UploadZone } from "@/components/upload/UploadZone";
@@ -15,7 +20,62 @@ import { QrCode } from "@/components/share/QrCode";
 import { openInputs, pickType, fixWebmDuration, VIDEO_BITS, AUDIO_BITS, MAX_SECONDS, canRecord, type Source, type Inputs } from "@/lib/record";
 import {
   getLiveEvent, liveHostToken, startLive, endLive, liveStats, linkLiveRecording, ApiError, type LiveEventInfo,
+  updateLiveSettings, liveCaptionsSocket, type ChatMode,
 } from "@/lib/api";
+import { startCaptionFeed } from "@/lib/liveaudio";
+import { LiveChat } from "./LiveChat";
+
+const CHAT_CHOICES: Array<[ChatMode, string, string]> = [
+  ["anyone", "Anyone with a name", "No wallet needed. You can delete messages and block people."],
+  ["wallets", "Signed in wallets only", "Viewers without a wallet can read but not write."],
+  ["off", "Chat off", "Only you can write."],
+];
+
+/** Who may chat and whether captions are made. Saved at once; works before and during the event. */
+function LiveSettings({ event, onSaved }: { event: LiveEventInfo; onSaved: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  // Shown at once; put back if the server refuses.
+  const [mode, setMode] = useState<ChatMode>(event.chatMode);
+  const [captions, setCaptions] = useState(event.captions);
+  useEffect(() => { setMode(event.chatMode); setCaptions(event.captions); }, [event.chatMode, event.captions]);
+  const change = async (s: { chatMode?: ChatMode; captions?: boolean }) => {
+    setBusy(true); setErr(null);
+    if (s.chatMode) setMode(s.chatMode);
+    if (s.captions !== undefined) setCaptions(s.captions);
+    try { await updateLiveSettings(event.id, s); onSaved(); }
+    catch (x) {
+      setMode(event.chatMode); setCaptions(event.captions);
+      setErr(x instanceof ApiError ? x.message : "That did not save. Try again.");
+    }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="space-y-4" aria-label="Chat and captions">
+      <fieldset className="space-y-1.5" disabled={busy}>
+        <legend className="text-[13px] font-medium text-paper mb-1">Who can write in the chat</legend>
+        {CHAT_CHOICES.map(([v, label, hint]) => (
+          <label key={v} className="flex items-start gap-2.5 cursor-pointer">
+            <input type="radio" name="chat-mode" checked={mode === v} onChange={() => void change({ chatMode: v })} className="mt-1" />
+            <span><span className="block text-[13.5px] text-paper">{label}</span><span className="block text-[12.5px] text-dim">{hint}</span></span>
+          </label>
+        ))}
+      </fieldset>
+      <div>
+        <label className={clsx("flex items-center gap-2.5 text-[13.5px] cursor-pointer", event.captionsAvailable ? "text-paper" : "text-dim")}>
+          <input type="checkbox" checked={event.captionsAvailable ? captions : false} disabled={busy || !event.captionsAvailable} onChange={(e) => void change({ captions: e.target.checked })} />
+          Live captions
+        </label>
+        <p className="text-[12.5px] text-dim mt-1 pl-6">
+          {event.captionsAvailable
+            ? `What you say appears as text for viewers, in English or the language you speak. Uses OpenAI, about $1 for each hour you speak; up to ${event.captionLimitMinutes ?? 180} minutes per event.`
+            : "Live captions are not set up on this server."}
+        </p>
+      </div>
+      {err && <p className="text-[12.5px] text-error" role="alert">{err}</p>}
+    </div>
+  );
+}
 
 const clock = (sec: number) => {
   const s = Math.max(0, Math.floor(sec)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
@@ -60,6 +120,10 @@ export function LiveStudio({ id }: { id: string }) {
   useEffect(() => { setSupport(canRecord()); }, []);
 
   const room = useRef<Room | null>(null);
+  const bus = useRef(new EventTarget());
+  const feed = useRef<(() => void) | null>(null);
+  const [capState, setCapState] = useState<{ on: boolean; text: string; note: string | null }>({ on: false, text: "", note: null });
+  const [capTry, setCapTry] = useState(0);
   const inputs = useRef<Inputs | null>(null);
   const rec = useRef<MediaRecorder | null>(null);
   const parts = useRef<Blob[]>([]);
@@ -90,7 +154,9 @@ export function LiveStudio({ id }: { id: string }) {
     }
   }, [phase]);
 
+  const stopFeed = () => { feed.current?.(); feed.current = null; };
   const cleanup = async () => {
+    stopFeed();
     await room.current?.disconnect().catch(() => {}); room.current = null;
     inputs.current?.stop(); inputs.current = null;
   };
@@ -120,6 +186,33 @@ export function LiveStudio({ id }: { id: string }) {
     setPhase({ at: "done", file, url: file ? URL.createObjectURL(file) : null, seconds });
   }, [id, refetch]);
 
+  // vm_livechat: captions run while live and switched on.
+  const wantCaptions = phase.at === "live" && !!event?.captions && !!event?.captionsAvailable;
+  useEffect(() => {
+    if (!wantCaptions) { if (feed.current) { stopFeed(); setCapState((c) => ({ ...c, on: false })); } return; }
+    if (feed.current) return;
+    const track = inputs.current?.stream.getAudioTracks()[0];
+    if (!track) { setCapState({ on: false, text: "", note: "Captions need sound: the microphone is off and nothing else is heard." }); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const url = await liveCaptionsSocket(id);
+        if (cancelled) return;
+        const stop = await startCaptionFeed(track, url, (m) => {
+          if (m.type === "ready") setCapState({ on: true, text: "", note: null });
+          else if (m.type === "partial" || m.type === "final") setCapState((c) => ({ ...c, on: true, text: m.text }));
+          else if (m.type === "warning") setCapState((c) => ({ ...c, note: m.message ?? null }));
+          else if (m.type === "stopped") { feed.current = null; setCapState({ on: false, text: "", note: m.reason === "off" || m.reason === "ended" ? null : m.message ?? "Captions stopped." }); }
+          else if (m.type === "closed") { feed.current = null; setCapState((c) => ({ on: false, text: "", note: c.note ?? "The captions connection closed." })); }
+        });
+        if (cancelled) stop(); else feed.current = stop;
+      } catch (e) {
+        if (!cancelled) setCapState({ on: false, text: "", note: e instanceof ApiError ? e.message : "Captions could not start." });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [wantCaptions, id, capTry]);
+
   // A live event stops by itself at the longest recording allowed.
   useEffect(() => { if (phase.at === "live" && elapsed >= MAX_SECONDS) void end("The live event reached its longest length and was ended."); }, [elapsed, phase, end]);
 
@@ -136,6 +229,10 @@ export function LiveStudio({ id }: { id: string }) {
       const { url, token } = await liveHostToken(id);
       const r = new Room({ adaptiveStream: false, dynacast: true });
       room.current = r;
+      r.on(RoomEvent.DataReceived, (payload, _p, _k, topic) => {
+        if (topic !== "chat") return;
+        try { bus.current.dispatchEvent(new CustomEvent("chat", { detail: JSON.parse(new TextDecoder().decode(payload)) })); } catch { /* not ours */ }
+      });
       await r.connect(url, token);
       const [video] = ins.stream.getVideoTracks();
       const [audio] = ins.stream.getAudioTracks();
@@ -232,7 +329,7 @@ export function LiveStudio({ id }: { id: string }) {
 
   if (live) {
     return (
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_280px] gap-6 items-start">
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
         <div className="space-y-4 min-w-0">
           <div className="relative">
             <video ref={preview} muted playsInline className="w-full aspect-video rounded-md bg-black object-contain" aria-label="What viewers see" />
@@ -253,9 +350,21 @@ export function LiveStudio({ id }: { id: string }) {
             {event.restreaming && <span className="tc">Restreaming</span>}
           </div>
           {note && <p className="text-[13px] text-warn" role="status">{note}</p>}
+          {event.captions && event.captionsAvailable && (
+            <p className="text-[13px] text-paper-2" data-captions-state>
+              {capState.on ? <>Captions on{capState.text ? <span className="text-dim">: {capState.text.slice(-120)}</span> : <span className="text-dim">, listening</span>}</> : capState.note ?? "Captions starting"}
+              {!capState.on && capState.note && !feed.current && (
+                <button onClick={() => { setCapState({ on: false, text: "", note: null }); setCapTry((n) => n + 1); }} className="ml-2 text-paper-2 underline underline-offset-2 hover:text-paper no-min">Try again</button>
+              )}
+            </p>
+          )}
           <p className="text-[13px] text-dim">This browser is also recording. Keep this tab open until you end the live event.</p>
+          <div className="panel p-4"><LiveSettings event={event} onSaved={() => void refetch()} /></div>
         </div>
-        <aside className="panel p-4">{shareBox}</aside>
+        <aside className="space-y-4">
+          <div className="panel p-4">{shareBox}</div>
+          <LiveChat eventId={id} status={event.status} chatMode={event.chatMode} owner bus={bus.current} className="h-[460px]" />
+        </aside>
       </div>
     );
   }
@@ -277,6 +386,8 @@ export function LiveStudio({ id }: { id: string }) {
       <label className="flex items-center gap-2.5 text-[13.5px] text-paper-2 cursor-pointer">
         <input type="checkbox" checked={mic} onChange={(e) => setMic(e.target.checked)} /> Use my microphone
       </label>
+
+      <LiveSettings event={event} onSaved={() => void refetch()} />
 
       <fieldset className="space-y-2">
         <legend className="text-[13px] font-medium text-paper">Also stream to (optional)</legend>

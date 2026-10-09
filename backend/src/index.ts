@@ -26,6 +26,7 @@ import clipsRouter from "./routes/clips.js";
 import liveRouter from "./routes/live.js";
 import profilesRouter from "./routes/profiles.js";
 import { youtubeRouter, youtubeVideoRouter } from "./routes/youtube.js";
+import { attachCaptions } from "./lib/livecaptions.js";
 // vm_media: thumbnails and video facts need FFmpeg
 import { checkMediaTools, mediaHealth } from "./lib/media.js";
 
@@ -106,7 +107,7 @@ async function main() {
   process.on("SIGTERM", shutdown);
   process.on("SIGINT", shutdown);
 
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`
 ╔══════════════════════════════════════════╗
 ║       VideoMind API Server               ║
@@ -116,6 +117,8 @@ async function main() {
 ╚══════════════════════════════════════════╝
     `);
   });
+  // vm_livechat: the studio sends its sound for live captions over a WebSocket on the same port.
+  attachCaptions(server);
 }
 
 main().catch((err) => { console.error("Failed to start:", err); process.exit(1); });

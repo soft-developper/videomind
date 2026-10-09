@@ -2,12 +2,16 @@
 // vm_live: the viewer's side. No wallet is needed. Before the event the
 // page waits and starts by itself; during it the host's picture and sound
 // play here; after it the page points to the recording.
+// vm_livechat: captions over the picture (on by default, can be turned
+// off), the chat beside it, and after the event its transcript.
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Room, RoomEvent, Track, type RemoteTrack } from "livekit-client";
-import { Volume2 } from "lucide-react";
-import { getLiveEvent, liveViewerToken, ApiError } from "@/lib/api";
+import { Volume2, Captions } from "lucide-react";
+import { clsx } from "clsx";
+import { getLiveEvent, liveViewerToken, getLiveCaptions, ApiError } from "@/lib/api";
+import { LiveChat } from "./LiveChat";
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 const clock = (sec: number) => {
@@ -31,6 +35,10 @@ export function LiveWatch({ id }: { id: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const room = useRef<Room | null>(null);
+  const bus = useRef(new EventTarget());
+  const [cc, setCc] = useState(true);
+  const [caption, setCaption] = useState<{ done: string; now: string; at: number }>({ done: "", now: "", at: 0 });
+  const [lines, setLines] = useState<Array<{ at: number; text: string }> | null>(null);
 
   useEffect(() => {
     if (event?.status !== "live") return;
@@ -54,6 +62,17 @@ export function LiveWatch({ id }: { id: string }) {
     r.on(RoomEvent.TrackSubscribed, (track) => attach(track as RemoteTrack));
     r.on(RoomEvent.TrackUnsubscribed, (track) => { track.detach().forEach((el) => el.remove()); if (track.kind === Track.Kind.Video) setHasVideo(false); });
     r.on(RoomEvent.AudioPlaybackStatusChanged, () => setNeedsSound(!r.canPlaybackAudio));
+    // vm_livechat: captions, chat and settings, sent by the server into the room.
+    r.on(RoomEvent.DataReceived, (payload, _p, _k, topic) => {
+      let body: any; try { body = JSON.parse(new TextDecoder().decode(payload)); } catch { return; }
+      if (topic === "chat") bus.current.dispatchEvent(new CustomEvent("chat", { detail: body }));
+      else if (topic === "settings") void refetch();
+      else if (topic === "captions" && typeof body?.text === "string") {
+        setCaption((c) => body.type === "final"
+          ? { done: [c.done, body.text].filter(Boolean).join(" ").slice(-160), now: "", at: Date.now() }
+          : { ...c, now: body.text, at: Date.now() });
+      }
+    });
     r.on(RoomEvent.Disconnected, () => { setConnected(false); setHasVideo(false); if (!stopped) void refetch(); });
     (async () => {
       try {
@@ -80,6 +99,15 @@ export function LiveWatch({ id }: { id: string }) {
     return () => clearInterval(t);
   }, [event?.status]);
 
+  // A caption fades after 6 seconds without new words.
+  const shownCaption = Math.max(now, caption.at) - caption.at < 6000 ? [caption.done, caption.now].filter(Boolean).join(" ").slice(-160) : "";
+
+  // After the event: what was said, from the captions.
+  useEffect(() => {
+    if (event?.status !== "ended" || lines) return;
+    getLiveCaptions(id).then((r) => setLines(r.lines)).catch(() => setLines([]));
+  }, [event?.status, id, lines]);
+
   if (!event) {
     const missing = error instanceof ApiError && error.status === 404;
     return (
@@ -92,7 +120,8 @@ export function LiveWatch({ id }: { id: string }) {
 
   const who = event.hostName ?? short(event.wallet);
   return (
-    <div className="space-y-4 pt-6">
+    <div className="pt-6 grid lg:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
+    <div className="space-y-4 min-w-0">
       <div>
         <h1 className="font-display text-[22px] sm:text-[26px] leading-tight text-paper">{event.title}</h1>
         <Link href={`/u/${event.wallet}`} className="text-[13.5px] text-paper-2 hover:text-paper hover:underline underline-offset-2">By {who}</Link>
@@ -122,12 +151,36 @@ export function LiveWatch({ id }: { id: string }) {
               : <p className="text-[13.5px] text-dim">The recording appears here once the host uploads it.</p>}
           </div>
         )}
+        {event.status === "live" && cc && shownCaption && (
+          <p className="absolute inset-x-0 bottom-14 z-10 mx-auto w-fit max-w-[90%] text-center bg-black/80 text-white text-[15px] sm:text-[18px] leading-snug rounded px-3 py-1.5" data-live-caption aria-live="off">
+            {shownCaption}
+          </p>
+        )}
+        {event.status === "live" && event.captions && (
+          <button
+            onClick={() => setCc((v) => !v)} aria-pressed={cc} aria-label="Captions"
+            className={clsx("absolute left-3 bottom-3 z-10 h-9 px-3 rounded inline-flex items-center gap-1.5 text-[13px] bg-black/70", cc ? "text-paper" : "text-dim")}
+          >
+            <Captions size={15} /> {cc ? "Captions on" : "Captions off"}
+          </button>
+        )}
         {needsSound && event.status === "live" && (
           <button onClick={() => { room.current?.startAudio().then(() => setNeedsSound(false)).catch(() => {}); }} className="absolute right-3 bottom-3 z-10 btn btn-signal h-9 px-3.5 inline-flex items-center gap-1.5">
             <Volume2 size={14} /> Turn sound on
           </button>
         )}
       </div>
+
+      {event.status === "ended" && !!lines?.length && (
+        <details className="panel px-5 py-3" data-live-transcript>
+          <summary className="cursor-pointer text-[14px] text-paper">What was said ({lines.length} lines, from the live captions)</summary>
+          <ol className="mt-3 space-y-1.5 text-[13.5px] text-paper-2">
+            {lines.map((l, i) => <li key={i}><span className="tc mr-2">{clock(l.at / 1000)}</span>{l.text}</li>)}
+          </ol>
+        </details>
+      )}
+    </div>
+    <LiveChat eventId={id} status={event.status} chatMode={event.chatMode} owner={false} bus={bus.current} className="lg:sticky lg:top-20 h-[420px] lg:h-[calc(100vh-120px)]" />
     </div>
   );
 }
