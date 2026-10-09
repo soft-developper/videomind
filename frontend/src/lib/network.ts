@@ -1,6 +1,6 @@
 // src/lib/network.ts
 //
-// IMPORTANT — there are TWO different indexers in play on shelbynet:
+// IMPORTANT - there are TWO different indexers in play on shelbynet:
 //
 //   1. Generic Aptos chain indexer (what @aptos-labs/ts-sdk resolves
 //      Network.SHELBYNET to by default):
