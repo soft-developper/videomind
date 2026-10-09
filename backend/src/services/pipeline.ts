@@ -28,6 +28,8 @@ import { EMBED, embedHandler, queueEmbed } from "./search.js";
 import { ANCHOR_CHECK, anchorCheckHandler, anchorCheckGaveUp } from "./anchor.js";
 // vm_clips
 import { CLIP_JOB, clipHandler, clipGaveUp } from "./clip.js";
+// vm_youtube
+import { YOUTUBE_JOB, youtubeHandler, youtubeGaveUp } from "./youtube.js";
 
 /**
  * Failure codes that no retry can fix. The retry button is hidden for
@@ -149,6 +151,7 @@ export function registerPipeline(deps: PipelineDeps = { extractSound, cutSound, 
   registerHandler(EMBED, embedHandler);
   registerHandler(ANCHOR_CHECK, anchorCheckHandler);
   registerHandler(CLIP_JOB, clipHandler);
+  registerHandler(YOUTUBE_JOB, youtubeHandler);
   // A stage that failed for good marks the video, so the page stops waiting.
   setFinalFailureHook(async (job, f) => {
     // vm_media: a video without a thumbnail is not a failed video.
@@ -159,6 +162,8 @@ export function registerPipeline(deps: PipelineDeps = { extractSound, cutSound, 
     if (job.kind === ANCHOR_CHECK) { await anchorCheckGaveUp(job, f).catch(() => {}); return; }
     // vm_clips: a clip that could not be made is a failed clip, not a failed video.
     if (job.kind === CLIP_JOB) { await clipGaveUp(job, f).catch(() => {}); return; }
+    // vm_youtube: a publication that failed is not a failed video.
+    if (job.kind === YOUTUBE_JOB) { await youtubeGaveUp(job, f).catch(() => {}); return; }
     await store.update(job.videoId, { status: "error" }).catch(() => {});
   });
 }

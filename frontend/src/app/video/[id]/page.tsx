@@ -9,6 +9,7 @@ import { TranscriptPanel } from "@/components/video/TranscriptPanel";
 import { NotesPanel } from "@/components/video/NotesPanel";
 // vm_clips
 import { ClipsPanel } from "@/components/video/ClipsPanel";
+import { PublishPanel } from "@/components/video/PublishPanel";
 import { CourseStrip } from "@/components/video/CourseStrip";
 import { IntelligenceStrip } from "@/components/video/IntelligenceStrip";
 import { ProcessingStatus } from "@/components/video/ProcessingStatus";
@@ -329,6 +330,9 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 {mine && (
                   <ClipsPanel videoId={params.id} currentTime={t} duration={video.meta.durationSeconds ?? dur} chapters={video.ai?.chapters} onSeek={seek} />
                 )}
+
+                {/* vm_youtube: send the video or a clip to the owner's channel */}
+                {mine && <PublishPanel videoId={params.id} duration={video.meta.durationSeconds ?? dur} />}
               </div>
 
               <aside className="hidden lg:block lg:sticky lg:top-6 lg:h-[calc(100vh-48px)]">

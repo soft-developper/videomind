@@ -506,3 +506,24 @@ export const startLive = (id: string, restream: string[]) => call<{ event: LiveE
 export const endLive = (id: string) => call<{ event: LiveEventInfo }>(() => raw.post(`/api/live/${id}/end`));
 export const liveStats = (id: string) => call<{ viewers: number; peakViewers: number; status: LiveStatus }>(() => raw.get(`/api/live/${id}/stats`));
 export const linkLiveRecording = (id: string, videoId: string) => call<{ event: LiveEventInfo }>(() => raw.post(`/api/live/${id}/recording`, { videoId }));
+
+// ── vm_youtube: publishing to the owner's YouTube channel ────────────────────
+export type YouTubePrivacy = "private" | "unlisted" | "public";
+export interface YouTubeStatus { enabled: boolean; connected: boolean; email: string | null; connectedAt?: number | null }
+export interface PublicationInfo {
+  id: string; clipId: string | null; title: string; privacy: YouTubePrivacy; status: "queued" | "uploading" | "done" | "failed";
+  sentBytes: number; totalBytes: number | null; error: string | null; url: string | null; studioUrl: string | null;
+  createdAt: number; updatedAt: number;
+}
+export interface PublicationList {
+  enabled: boolean; publications: PublicationInfo[];
+  suggested: { title: string; description: string; tags: string[] };
+  limits: { perDay: number; usedToday: number };
+}
+export interface PublishRequest { clipId?: string | null; title: string; description: string; tags: string[]; privacy: YouTubePrivacy; madeForKids: boolean }
+export const getYouTubeStatus = () => call<YouTubeStatus>(() => raw.get("/api/youtube/status"));
+export const connectYouTube = (returnTo: string) => call<{ url: string }>(() => raw.post("/api/youtube/connect", { returnTo }));
+export const disconnectYouTube = () => call<{ ok: boolean }>(() => raw.post("/api/youtube/disconnect"));
+export const getPublications = (videoId: string) => call<PublicationList>(() => raw.get(`/api/videos/${videoId}/youtube`));
+export const publishToYouTube = (videoId: string, p: PublishRequest) => call<{ publication: PublicationInfo }>(() => raw.post(`/api/videos/${videoId}/youtube`, p));
+export const retryPublication = (videoId: string, pubId: string) => call<{ publication: PublicationInfo }>(() => raw.post(`/api/videos/${videoId}/youtube/${pubId}/retry`));

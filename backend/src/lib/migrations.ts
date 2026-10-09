@@ -367,6 +367,41 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX live_events_status ON live_events(status)`,
     ],
   },
+  {
+    // vm_youtube: a wallet's connected YouTube account (the refresh token is
+    // encrypted), and each video or clip sent to YouTube.
+    id: "015_youtube",
+    statements: [
+      `CREATE TABLE youtube_accounts (
+        wallet         TEXT PRIMARY KEY,
+        email          TEXT,
+        refresh_token  TEXT NOT NULL,
+        scope          TEXT,
+        connected_at   INTEGER NOT NULL,
+        updated_at     INTEGER NOT NULL
+      )`,
+      `CREATE TABLE publications (
+        id           TEXT PRIMARY KEY,
+        video_id     TEXT NOT NULL,
+        clip_id      TEXT,
+        wallet       TEXT NOT NULL,
+        platform     TEXT NOT NULL,
+        title        TEXT NOT NULL,
+        privacy      TEXT NOT NULL,
+        details      TEXT,
+        status       TEXT NOT NULL,
+        session_url  TEXT,
+        sent_bytes   INTEGER NOT NULL DEFAULT 0,
+        total_bytes  INTEGER,
+        remote_id    TEXT,
+        error        TEXT,
+        created_at   INTEGER NOT NULL,
+        updated_at   INTEGER NOT NULL
+      )`,
+      `CREATE INDEX publications_video ON publications(video_id, created_at)`,
+      `CREATE INDEX publications_wallet ON publications(wallet, created_at)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

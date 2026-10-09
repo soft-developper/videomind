@@ -36,6 +36,7 @@ import { queueAnchorCheck } from "../services/anchor.js";
 import { namesOf } from "../lib/profiles.js";
 // vm_clips
 import { deleteClipsForVideo } from "../lib/clips.js";
+import { deletePublicationsForVideo } from "../lib/youtube.js";
 import { normalizeWallet } from "../lib/auth.js";
 
 /**
@@ -63,6 +64,7 @@ async function dropVideoWork(id: string): Promise<void> {
   await deleteJobsForVideo(id);
   await deleteAnchorsForVideo(id);   // vm_anchors
   await deleteClipsForVideo(id);     // vm_clips (their files go with the video's other files)
+  await deletePublicationsForVideo(id); // vm_youtube (what is already on YouTube stays there)
   await abortUpload(id, { keepVideo: true }).catch((err) =>
     console.error(`[uploads] could not discard the unfinished upload of ${id}: ${err?.message ?? err}`));
   // If storage cannot be reached the asset rows stay, and the hourly
