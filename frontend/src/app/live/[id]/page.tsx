@@ -2,6 +2,7 @@
 // vm_live: the public page of a live event. No wallet needed.
 import Link from "next/link";
 import { LiveWatch } from "@/components/live/LiveWatch";
+import { LegalFooter } from "@/components/legal/LegalPage";
 
 export default function WatchLivePage({ params }: { params: { id: string } }) {
   return (
@@ -18,6 +19,7 @@ export default function WatchLivePage({ params }: { params: { id: string } }) {
         </div>
       </nav>
       <main className="pt-14 pb-16 section max-w-[1100px] mx-auto"><LiveWatch id={params.id} /></main>
+      <LegalFooter />
     </div>
   );
 }

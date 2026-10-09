@@ -11,6 +11,7 @@ import { clock } from "@/components/video/VideoCard";
 import { explorer } from "@/lib/explorer";
 import { categoryLabel } from "@/lib/categories";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
+import { LegalFooter } from "@/components/legal/LegalPage";
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
@@ -141,6 +142,7 @@ export default function PublicProfilePage({ params }: { params: { wallet: string
     <div className="min-h-screen bg-void">
       <Bar />
       <main className="pt-14 pb-16 section max-w-[1400px] mx-auto">{body()}</main>
+      <LegalFooter />
     </div>
   );
 }

@@ -127,6 +127,13 @@ export function PublishPanel({ videoId, duration }: { videoId: string; duration:
             <p className="text-[13.5px] text-dim leading-relaxed">
               Connect your YouTube channel to send this video or its clips there. VideoMind only asks for permission to upload, and you can disconnect at any time.
             </p>
+            {/* vm_legal: what YouTube API Services require users to agree to */}
+            <p className="text-[12.5px] text-dim leading-relaxed" data-youtube-consent>
+              By connecting, you agree to the{" "}
+              <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer" className="text-paper-2 underline underline-offset-2">YouTube Terms of Service</a>{" "}and VideoMind&rsquo;s{" "}
+              <a href="/legal/privacy#google" target="_blank" rel="noopener noreferrer" className="text-paper-2 underline underline-offset-2">Privacy Policy</a>. Google&rsquo;s handling of your data is described in the{" "}
+              <a href="http://www.google.com/policies/privacy" target="_blank" rel="noopener noreferrer" className="text-paper-2 underline underline-offset-2">Google Privacy Policy</a>.
+            </p>
             <button onClick={connect} disabled={busy} className="btn btn-signal h-9 px-4">{busy ? "Opening Google" : "Connect YouTube"}</button>
           </div>
         ) : (
@@ -134,6 +141,7 @@ export function PublishPanel({ videoId, duration }: { videoId: string; duration:
             <div className="flex items-center gap-3 flex-wrap text-[13.5px]">
               <span className="text-paper-2" data-youtube-account>Connected{status.data.email ? ` as ${status.data.email}` : ""}</span>
               <button onClick={disconnect} className="text-paper-2 hover:text-paper underline underline-offset-2 no-min">Disconnect</button>
+              <a href="https://security.google.com/settings/security/permissions" target="_blank" rel="noopener noreferrer" className="text-dim hover:text-paper underline underline-offset-2">Google account access</a>
             </div>
 
             <form onSubmit={publish} className="space-y-3.5 max-w-[560px]" aria-label="Send to YouTube">

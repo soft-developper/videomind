@@ -158,6 +158,12 @@ export function WalletButton({ block = false, placement = "down", quiet = false 
               )}
             </button>
           ))}
+          {/* vm_legal */}
+          <p className="px-3 py-2.5 border-t border-rule text-[12px] font-sans text-dim leading-relaxed" data-legal-consent>
+            By connecting, you agree to the{" "}
+            <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="text-paper-2 underline underline-offset-2">Terms of Service</a>{" "}and{" "}
+            <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" className="text-paper-2 underline underline-offset-2">Privacy Policy</a>.
+          </p>
         </div>
       )}
     </div>

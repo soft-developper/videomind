@@ -276,6 +276,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="pt-1">
             <WalletButton block quiet placement="up" />
           </div>
+          {/* vm_legal */}
+          <div className="flex gap-4 px-1 text-[12px] text-dim">
+            <Link href="/legal/privacy" className="hover:text-paper">Privacy</Link>
+            <Link href="/legal/terms" className="hover:text-paper">Terms</Link>
+          </div>
         </div>
       </aside>
 

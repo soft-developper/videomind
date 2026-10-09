@@ -142,6 +142,9 @@ export function LiveChat({ eventId, status, chatMode, owner, bus, className }: {
             <button type="submit" disabled={busy || (!signedIn && !name.trim())} className="btn btn-ghost h-9 px-3 shrink-0">Join chat</button>
           </form>
         )}
+        {status === "live" && !pass && !note && (
+          <p className="text-[12px] text-dim">By joining, you agree to the <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-paper">Terms of Service</a>.</p>
+        )}
         {canWrite && (
           <form onSubmit={send} className="space-y-1.5" aria-label="Write a message">
             <div className="flex gap-2">

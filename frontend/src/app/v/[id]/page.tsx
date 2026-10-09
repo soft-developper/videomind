@@ -20,6 +20,7 @@ import { ShareButton } from "@/components/video/ShareButton";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { LegalFooter } from "@/components/legal/LegalPage";
 import { useWatchProgress } from "@/lib/useWatchProgress";
 import { useRef, useState, useCallback } from "react";
 import { clsx } from "clsx";
@@ -240,6 +241,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
           </div>
         </div>
       </main>
+      <LegalFooter className="pb-20 lg:pb-0" />
 
       {/* Mobile chat */}
       <button
