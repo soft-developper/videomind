@@ -17,6 +17,12 @@
 import crypto from "node:crypto";
 import type { Request, Response, NextFunction } from "express";
 import {
+  KeylessPublicKey,
+  FederatedKeylessPublicKey,
+  KeylessSignature,
+  MoveJWK,
+  getKeylessConfig,
+  verifyKeylessSignature,
   AccountAddress,
   AnyPublicKey,
   AnySignature,
@@ -210,6 +216,64 @@ const SCHEMES: Array<{
   { name: "multi_ed25519", key: (h) => parseBcs(h, (d) => MultiEd25519PublicKey.deserialize(d)),  sig: (h) => parseBcs(h, (d) => MultiEd25519Signature.deserialize(d)) },
 ];
 
+// ── vm_keyless_check: Google and Apple wallets ─────────────────────────────
+//
+// A keyless signature (the Google and Apple wallets in Petra Web) carries
+// a zero knowledge proof that the wallet holds a sign in token from Google
+// or Apple for this account. Checking it needs the keyless settings
+// (verification key and limits) and the provider's public key (JWK) that
+// signed the token. These normally come from the chain the app uses
+// (shelbynet). If shelbynet does not hold them, the same official values
+// are read from Aptos mainnet, and the provider's key straight from
+// Google's or Apple's published key list. Every attempt that fails is
+// logged with its reason, so the cause shows in the server log.
+const PROVIDER_KEYS: Record<string, string> = {
+  "https://accounts.google.com": "https://www.googleapis.com/oauth2/v3/certs",
+  "https://appleid.apple.com": "https://appleid.apple.com/auth/keys",
+};
+let _mainnet: AptosConfig | null = null;
+const mainnet = () => (_mainnet ??= new AptosConfig({ network: Network.MAINNET }));
+
+async function providerJwk(iss: string, kid: string): Promise<MoveJWK> {
+  const url = PROVIDER_KEYS[iss];
+  if (!url) throw new Error(`no published key list known for ${iss}`);
+  const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  if (!res.ok) throw new Error(`${url} answered ${res.status}`);
+  const body = (await res.json()) as { keys?: Array<Record<string, string>> };
+  const k = body.keys?.find((x) => x.kid === kid);
+  if (!k) throw new Error(`key ${kid} is not in ${url}`);
+  return new MoveJWK({ kid: k.kid, kty: k.kty, alg: k.alg ?? "RS256", e: k.e, n: k.n });
+}
+
+export async function verifyKeylessWallet(key: AnyPublicKey, sig: AnySignature, message: Uint8Array): Promise<{ ok: boolean; via?: string; reasons: string[] }> {
+  const pk = key.publicKey;
+  const inner = sig.signature;
+  if (!(pk instanceof KeylessPublicKey || pk instanceof FederatedKeylessPublicKey) || !(inner instanceof KeylessSignature)) {
+    return { ok: false, reasons: ["not a keyless key and signature"] };
+  }
+  const iss = (pk instanceof KeylessPublicKey ? pk : pk.keylessPublicKey).iss;
+  const kid = inner.getJwkKid();
+  const reasons: string[] = [];
+  const attempts: Array<[string, () => Promise<boolean>]> = [
+    ["shelbynet", () => verifyKeylessSignature({ publicKey: pk, aptosConfig: aptos().config, message, signature: inner, options: { throwErrorWithReason: true } })],
+    ["mainnet", () => verifyKeylessSignature({ publicKey: pk, aptosConfig: mainnet(), message, signature: inner, options: { throwErrorWithReason: true } })],
+    ["provider key with mainnet settings", async () => verifyKeylessSignature({
+      publicKey: pk, aptosConfig: mainnet(), message, signature: inner,
+      jwk: await providerJwk(iss, kid), keylessConfig: await getKeylessConfig({ aptosConfig: mainnet() }),
+      options: { throwErrorWithReason: true },
+    })],
+  ];
+  for (const [via, run] of attempts) {
+    try {
+      if (await timeout(run(), 15_000)) return { ok: true, via, reasons };
+      reasons.push(`${via}: not valid`);
+    } catch (err: any) {
+      reasons.push(`${via}: ${String(err?.message ?? err).replace(/\s+/g, " ").slice(0, 300)}`);
+    }
+  }
+  return { ok: false, reasons };
+}
+
 /**
  * True if `signature` is a valid signature of `fullMessage` by a key that
  * controls `address`. Mirrors the wallet adapter's own signMessageAndVerify:
@@ -238,6 +302,13 @@ export async function verifyWalletSignature(args: {
 
     const sig = s.sig(args.signature);
     if (!sig) continue;
+    // vm_keyless: Google and Apple wallets have their own check.
+    if (s.name === "single_key" && sig instanceof AnySignature && sig.signature instanceof KeylessSignature) {
+      const k = await verifyKeylessWallet(key, sig, message);
+      if (k.ok) return { ok: true, scheme: `keyless (${k.via})` };
+      console.warn(`[auth] keyless sign in for ${address} not verified: ${k.reasons.join(" | ")}`);
+      continue;
+    }
     try {
       const good = await timeout(
         key.verifySignatureAsync({ aptosConfig: aptos().config, message, signature: sig }) as Promise<boolean>,
