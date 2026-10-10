@@ -96,6 +96,11 @@ export interface ParsedMessage { address: string; application: string; chainId?:
  * that defeats this: the wallet's own fields (address, application,
  * chainId) must all come BEFORE the first nonce or message line, and the
  * rest must be exactly our message line and our nonce line, nothing else.
+ *
+ * vm_keyless: Petra Web (the Google and Apple wallets, Aptos Connect)
+ * writes the message and the nonce as 0x hex of their UTF 8 text, for
+ * example "nonce: 0x3941...". Either form is accepted, but only if it is
+ * exactly our text: the hex is decoded and compared, never trusted.
  */
 export function parseFullMessage(
   fullMessage: string,
@@ -115,11 +120,22 @@ export function parseFullMessage(
     header[m[1]] = m[2];
   }
 
-  const trailer = lines.slice(cut).sort();
-  const expected = [`message: ${SIGN_IN_MESSAGE}`, `nonce: ${nonce}`].sort();
-  if (trailer.length !== 2 || trailer[0] !== expected[0] || trailer[1] !== expected[1]) {
-    return { ok: false, reason: "message text or nonce does not match what was issued" };
-  }
+  const trailer = lines.slice(cut);
+  const plain = (value: string) => {
+    if (!/^0x(?:[0-9a-fA-F]{2})+$/.test(value)) return value;
+    const text = Buffer.from(value.slice(2), "hex").toString("utf8");
+    return Buffer.from(text, "utf8").toString("hex") === value.slice(2).toLowerCase() ? text : value;
+  };
+  const is = (line: string, field: "message" | "nonce", want: string) => {
+    if (!line.startsWith(`${field}: `)) return false;
+    const value = line.slice(field.length + 2);
+    return value === want || plain(value) === want;
+  };
+  const okTrailer = trailer.length === 2 && (
+    (is(trailer[0], "message", SIGN_IN_MESSAGE) && is(trailer[1], "nonce", nonce)) ||
+    (is(trailer[0], "nonce", nonce) && is(trailer[1], "message", SIGN_IN_MESSAGE))
+  );
+  if (!okTrailer) return { ok: false, reason: "message text or nonce does not match what was issued" };
 
   if (!header.address) return { ok: false, reason: "wallet did not include its address" };
   if (!header.application) return { ok: false, reason: "wallet did not include the site address" };
