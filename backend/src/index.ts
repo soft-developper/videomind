@@ -27,6 +27,7 @@ import liveRouter from "./routes/live.js";
 import profilesRouter from "./routes/profiles.js";
 import { youtubeRouter, youtubeVideoRouter } from "./routes/youtube.js";
 import { attachCaptions } from "./lib/livecaptions.js";
+import settingsRouter from "./routes/settings.js";
 // vm_media: thumbnails and video facts need FFmpeg
 import { checkMediaTools, mediaHealth } from "./lib/media.js";
 
@@ -59,6 +60,7 @@ app.use("/api", profilesRouter);           // vm_profile: /api/profiles/:wallet,
 app.use("/api/live", liveRouter);           // vm_live: live events
 app.use("/api/youtube", youtubeRouter);     // vm_youtube: connect a channel
 app.use("/api/videos", youtubeVideoRouter); // vm_youtube: /api/videos/:id/youtube
+app.use("/api", settingsRouter);           // vm_settings: /api/me/settings, logout everywhere, delete my data
 app.use("/api/chat", chatRouter);
 app.use("/api/shelby", statsRouter);
 app.use("/api/learn", learnRouter);

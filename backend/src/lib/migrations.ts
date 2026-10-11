@@ -441,6 +441,19 @@ const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    // vm_settings: a wallet's own settings. Empty values mean "use the
+    // last choice made in this browser", as before.
+    id: "017_settings",
+    statements: [
+      `CREATE TABLE user_settings (
+        wallet             TEXT PRIMARY KEY,
+        upload_visibility  TEXT,
+        upload_category    TEXT,
+        updated_at         INTEGER NOT NULL
+      )`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

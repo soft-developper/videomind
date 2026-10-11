@@ -64,7 +64,7 @@ const NAV: Group[] = [
       // vm_profile
       { label: "Wallet", href: "/wallet", icon: Wallet },
       { label: "Profile", href: "/profile", icon: User, match: (p) => p === "/profile" || p.startsWith("/u/") },
-      { label: "Settings", icon: Settings },
+      { label: "Settings", href: "/settings", icon: Settings },   // vm_settings
     ],
   },
 ];

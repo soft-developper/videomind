@@ -397,6 +397,18 @@ async function lookupSession(token: string): Promise<AuthContext | null> {
   return ctx;
 }
 
+/** vm_settings: sign a wallet out everywhere. Returns how many sessions were ended. */
+export async function revokeAllSessions(wallet: string): Promise<number> {
+  const w = normalizeWallet(wallet) ?? wallet;
+  for (const [k, v] of cache) if (v.ctx.wallet === w) cache.delete(k);
+  const r = await getDb().execute({ sql: "UPDATE sessions SET revoked_at = ? WHERE wallet_address = ? AND revoked_at IS NULL", args: [Date.now(), w] });
+  return r.rowsAffected;
+}
+export async function activeSessions(wallet: string): Promise<number> {
+  const r = await getDb().execute({ sql: "SELECT COUNT(*) AS n FROM sessions WHERE wallet_address = ? AND revoked_at IS NULL AND expires_at > ?", args: [normalizeWallet(wallet) ?? wallet, Date.now()] });
+  return Number((r.rows[0] as any).n);
+}
+
 export async function revokeSession(tokenHash: string): Promise<void> {
   cache.delete(tokenHash);
   await getDb().execute({ sql: "UPDATE sessions SET revoked_at = ? WHERE token_hash = ?", args: [Date.now(), tokenHash] });

@@ -51,7 +51,7 @@ export default function PrivacyPage() {
           <li>We send your videos&rsquo; sound and text to AI providers to transcribe and understand them. We do not sell your information or use it for advertising.</li>
           <li>If you connect YouTube, we use that permission only to upload what you ask us to upload, and you can remove it at any time.</li>
           <li>Anything you choose to store on Shelby is public on a decentralized network and cannot be deleted by us.</li>
-          <li>You can ask us to delete your information by writing to <A href={mail}>{LEGAL.contact}</A>. We do it within 7 days.</li>
+          <li>You can delete your information yourself in Settings (Delete my data), or ask us at <A href={mail}>{LEGAL.contact}</A>. We do it within 7 days.</li>
         </UL>
       </Section>
 
@@ -117,7 +117,7 @@ export default function PrivacyPage() {
           <li>VideoMind&rsquo;s use of information received from Google APIs follows the <A href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</A>, including its Limited Use requirements.</li>
           <li>By using the YouTube features you also agree to the <A href="https://www.youtube.com/t/terms">YouTube Terms of Service</A>. Google&rsquo;s handling of your data is described in the <A href="http://www.google.com/policies/privacy">Google Privacy Policy</A>.</li>
           <li><B>Removing access:</B> use Disconnect on any of your video pages, which deletes the stored permission and asks Google to revoke it. You can also remove VideoMind at any time from your Google account&rsquo;s security settings at <A href="https://security.google.com/settings/security/permissions">security.google.com/settings/security/permissions</A>.</li>
-          <li><B>Deleting stored data:</B> our normal procedure for deleting stored data is: disconnecting deletes the stored permission and email at once; deleting a video deletes its upload records; and you can ask us to delete everything at <A href={mail}>{LEGAL.contact}</A>, which we do within 7 days. Videos already on YouTube stay on your channel; remove them in YouTube Studio.</li>
+          <li><B>Deleting stored data:</B> our normal procedure for deleting stored data is: disconnecting deletes the stored permission and email at once; deleting a video deletes its upload records; and Delete my data in Settings deletes everything at once (or ask us at <A href={mail}>{LEGAL.contact}</A>, and we do it within 7 days). Videos already on YouTube stay on your channel; remove them in YouTube Studio.</li>
         </UL>
       </Section>
 
@@ -145,7 +145,7 @@ export default function PrivacyPage() {
           <li>Videos and everything made from them: until you delete the video. Deleting a video deletes its files, transcript, chapters, clips, search passages, notes and watch places, and its YouTube upload records.</li>
           <li>Unfinished uploads: deleted after 7 days.</li>
           <li>Sessions: they expire after 7 days.</li>
-          <li>Profile, live events with their captions and chat, and your wallet record: until you ask us to delete them.</li>
+          <li>Profile, live events with their captions and chat, and your wallet record: until you delete them in Settings or ask us to.</li>
           <li>Usage quantities: kept as business records, without content.</li>
           <li>Copies made by providers for backups or logs are removed on their own schedules.</li>
         </UL>
@@ -154,7 +154,7 @@ export default function PrivacyPage() {
       <Section id="choices" n={10} title="Your choices and rights">
         <UL>
           <li><B>Access and change:</B> your library, profile and settings are in the app. You can edit your details at any time.</li>
-          <li><B>Delete:</B> delete any video, or all your videos, from the library. To delete everything else (profile, live events, chat, wallet record), write to <A href={mail}>{LEGAL.contact}</A> from a message that names your wallet address. We complete deletions within 7 days, and we may ask you to prove you control the wallet.</li>
+          <li><B>Delete:</B> delete any video from the library, or everything at once with Delete my data in <A href="/settings">Settings</A>, which takes effect immediately. You can also write to <A href={mail}>{LEGAL.contact}</A> from a message that names your wallet address; we complete deletions within 7 days, and we may ask you to prove you control the wallet.</li>
           <li><B>Disconnect YouTube</B> as described in <A href="#google">Google and YouTube data</A>.</li>
           <li><B>Visibility:</B> set any video to private, unlisted or public.</li>
           <li>Depending on where you live, you may have more rights, such as to receive a copy of your information, to object to or restrict some processing, or to complain to a data protection authority. Write to us and we will help.</li>

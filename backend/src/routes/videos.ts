@@ -58,7 +58,7 @@ function withoutWords(v: VideoRecord): VideoRecord {
 const router = Router();
 
 /** Remove a video's stored files, its jobs and any unfinished upload. Call before deleting the video. */
-async function dropVideoWork(id: string): Promise<void> {
+export async function dropVideoWork(id: string): Promise<void> {
   const src = await store.getSourcePath(id);
   if (src) await fs.unlink(src).catch(() => {});
   await deleteJobsForVideo(id);

@@ -26,6 +26,7 @@ import {
   createUpload, listOpenUploads, discardUpload, anchorVideo, getVideo, ApiError, type UploadInfo,
   // vm_anchors
   startAnchor,
+  getMySettings,
 } from "@/lib/api";
 import { ResumableUpload, StorageBlockedError, UploadStopped, type UploadProgress } from "@/lib/uploader";
 // vm_shelby09: expiration removed from blob registration (sdk >= 0.8.0)
@@ -117,6 +118,20 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
   // Each run gets a number. A run that was cancelled or replaced must
   // not touch the screen when its last promise settles.
   const runNo = useRef(0);
+
+  // vm_settings: defaults chosen in Settings win over the last choice made in this browser.
+  const mine = useQuery({ queryKey: ["my-settings", sessionWallet], queryFn: getMySettings, enabled: !!sessionWallet, staleTime: 60_000 });
+  const defaults = useCallback((): Partial<InfoDraft> => {
+    const d = readDefaults(), s = mine.data?.settings;
+    return { ...d, ...(s?.uploadVisibility ? { visibility: s.uploadVisibility } : {}), ...(s?.uploadCategory ? { category: s.uploadCategory } : {}) };
+  }, [mine.data]);
+  const applied = useRef(false);
+  useEffect(() => {
+    if (applied.current || !mine.data || !initialFile) return;
+    applied.current = true;
+    const d = readDefaults();
+    setDraft((cur) => (cur.visibility === d.visibility && cur.category === (d.category ?? "") ? { ...cur, ...defaults() } : cur));
+  }, [mine.data, initialFile, defaults]);
 
   // Uploads this wallet started and did not finish, on any device.
   const open = useQuery({
@@ -269,7 +284,7 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
     if (match) { setFile(f); setDraft(emptyDraft({ title: match.title ?? f.name })); void run(f, match); return; }
 
     setFile(f);
-    setDraft(emptyDraft({ ...readDefaults(), title: f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ") }));
+    setDraft(emptyDraft({ ...defaults(), title: f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ") }));
     setStep({ at: "details" });
   }, [anchorId, anchorVideoQ.data, unfinished, run, storeOnShelby]);
 
