@@ -60,7 +60,7 @@ const NAV: Group[] = [
   {
     label: "Workspace",
     items: [
-      { label: "Analytics", icon: BarChart3 },
+      { label: "Analytics", href: "/analytics", icon: BarChart3 },   // vm_analytics
       // vm_profile
       { label: "Wallet", href: "/wallet", icon: Wallet },
       { label: "Profile", href: "/profile", icon: User, match: (p) => p === "/profile" || p.startsWith("/u/") },

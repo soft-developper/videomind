@@ -555,3 +555,40 @@ export const getMySettings = () => call<{ wallet: string; sessionExpiresAt: numb
 export const saveMySettings = (s: Partial<{ uploadVisibility: string | null; uploadCategory: string | null }>) => call<{ settings: MySettings }>(() => raw.put("/api/me/settings", s));
 export const logoutEverywhere = () => call<{ ended: number }>(() => raw.post("/api/me/logout-everywhere"));
 export const deleteMyData = () => call<{ deleted: Record<string, number> }>(() => raw.post("/api/me/delete", { confirm: "DELETE" }, { timeout: 300_000 }));
+
+// ── vm_analytics: play counts and the owner's numbers ────────────────────────
+/**
+ * Report this tab's plays of a video. Answers { stop: true } when the server
+ * will not count this tab (the owner, a video it cannot see, or the daily
+ * cap), and null when the report did not arrive.
+ */
+export async function reportView(videoId: string, body: { tab: string; watched: number; reached: number }, leaving = false): Promise<{ stop: boolean } | null> {
+  const s = getSession();
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (s) headers.authorization = `Bearer ${s.token}`;
+  try {
+    const r = await fetch(`${BASE}/api/videos/${encodeURIComponent(videoId)}/views`, { method: "POST", keepalive: leaving, headers, body: JSON.stringify(body) });
+    if (r.status === 400 || r.status === 404) return { stop: true };
+    if (!r.ok) return null;
+    const d = await r.json().catch(() => ({}));
+    return { stop: d.reason === "owner" || d.reason === "caller_limit" };
+  } catch { return null; }
+}
+export type AnalyticsRange = 7 | 28 | 90 | 365;
+export interface AnalyticsTotals { views: number; watchSeconds: number; ended: number }
+export interface AnalyticsVideo {
+  id: string; title: string; status: string; visibility: "private" | "unlisted" | "public"; createdAt: number; durationSeconds: number | null;
+  views: number; watchSeconds: number; ended: number; allTimeViews: number; signedInViewers: number; youtube: number; clips: number;
+}
+export interface AnalyticsLive {
+  id: string; title: string; status: string; startedAt: number | null; endedAt: number | null; durationSeconds: number | null;
+  peakViewers: number; chatMessages: number; captionSeconds: number; videoId: string | null;
+}
+export interface Analytics {
+  days: AnalyticsRange; from: string; to: string; videoId: string | null;
+  totals: AnalyticsTotals; previous: AnalyticsTotals;
+  daily: Array<{ day: string; views: number; watchSeconds: number }>;
+  videos: AnalyticsVideo[]; live: AnalyticsLive[];
+}
+export const getAnalytics = (days: AnalyticsRange, videoId?: string | null) =>
+  call<Analytics>(() => raw.get("/api/me/analytics", { params: { days, ...(videoId ? { video: videoId } : {}) } }));

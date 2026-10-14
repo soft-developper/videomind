@@ -69,6 +69,7 @@ export default function PrivacyPage() {
         <UL>
           <li>For each video: a transcript with times, chapters, a summary, highlights, suggested tags, captions, search passages, thumbnails, an audio copy, and any clips you make.</li>
           <li>Where you stopped watching a video, so you can continue.</li>
+          <li>For each video, how many times it was viewed, for how long, and how many views reached the end, as totals per day. These totals say nothing about who watched.</li>
           <li>A record of usage quantities, such as minutes transcribed, AI tokens and bytes stored, tied to your wallet and video. It holds amounts, not content.</li>
           <li>For videos stored on Shelby, the public record of that storage (blob name, size, payment period).</li>
         </UL>
@@ -76,7 +77,8 @@ export default function PrivacyPage() {
         <UL>
           <li>Your IP address is used for a short time, in memory only, to limit how often requests can be made. We do not store it in our database.</li>
           <li>Our hosting providers keep standard server logs (such as IP address, time, page requested and browser type) for security and operations, under their own policies.</li>
-          <li>We do not use analytics, advertising or tracking tools.</li>
+          <li>When a video plays for 5 seconds, the browser tab tells us, and then reports how long it has played, so the owner can see view counts. The tab sends a random number, kept only in that tab, so replays in it count as one view. We hold that number in memory only, never in our database, and forget it within a day. Only the daily totals are stored.</li>
+          <li>We do not use cookies for this, and we do not use outside analytics, advertising or tracking tools.</li>
         </UL>
         <H3>Information from other sources</H3>
         <UL>
@@ -89,6 +91,7 @@ export default function PrivacyPage() {
         <UL>
           <li>To provide the Services: store and play your videos, make transcripts, chapters, captions, search and answers, run live events, make clips, and publish to YouTube when you ask.</li>
           <li>To show what you choose to share: public and unlisted videos, your public profile, and live event pages.</li>
+          <li>To show owners how their videos and live events are watched, as totals (Analytics).</li>
           <li>To keep the Services safe and fair: sign in, prevent abuse, apply daily limits, and investigate problems.</li>
           <li>To understand cost and usage, and to bill for the Services in the future if we introduce paid plans (we will tell you first).</li>
           <li>To answer you when you contact us, and to tell you about important changes.</li>
@@ -131,6 +134,7 @@ export default function PrivacyPage() {
           <li>Your sign in session, so you stay signed in (for up to 7 days).</li>
           <li>Your preferences, such as whether captions are on and the defaults for new uploads.</li>
           <li>For a live event&rsquo;s chat, your chat pass and name, until you close the tab.</li>
+          <li>A random number for the tab, so plays in it are counted as one view, until you close the tab.</li>
           <li>Your wallet extension may keep which wallet you last used.</li>
         </UL>
         <P>You can clear these at any time in your browser.</P>
@@ -142,7 +146,7 @@ export default function PrivacyPage() {
 
       <Section id="keep" n={9} title="How long we keep information">
         <UL>
-          <li>Videos and everything made from them: until you delete the video. Deleting a video deletes its files, transcript, chapters, clips, search passages, notes and watch places, and its YouTube upload records.</li>
+          <li>Videos and everything made from them: until you delete the video. Deleting a video deletes its files, transcript, chapters, clips, search passages, notes and watch places, its view totals, and its YouTube upload records.</li>
           <li>Unfinished uploads: deleted after 7 days.</li>
           <li>Sessions: they expire after 7 days.</li>
           <li>Profile, live events with their captions and chat, and your wallet record: until you delete them in Settings or ask us to.</li>

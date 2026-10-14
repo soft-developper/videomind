@@ -282,6 +282,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   upNext={video.course?.next ? { title: video.course.next.title, href: `/video/${video.course.next.id}` } : null}
                   onDuration={onDuration}
                   onTimeUpdate={setT}
+                  countViewsOf={video.id}
                 />
 
                 {/* ★ THE SIGNATURE - sits directly under the frame ★ */}

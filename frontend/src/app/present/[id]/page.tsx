@@ -19,6 +19,7 @@ import { ArrowLeft, Captions, CaptionsOff, Maximize, Minimize, Pause, Play, QrCo
 import { getVideo, getCaptions, momentFromUrl, ApiError } from "@/lib/api";
 import { QrCode } from "@/components/share/QrCode";
 import { sharedLink } from "@/lib/qr";
+import { useViewCounter } from "@/lib/useViewCounter";
 
 interface Cue { start: number; end: number; text: string }
 
@@ -68,6 +69,8 @@ export default function Present({ params }: { params: { id: string } }) {
     queryFn: () => getVideo(params.id),
     retry: (count, e) => !(e instanceof ApiError && (e.status === 403 || e.status === 404)) && count < 1,
   });
+  // vm_analytics: a room watching counts as one view (the owner presenting is not counted)
+  const views = useViewCounter(video?.status === "ready" ? video.id : null);
   const hasSpeech = video?.status === "ready" && (video.ai?.transcript?.length ?? 0) > 0;
   const { data: vtt } = useQuery({
     queryKey: ["captions", params.id],
@@ -240,10 +243,10 @@ export default function Present({ params }: { params: { id: string } }) {
                 setDur(isFinite(el.duration) ? el.duration : 0);
                 if (startAt && startAt < el.duration) { el.currentTime = startAt; setT(startAt); }
               }}
-              onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}
+              onTimeUpdate={(e) => { const el = e.currentTarget; setT(el.currentTime); views.onTime(el.currentTime, el.duration, !el.paused); }}
               onPlay={() => { setPlaying(true); wake(); }}
-              onPause={() => setPlaying(false)}
-              onEnded={() => setPlaying(false)}
+              onPause={() => { setPlaying(false); views.flush(); }}
+              onEnded={(e) => { setPlaying(false); views.onTime(e.currentTarget.duration, e.currentTarget.duration, true); views.flush(); }}
               onError={() => setFailed(true)}
               className="absolute inset-0 w-full h-full object-contain bg-black"
             />

@@ -28,6 +28,8 @@ import profilesRouter from "./routes/profiles.js";
 import { youtubeRouter, youtubeVideoRouter } from "./routes/youtube.js";
 import { attachCaptions } from "./lib/livecaptions.js";
 import settingsRouter from "./routes/settings.js";
+// vm_analytics: play counts without cookies, and the owner's numbers
+import { viewsRouter, analyticsRouter } from "./routes/analytics.js";
 // vm_media: thumbnails and video facts need FFmpeg
 import { checkMediaTools, mediaHealth } from "./lib/media.js";
 
@@ -61,6 +63,8 @@ app.use("/api/live", liveRouter);           // vm_live: live events
 app.use("/api/youtube", youtubeRouter);     // vm_youtube: connect a channel
 app.use("/api/videos", youtubeVideoRouter); // vm_youtube: /api/videos/:id/youtube
 app.use("/api", settingsRouter);           // vm_settings: /api/me/settings, logout everywhere, delete my data
+app.use("/api/videos", viewsRouter);       // vm_analytics: /api/videos/:id/views
+app.use("/api", analyticsRouter);          // vm_analytics: /api/me/analytics
 app.use("/api/chat", chatRouter);
 app.use("/api/shelby", statsRouter);
 app.use("/api/learn", learnRouter);

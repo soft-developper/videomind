@@ -454,6 +454,21 @@ const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    // vm_analytics: plays of each video, as totals per day (UTC). Nothing
+    // about the viewer is stored (see src/lib/views.ts).
+    id: "018_views",
+    statements: [
+      `CREATE TABLE video_views (
+        video_id       TEXT NOT NULL,
+        day            TEXT NOT NULL,
+        views          INTEGER NOT NULL DEFAULT 0,
+        watch_seconds  REAL NOT NULL DEFAULT 0,
+        ended          INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (video_id, day)
+      )`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

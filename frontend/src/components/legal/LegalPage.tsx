@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 export const LEGAL = {
-  effective: "9 October 2026",
+  effective: "14 October 2026",
   contact: "privacy@vidzmind.xyz",
   site: "https://vidzmind.xyz",
 };

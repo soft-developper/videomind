@@ -191,6 +191,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                   upNext={video.course?.next ? { title: video.course.next.title, href: `/v/${video.course.next.id}` } : null}
                 onDuration={setDur}
                 onTimeUpdate={setT}
+                countViewsOf={video.id}
               />
               </div>
 

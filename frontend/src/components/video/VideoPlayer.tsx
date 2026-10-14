@@ -5,6 +5,7 @@ import {
 import { Play, Pause, Volume2, VolumeX, Maximize, AlertTriangle, Captions, CaptionsOff, SkipBack, SkipForward } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
+import { useViewCounter } from "@/lib/useViewCounter";
 
 export interface VideoPlayerHandle {
   seekTo: (seconds: number) => void;
@@ -37,6 +38,8 @@ interface Props {
   upNext?: { title: string; href: string } | null;
   onDuration?: (seconds: number) => void;
   onTimeUpdate?: (seconds: number) => void;
+  /** vm_analytics: count plays of this video for its owner (no cookies; the owner's own plays are not counted) */
+  countViewsOf?: string | null;
 }
 
 /** vm_captions: whether this viewer last left captions on. Kept in this browser only. */
@@ -50,8 +53,9 @@ function ccPreference(): boolean {
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
-  function VideoPlayer({ streamUrl, source, poster, format, captions, chapters, startAt, resumed, onStartOver, onProgress, upNext, onDuration, onTimeUpdate }, ref) {
+  function VideoPlayer({ streamUrl, source, poster, format, captions, chapters, startAt, resumed, onStartOver, onProgress, upNext, onDuration, onTimeUpdate, countViewsOf }, ref) {
     const v = useRef<HTMLVideoElement>(null);
+    const views = useViewCounter(countViewsOf);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [playing, setPlaying] = useState(false);
@@ -213,12 +217,12 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
             durSent.current = true;
             onDuration?.(el.duration);
           }}
-          onTimeUpdate={() => { const el = v.current; const t = el?.currentTime ?? 0; setNow(t); onTimeUpdate?.(t); if (el && !el.paused) onProgress?.(t, el.duration, "tick"); }}
+          onTimeUpdate={() => { const el = v.current; const t = el?.currentTime ?? 0; setNow(t); onTimeUpdate?.(t); if (el && !el.paused) onProgress?.(t, el.duration, "tick"); if (el) views.onTime(t, el.duration, !el.paused); }}
           onSeeked={() => { const t = v.current?.currentTime ?? 0; setNow(t); onTimeUpdate?.(t); }}
           onPlay={() => { setPlaying(true); setEnded(false); }}
-          onPause={() => { setPlaying(false); const el = v.current; if (el && !el.ended) onProgress?.(el.currentTime, el.duration, "pause"); }}
+          onPause={() => { setPlaying(false); views.flush(); const el = v.current; if (el && !el.ended) onProgress?.(el.currentTime, el.duration, "pause"); }}
           onError={() => { setError(true); setLoading(false); }}
-          onEnded={() => { setPlaying(false); setEnded(true); const el = v.current; if (el) onProgress?.(el.duration, el.duration, "end"); }}
+          onEnded={() => { setPlaying(false); setEnded(true); const el = v.current; if (el) { views.onTime(el.duration, el.duration, true); onProgress?.(el.duration, el.duration, "end"); } views.flush(); }}
         >
           {ccUrl && (
             <track
