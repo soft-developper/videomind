@@ -12,7 +12,7 @@ import { ApiError, getMe, logout, type AdminInfo } from "@/lib/api";
 
 const NAV: Array<{ label: string; href?: string; icon: LucideIcon }> = [
   { label: "Overview", href: "/", icon: LayoutDashboard },
-  { label: "Users", icon: Users },
+  { label: "Users", href: "/users", icon: Users },
   { label: "Content", icon: Film },
   { label: "Security", icon: Shield },
   { label: "Operations", icon: Wrench },
@@ -29,7 +29,7 @@ function Nav({ path, onPick }: { path: string; onPick?: () => void }) {
     <nav aria-label="Sections" className="space-y-0.5">
       {NAV.map((it) => {
         const Icon = it.icon;
-        const active = !!it.href && path === it.href;
+        const active = !!it.href && (it.href === "/" ? path === "/" : path === it.href || path.startsWith(it.href + "/"));
         const inner = (
           <>
             <Icon size={15} className={active ? "text-signal" : ""} />

@@ -8,6 +8,7 @@ import {
 } from "../lib/auth.js";
 import { limitAuth } from "../lib/guard.js";
 
+import { isSuspended, SUSPENDED_MESSAGE } from "../lib/adminUsers.js";
 const router = Router();
 
 // ── GET /api/auth/nonce ─────────────────────────────────────────────────────
@@ -54,6 +55,12 @@ router.post("/verify", limitAuth, async (req, res) => {
 
     const sig = await verifyWalletSignature({ address: wallet, publicKey, signature, fullMessage });
     if (!sig.ok) return fail(sig.reason);
+
+    // vm_admin_users: a suspended wallet cannot sign in.
+    if (await isSuspended(wallet)) {
+      console.warn(`[auth] sign in refused: ${wallet} is suspended`);
+      return res.status(403).json({ error: SUSPENDED_MESSAGE, code: "suspended" });
+    }
 
     const session = await createSession(wallet);
     return res.json({ token: session.token, expiresAt: session.expiresAt, wallet });

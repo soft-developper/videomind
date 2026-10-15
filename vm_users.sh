@@ -19,7 +19,7 @@
 #   * the Privacy Policy says a suspension record is kept
 #
 #   BACKEND    1 new file, 3 changed. Migration 020_suspensions (runs by itself)
-#   DASHBOARD  4 new files, 3 changed. No packages
+#   DASHBOARD  3 new files, 3 changed. No packages
 #   FRONTEND   1 changed
 #
 #   ./vm_users.sh            apply (needs Part 14a2 on the branch)
@@ -39,7 +39,6 @@ ADD=(
   "dashboard/src/lib/format.ts"
   "dashboard/src/app/(admin)/users/page.tsx"
   "dashboard/src/app/(admin)/users/[wallet]/page.tsx"
-  "dashboard/.env.example"
 )
 MOD=(
   "backend/src/routes/admin.ts"
@@ -73,7 +72,6 @@ NEW_ADD=(
   "aab802b2b25be86083e2dd0b52f5d84855ad00f5e204906ef1c3adebadffe348"
   "0f99035be7ed5c354d25739a29e16cadc2988b990fc4baa7731bef6f31c81330"
   "883076f2dea7afd7c2ae181d5ae6dc42b83308430bd4af1e2d72645a6b7ffdc5"
-  "336e2fc79868b792e0417f654aae64cdc08e6a033998bcae5b619b46faf98ceb"
 )
 
 say() { printf '  %s\n' "$1"; }
@@ -111,7 +109,7 @@ if [ "${1:-}" = "--revert" ]; then
   LATEST="$(ls -1d "$BAKDIR"/*/ 2>/dev/null | sort | tail -1)"
   [ -n "$LATEST" ] || die "No backups found."
   restore_from "${LATEST%/}"
-  say "Restored 7 changed files and removed 5 new files, from $LATEST"
+  say "Restored 7 changed files and removed 4 new files, from $LATEST"
   exit 0
 fi
 
@@ -129,13 +127,15 @@ grep -q '"next": "14.2.35"' frontend/package.json 2>/dev/null || die "Part 14a2 
 check_pre() {
   [ -f "$1" ] || die "$1 not found. Nothing changed."
   if [ "$(sha "$1")" != "$2" ]; then
-    if [ "$FORCE" = "1" ]; then say "WARNING: $1 differs from GitHub rebuild (5cfa6d2). Proceeding (--force)."
-    else die "$1 differs from the GitHub rebuild version this part was built on (5cfa6d2). Nothing changed. Run git pull origin rebuild, push or stash local edits, or run again with --force."; fi
+    if [ "$FORCE" = "1" ]; then say "WARNING: $1 differs from GitHub rebuild (e61fb3c). Proceeding (--force)."
+    else die "$1 differs from the GitHub rebuild version this part was built on (e61fb3c). Nothing changed. Run git pull origin rebuild, push or stash local edits, or run again with --force."; fi
   fi
 }
 i=0; for f in "${MOD[@]}"; do check_pre "$f" "${PRE_MOD[$i]}"; i=$((i+1)); done
-for f in "${ADD[@]}"; do
-  if [ -f "$f" ] && [ "$FORCE" != "1" ]; then die "$f already exists but is not this part's version. Nothing changed. Run again with --force to overwrite it."; fi
+i=0; for f in "${ADD[@]}"; do
+  # A file already there with exactly this part's content is fine.
+  if [ -f "$f" ] && [ "$FORCE" != "1" ] && [ "$(sha "$f")" != "${NEW_ADD[$i]}" ]; then die "$f already exists but is not this part's version. Nothing changed. Run again with --force to overwrite it."; fi
+  i=$((i+1))
 done
 
 # ---- decode + verify every payload BEFORE touching anything ----
@@ -1993,12 +1993,6 @@ ICAgICAgICAgICApfQogICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgIDwvUGFuZWw+CiAgICAg
 ICAgPC9kaXY+CiAgICAgICl9CiAgICA8L2Rpdj4KICApOwp9Cg==
 B64_A3
 verify "$TMPD/a3" "${NEW_ADD[3]}" "dashboard/src/app/(admin)/users/[wallet]/page.tsx"
-
-base64 -d > "$TMPD/a4" <<'B64_A4' || die "dashboard/.env.example: base64 decode failed."
-IyB2bV9hZG1pbjogdGhlIFZpZGVvTWluZCBBUEkgdGhpcyBkYXNoYm9hcmQgdGFsa3MgdG8uCk5F
-WFRfUFVCTElDX0FQSV9VUkw9aHR0cDovL2xvY2FsaG9zdDo0MDAwCg==
-B64_A4
-verify "$TMPD/a4" "${NEW_ADD[4]}" "dashboard/.env.example"
 
 grep -q "$MARKER" "$TMPD/a0"                                   || die "adminUsers.ts payload missing marker. Aborting."
 grep -q 'export async function suspendUser' "$TMPD/a0"           || die "adminUsers.ts payload is wrong. Aborting."

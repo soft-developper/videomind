@@ -521,6 +521,19 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX admin_audit_at ON admin_audit(at)`,
     ],
   },
+  {
+    // vm_admin_users: wallets an admin suspended. Kept apart from users, so a
+    // suspension survives deleting the wallet's data.
+    id: "020_suspensions",
+    statements: [
+      `CREATE TABLE wallet_suspensions (
+        wallet        TEXT PRIMARY KEY,
+        reason        TEXT NOT NULL,
+        suspended_at  INTEGER NOT NULL,
+        admin_email   TEXT
+      )`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

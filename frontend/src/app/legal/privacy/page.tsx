@@ -152,6 +152,7 @@ export default function PrivacyPage() {
           <li>Sessions: they expire after 7 days.</li>
           <li>Profile, live events with their captions and chat, and your wallet record: until you delete them in Settings or ask us to.</li>
           <li>Usage quantities: kept as business records, without content.</li>
+          <li>If we suspend a wallet for breaking our Terms, a record of the suspension (the wallet address, the date and the reason) is kept until the suspension is lifted, even if the wallet&rsquo;s other data is deleted.</li>
           <li>Copies made by providers for backups or logs are removed on their own schedules.</li>
         </UL>
       </Section>

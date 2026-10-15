@@ -23,6 +23,10 @@ import {
 } from "../lib/admin.js";
 import { overview } from "../lib/adminOverview.js";
 import { MailError } from "../lib/mail.js";
+// vm_admin_users: the Users section
+import { listUsers, getUser, suspendUser, liftSuspension, UsersError } from "../lib/adminUsers.js";
+import { revokeAllSessions, normalizeWallet } from "../lib/auth.js";
+import { deleteAccountData } from "../lib/account.js";
 
 const router = Router();
 const SESSION = "vm_admin", PENDING = "vm_admin_mfa";
@@ -65,6 +69,7 @@ const limitMail = rateLimit({
 
 function fail(res: Response, err: any, what: string) {
   if (err instanceof AdminError) return res.status(err.status).json({ error: err.message, code: err.code });
+  if (err instanceof UsersError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof MailError) return res.status(502).json({ error: "The email could not be sent. Check the Resend settings on the server and try again.", code: "mail_failed" });
   console.error(`[admin] ${what}: ${err?.message ?? err}`);
   return res.status(500).json({ error: `${what} did not work. Try again.`, code: "server_error" });
@@ -156,6 +161,55 @@ router.post("/logout", async (req, res) => {
 router.get("/overview", requireAdmin, async (_req, res) => {
   try { return res.json(await overview()); }
   catch (err) { fail(res, err, "Loading the overview"); }
+});
+
+// ── vm_admin_users: Users ───────────────────────────────────────────────────
+//   GET  /users?q=&filter=all|suspended&sort=joined|active|videos|storage&limit=&offset=
+//   GET  /users/:wallet
+//   POST /users/:wallet/sign-out              end every session of the wallet
+//   POST /users/:wallet/suspend   { reason }  it cannot sign in; its sessions end
+//   POST /users/:wallet/unsuspend
+//   POST /users/:wallet/delete    { confirm: <the wallet address> }   Delete my data, done by an admin
+const target = (req: Request) => normalizeWallet(req.params.wallet);
+
+router.get("/users", requireAdmin, async (req, res) => {
+  try { return res.json(await listUsers(req.query)); }
+  catch (err) { fail(res, err, "Loading the users"); }
+});
+router.get("/users/:wallet", requireAdmin, async (req, res) => {
+  try { return res.json(await getUser(req.params.wallet)); }
+  catch (err) { fail(res, err, "Loading the user"); }
+});
+router.post("/users/:wallet/sign-out", requireAdmin, async (req, res) => {
+  try {
+    const w = target(req); if (!w) throw new UsersError(400, "bad_wallet", "That is not a wallet address.");
+    const ended = await revokeAllSessions(w);
+    await audit(me(res), "user_signed_out", w, { sessions: ended });
+    return res.json({ ended });
+  } catch (err) { fail(res, err, "Signing the wallet out"); }
+});
+router.post("/users/:wallet/suspend", requireAdmin, async (req, res) => {
+  try {
+    const r = await suspendUser(req.params.wallet, req.body?.reason, me(res).email);
+    await audit(me(res), "user_suspended", r.wallet, { reason: String(req.body?.reason ?? "").slice(0, 500), sessions: r.ended });
+    return res.json(r);
+  } catch (err) { fail(res, err, "Suspending the wallet"); }
+});
+router.post("/users/:wallet/unsuspend", requireAdmin, async (req, res) => {
+  try {
+    const r = await liftSuspension(req.params.wallet);
+    await audit(me(res), "user_unsuspended", r.wallet);
+    return res.json(r);
+  } catch (err) { fail(res, err, "Lifting the suspension"); }
+});
+router.post("/users/:wallet/delete", requireAdmin, async (req, res) => {
+  try {
+    const w = target(req); if (!w) throw new UsersError(400, "bad_wallet", "That is not a wallet address.");
+    if (normalizeWallet(req.body?.confirm) !== w) throw new UsersError(400, "confirm_needed", "Type the wallet address to confirm.");
+    const deleted = await deleteAccountData(w);
+    await audit(me(res), "user_data_deleted", w, deleted);
+    return res.json({ deleted });
+  } catch (err) { fail(res, err, "Deleting the data"); }
 });
 
 export default router;

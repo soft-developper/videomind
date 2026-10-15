@@ -7,30 +7,13 @@ import { RefreshCw } from "lucide-react";
 import { useAdmin } from "@/components/Shell";
 import { Note } from "@/components/AuthCard";
 import { ApiError, getOverview, type Overview } from "@/lib/api";
+import { num, bytes, duration, tokens, when } from "@/lib/format";
 
-const num = (x: number) => Math.round(x).toLocaleString();
-function bytes(b: number): string {
-  if (b < 1024) return `${b} B`;
-  const u = ["KB", "MB", "GB", "TB"]; let v = b / 1024, i = 0;
-  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
-  return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${u[i]}`;
-}
-function duration(sec: number): string {
-  const s = Math.round(sec);
-  if (s < 60) return `${s} s`;
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
-  return h ? `${num(h)} h ${m} min` : `${m} min`;
-}
-function tokens(t: number): string {
-  if (t < 10_000) return num(t);
-  if (t < 1_000_000) return `${Math.round(t / 1000)} K`;
-  return `${(t / 1_000_000).toFixed(1)} M`;
-}
-const when = (ms: number) => new Date(ms).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 const ACTIONS: Record<string, string> = {
   setup_link_sent: "Setup link sent", set_up: "Dashboard set up", sign_in: "Signed in", sign_out: "Signed out",
   sign_in_failed: "Failed sign in", sign_in_while_locked: "Sign in while locked", locked: "Account locked",
   reset_link_sent: "Password reset link sent", reset_link_unknown_email: "Reset asked for an unknown email", password_reset: "Password changed",
+  user_signed_out: "Signed a wallet out", user_suspended: "Suspended a wallet", user_unsuspended: "Lifted a suspension", user_data_deleted: "Deleted a wallet's data",
 };
 
 function Tile({ label, value, sub, test }: { label: string; value: string; sub?: string; test: string }) {
@@ -134,6 +117,7 @@ export default function OverviewPage() {
                       <li key={a.id} className="py-2 text-[13.5px] flex flex-col sm:flex-row sm:items-baseline gap-x-3 gap-y-0.5 min-w-0">
                         <span className={clsx("shrink-0", /fail|lock/.test(a.action) ? "text-error" : "text-paper-2")}>{ACTIONS[a.action] ?? a.action}</span>
                         {a.email && <span className="text-dim truncate min-w-0">{a.email}</span>}
+                        {a.target && a.action.startsWith("user_") && <a href={`/users/${a.target}`} className="text-dim underline hover:text-paper tc truncate min-w-0">{a.target.slice(0, 8)}...{a.target.slice(-6)}</a>}
                         <span className="sm:ml-auto text-dim tabular-nums text-[12.5px] sm:text-[13.5px] shrink-0">{when(a.at)}</span>
                       </li>
                     ))}
