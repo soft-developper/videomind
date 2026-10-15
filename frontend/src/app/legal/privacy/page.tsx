@@ -107,6 +107,7 @@ export default function PrivacyPage() {
           <li><B>Anthropic</B> receives transcripts, and the questions you ask, to make chapters, summaries and answers.</li>
           <li><B>LiveKit</B> carries live video, sound, captions and chat between the host and viewers.</li>
           <li><B>Google</B> receives the videos you choose to publish to YouTube, with the details you set.</li>
+          <li><B>Resend</B> sends VideoMind&rsquo;s emails. Today these go only to the people who run VideoMind&rsquo;s admin dashboard (sign in links and security notices), not to users. Open and click tracking is off.</li>
         </UL>
         <P>Other people see what you make public or share: videos you set as public or unlisted (and their transcripts and answers to questions about them), your public profile, live events, and your chat messages in them. A private video is shown only to you.</P>
         <P>We may also disclose information if the law requires it, to protect people&rsquo;s safety or our rights, or as part of a transfer of the Services to a new operator, who would be bound by this policy.</P>

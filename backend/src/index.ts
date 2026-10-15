@@ -30,6 +30,8 @@ import { attachCaptions } from "./lib/livecaptions.js";
 import settingsRouter from "./routes/settings.js";
 // vm_analytics: play counts without cookies, and the owner's numbers
 import { viewsRouter, analyticsRouter } from "./routes/analytics.js";
+// vm_admin: the admin dashboard (dashboard.vidzmind.xyz)
+import adminRouter from "./routes/admin.js";
 // vm_media: thumbnails and video facts need FFmpeg
 import { checkMediaTools, mediaHealth } from "./lib/media.js";
 
@@ -38,6 +40,10 @@ const PORT = process.env.PORT ?? 4000;
 
 const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:3000")
   .split(",").map((s) => s.trim()).filter(Boolean);
+// vm_admin: the admin dashboard has its own address (default https://dashboard.vidzmind.xyz).
+// Added after FRONTEND_URL, so the first FRONTEND_URL entry stays the main site.
+const dashboardOrigin = (process.env.DASHBOARD_URL ?? "https://dashboard.vidzmind.xyz").trim().replace(/\/+$/, "");
+if (dashboardOrigin && !allowedOrigins.includes(dashboardOrigin)) allowedOrigins.push(dashboardOrigin);
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -65,6 +71,7 @@ app.use("/api/videos", youtubeVideoRouter); // vm_youtube: /api/videos/:id/youtu
 app.use("/api", settingsRouter);           // vm_settings: /api/me/settings, logout everywhere, delete my data
 app.use("/api/videos", viewsRouter);       // vm_analytics: /api/videos/:id/views
 app.use("/api", analyticsRouter);          // vm_analytics: /api/me/analytics
+app.use("/api/admin", adminRouter);        // vm_admin: the admin dashboard
 app.use("/api/chat", chatRouter);
 app.use("/api/shelby", statsRouter);
 app.use("/api/learn", learnRouter);
