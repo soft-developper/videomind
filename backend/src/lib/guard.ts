@@ -15,6 +15,8 @@
 // No new dependency. Counters live in memory, which is correct for a
 // single backend instance. They reset when the service restarts.
 import type { Request, Response, NextFunction, RequestHandler } from "express";
+// vm_ops: limit hits are shown in the admin dashboard (memory only, callers as codes)
+import { recordLimitHit } from "./securityLog.js";
 
 const WALLET_RE = /^0x[0-9a-fA-F]{1,64}$/;
 
@@ -90,6 +92,7 @@ export function takeBudget(opts: LimitOptions, req: Request, res: Response): boo
     const mins = Math.max(1, Math.ceil(wait / 60));
     // Visible in the Render logs, so a limit that fires too early can be diagnosed.
     console.warn(`[guard] 429 family=${opts.name} caller=${clientKey(req)} wait=${wait}s`);
+    recordLimitHit(opts.name, clientKey(req));
     res.setHeader("Retry-After", String(wait));
     res.status(429).json({
       error: `Too many ${opts.label}. Please try again in about ${mins} minute${mins === 1 ? "" : "s"}.`,

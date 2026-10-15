@@ -9,6 +9,7 @@ import {
 import { limitAuth } from "../lib/guard.js";
 
 import { isSuspended, SUSPENDED_MESSAGE } from "../lib/adminUsers.js";
+import { recordRefusedSignIn } from "../lib/securityLog.js";
 const router = Router();
 
 // ── GET /api/auth/nonce ─────────────────────────────────────────────────────
@@ -39,6 +40,7 @@ router.post("/verify", limitAuth, async (req, res) => {
       // Shape only, never the signature. Lets a wallet that formats its
       // message differently be diagnosed from the logs.
       console.warn(`[auth] sign in refused: ${reason}; lines=${JSON.stringify(fullMessage.split("\n").map((l) => l.split(": ")[0]))}`);
+      recordRefusedSignIn(wallet, reason);   // vm_ops
       return res.status(status).json({ error: `Sign in failed: ${reason}.`, code: "sign_in_failed" });
     };
 
@@ -59,6 +61,7 @@ router.post("/verify", limitAuth, async (req, res) => {
     // vm_admin_users: a suspended wallet cannot sign in.
     if (await isSuspended(wallet)) {
       console.warn(`[auth] sign in refused: ${wallet} is suspended`);
+      recordRefusedSignIn(wallet, "the wallet is suspended");   // vm_ops
       return res.status(403).json({ error: SUSPENDED_MESSAGE, code: "suspended" });
     }
 

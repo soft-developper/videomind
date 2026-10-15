@@ -126,3 +126,27 @@ export const restoreVideo = (id: string) => call<{ id: string }>("POST", `/conte
 export const getContentLive = (filter: "live" | "all") => call<{ events: AdminLive[] }>("GET", `/content/live?filter=${filter}`);
 export const endLive = (id: string) => call<{ id: string }>("POST", `/content/live/${encodeURIComponent(id)}/end`, {});
 export const getContentYouTube = () => call<{ publications: AdminPublication[] }>("GET", "/content/youtube");
+
+// ── vm_ops ───────────────────────────────────────────────────────────────────
+export type JobFilter = "failed" | "queued" | "running" | "all";
+export interface AdminJob { id: string; videoId: string; title: string | null; owner: string | null; ownerName: string | null; kind: string; label: string; status: string; attempts: number; maxAttempts: number; error: string | null; errorCode: string | null; retryable: boolean; createdAt: number; updatedAt: number }
+export interface AdminUpload { videoId: string; title: string | null; filename: string | null; sizeBytes: number; owner: string | null; ownerName: string | null; createdAt: number; updatedAt: number }
+export interface AdminAnchor { id: string; videoId: string; title: string | null; owner: string | null; ownerName: string | null; network: string; objectName: string; state: string; sizeBytes: number | null; paidUntil: number | null; checkedAt: number | null; error: string | null; updatedAt: number }
+export interface SecurityInfo {
+  suspended: Array<{ wallet: string; reason: string; at: number; by: string | null }>;
+  walletSessions: { open: number; wallets: number };
+  adminSessions: Array<{ id: string; email: string; createdAt: number; lastSeenAt: number; endsAt: number; current: boolean }>;
+  adminSignIns: Array<{ at: number; email: string | null; action: string; detail: Record<string, unknown> | null }>;
+  memory: { limitHits: number; refusedCount: number; since: number;
+    limits: Array<{ family: string; caller: string; count: number; first: number; last: number }>;
+    refusedSignIns: Array<{ at: number; wallet: string | null; reason: string }> };
+}
+export const getJobs = (filter: JobFilter) => call<{ counts: Record<string, number>; jobs: AdminJob[] }>("GET", `/ops/jobs?filter=${filter}`);
+export const retryJob = (id: string) => call<{ id: string }>("POST", `/ops/jobs/${encodeURIComponent(id)}/retry`, {});
+export const getUploads = () => call<{ uploads: AdminUpload[] }>("GET", "/ops/uploads");
+export const discardUpload = (videoId: string) => call<{ videoId: string }>("POST", `/ops/uploads/${encodeURIComponent(videoId)}/discard`, {});
+export const getAnchors = (state: string) => call<{ counts: Record<string, number>; anchors: AdminAnchor[] }>("GET", `/ops/anchors?state=${state}`);
+export const checkAnchor = (id: string) => call<{ id: string; state: string }>("POST", `/ops/anchors/${encodeURIComponent(id)}/check`, {});
+export const runHousekeeping = () => call<{ videosCleaned: number; uploadsDiscarded: number }>("POST", "/ops/housekeeping", {});
+export const getSecurity = () => call<SecurityInfo>("GET", "/security");
+export const endOtherSessions = () => call<{ ended: number }>("POST", "/security/end-other-sessions", {});

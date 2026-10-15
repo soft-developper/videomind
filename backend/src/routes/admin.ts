@@ -27,6 +27,9 @@ import { MailError } from "../lib/mail.js";
 import { listUsers, getUser, suspendUser, liftSuspension, UsersError } from "../lib/adminUsers.js";
 import { revokeAllSessions, normalizeWallet } from "../lib/auth.js";
 import { deleteAccountData } from "../lib/account.js";
+// vm_ops: the Operations and Security sections
+import crypto from "crypto";
+import { listJobsForAdmin, retryJobById, listOpenUploadsForAdmin, discardUpload, listAnchorsForAdmin, checkAnchorNow, runHousekeeping, securityOverview, endOtherAdminSessions, OpsError } from "../lib/adminOps.js";
 // vm_content: the Content section
 import { listVideos, getVideoForAdmin, removeVideo, restoreVideo, listLive, endLiveEvent, listPublications, ContentError } from "../lib/adminContent.js";
 
@@ -71,6 +74,7 @@ const limitMail = rateLimit({
 
 function fail(res: Response, err: any, what: string) {
   if (err instanceof AdminError) return res.status(err.status).json({ error: err.message, code: err.code });
+  if (err instanceof OpsError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof ContentError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof UsersError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof MailError) return res.status(502).json({ error: "The email could not be sent. Check the Resend settings on the server and try again.", code: "mail_failed" });
@@ -259,6 +263,51 @@ router.post("/content/live/:id/end", requireAdmin, async (req, res) => {
 router.get("/content/youtube", requireAdmin, async (req, res) => {
   try { return res.json(await listPublications(req.query)); }
   catch (err) { fail(res, err, "Loading the YouTube uploads"); }
+});
+
+// ── vm_ops: Operations ──────────────────────────────────────────────────────
+//   GET  /ops/jobs?filter=failed|queued|running|all     POST /ops/jobs/:id/retry
+//   GET  /ops/uploads                                   POST /ops/uploads/:videoId/discard
+//   GET  /ops/anchors?state=problems|checking|...       POST /ops/anchors/:id/check
+//   POST /ops/housekeeping                              run the hourly sweep now
+router.get("/ops/jobs", requireAdmin, async (req, res) => {
+  try { return res.json(await listJobsForAdmin(req.query)); } catch (err) { fail(res, err, "Loading the jobs"); }
+});
+router.post("/ops/jobs/:id/retry", requireAdmin, async (req, res) => {
+  try { const r = await retryJobById(req.params.id); await audit(me(res), "job_retried", r.videoId, { kind: r.kind }); return res.status(202).json(r); }
+  catch (err) { fail(res, err, "Running the job again"); }
+});
+router.get("/ops/uploads", requireAdmin, async (_req, res) => {
+  try { return res.json(await listOpenUploadsForAdmin()); } catch (err) { fail(res, err, "Loading the uploads"); }
+});
+router.post("/ops/uploads/:videoId/discard", requireAdmin, async (req, res) => {
+  try { const r = await discardUpload(req.params.videoId); await audit(me(res), "upload_discarded", r.videoId); return res.json(r); }
+  catch (err) { fail(res, err, "Discarding the upload"); }
+});
+router.get("/ops/anchors", requireAdmin, async (req, res) => {
+  try { return res.json(await listAnchorsForAdmin(req.query)); } catch (err) { fail(res, err, "Loading the Shelby stores"); }
+});
+router.post("/ops/anchors/:id/check", requireAdmin, async (req, res) => {
+  try { return res.json(await checkAnchorNow(req.params.id)); } catch (err) { fail(res, err, "Checking the store"); }
+});
+router.post("/ops/housekeeping", requireAdmin, async (_req, res) => {
+  try { const r = await runHousekeeping(); await audit(me(res), "housekeeping_run", null, r); return res.json(r); }
+  catch (err) { fail(res, err, "Running the housekeeping"); }
+});
+
+// ── vm_ops: Security ────────────────────────────────────────────────────────
+//   GET  /security                     suspended wallets, sessions, admin sign ins, recent events (memory)
+//   POST /security/end-other-sessions  sign every other admin session out
+const currentHash = (req: Request) => { const t = cookies(req)[SESSION]; return t ? crypto.createHash("sha256").update(t).digest("hex") : null; };
+router.get("/security", requireAdmin, async (req, res) => {
+  try { return res.json(await securityOverview(currentHash(req))); } catch (err) { fail(res, err, "Loading security"); }
+});
+router.post("/security/end-other-sessions", requireAdmin, async (req, res) => {
+  try {
+    const r = await endOtherAdminSessions(currentHash(req)!);
+    await audit(me(res), "admin_sessions_ended", null, r);
+    return res.json(r);
+  } catch (err) { fail(res, err, "Signing the other sessions out"); }
 });
 
 export default router;
