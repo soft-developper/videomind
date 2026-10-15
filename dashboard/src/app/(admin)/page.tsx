@@ -7,16 +7,9 @@ import { RefreshCw } from "lucide-react";
 import { useAdmin } from "@/components/Shell";
 import { Note } from "@/components/AuthCard";
 import { ApiError, getOverview, type Overview } from "@/lib/api";
+import { ACTIONS } from "@/lib/actions";
 import { num, bytes, duration, tokens, when } from "@/lib/format";
 
-const ACTIONS: Record<string, string> = {
-  setup_link_sent: "Setup link sent", set_up: "Dashboard set up", sign_in: "Signed in", sign_out: "Signed out",
-  sign_in_failed: "Failed sign in", sign_in_while_locked: "Sign in while locked", locked: "Account locked",
-  reset_link_sent: "Password reset link sent", reset_link_unknown_email: "Reset asked for an unknown email", password_reset: "Password changed",
-  job_retried: "Ran a job again", upload_discarded: "Discarded an upload", housekeeping_run: "Ran the housekeeping", admin_sessions_ended: "Signed other admin sessions out",
-  video_removed: "Took a video down", video_restored: "Restored a video", live_ended: "Ended a live event",
-  user_signed_out: "Signed a wallet out", user_suspended: "Suspended a wallet", user_unsuspended: "Lifted a suspension", user_data_deleted: "Deleted a wallet's data",
-};
 
 function Tile({ label, value, sub, test }: { label: string; value: string; sub?: string; test: string }) {
   return (

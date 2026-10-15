@@ -544,6 +544,49 @@ const MIGRATIONS: Migration[] = [
       `ALTER TABLE videos ADD COLUMN removed_by TEXT`,
     ],
   },
+  {
+    // vm_insights: prices for the estimated costs in the dashboard, from
+    // each provider's official pricing page on 15 Oct 2026 (editable there),
+    // and fixed monthly costs an admin adds (hosting and the like).
+    id: "022_costs",
+    statements: [
+      `CREATE TABLE model_prices (
+        id                  TEXT PRIMARY KEY,
+        provider            TEXT NOT NULL,
+        model               TEXT NOT NULL,
+        metric              TEXT NOT NULL,
+        unit                TEXT NOT NULL,
+        usd_per_unit        REAL NOT NULL,
+        long_prompt_tokens  INTEGER,
+        long_usd_per_unit   REAL,
+        free_per_month      REAL NOT NULL DEFAULT 0,
+        source_url          TEXT,
+        checked_on          TEXT,
+        updated_at          INTEGER NOT NULL,
+        updated_by          TEXT
+      )`,
+      `CREATE TABLE fixed_costs (
+        id             TEXT PRIMARY KEY,
+        name           TEXT NOT NULL,
+        usd_per_month  REAL NOT NULL,
+        note           TEXT,
+        created_at     INTEGER NOT NULL
+      )`,
+      `CREATE INDEX usage_created_idx ON usage_ledger(created_at)`,
+      `INSERT INTO model_prices (id, provider, model, metric, unit, usd_per_unit, long_prompt_tokens, long_usd_per_unit, free_per_month, source_url, checked_on, updated_at, updated_by) VALUES ('anthropic-sonnet-input', 'anthropic', 'claude-sonnet-5-5', 'input_tokens', 'million_tokens', 2, NULL, NULL, 0, 'https://platform.claude.com/docs/en/about-claude/pricing', '2026-10-15', 0, NULL)`,
+      `INSERT INTO model_prices (id, provider, model, metric, unit, usd_per_unit, long_prompt_tokens, long_usd_per_unit, free_per_month, source_url, checked_on, updated_at, updated_by) VALUES ('anthropic-sonnet-output', 'anthropic', 'claude-sonnet-5-5', 'output_tokens', 'million_tokens', 10, NULL, NULL, 0, 'https://platform.claude.com/docs/en/about-claude/pricing', '2026-10-15', 0, NULL)`,
+      `INSERT INTO model_prices (id, provider, model, metric, unit, usd_per_unit, long_prompt_tokens, long_usd_per_unit, free_per_month, source_url, checked_on, updated_at, updated_by) VALUES ('anthropic-sonnet-cache-write', 'anthropic', 'claude-sonnet-5-5', 'cache_write_tokens', 'million_tokens', 2.5, NULL, NULL, 0, 'https://platform.claude.com/docs/en/about-claude/pricing', '2026-10-15', 0, NULL)`,
+      `INSERT INTO model_prices (id, provider, model, metric, unit, usd_per_unit, long_prompt_tokens, long_usd_per_unit, free_per_month, source_url, checked_on, updated_at, updated_by) VALUES ('anthropic-sonnet-cache-read', 'anthropic', 'claude-sonnet-5-5', 'cache_read_tokens', 'million_tokens', 0.1, NULL, NULL, 0, 'https://platform.claude.com/docs/en/about-claude/pricing', '2026-10-15', 0, NULL)`,
+      `INSERT INTO model_prices (id, provider, model, metric, unit, usd_per_unit, long_prompt_tokens, long_usd_per_unit, free_per_month, source_url, checked_on, updated_at, updated_by) VALUES ('anthropic-haiku-input', 'anthropic', 'claude-haiku-5-5', 'input_tokens', 'million_tokens', 0.1, 100000, 0.5, 0, 'https://platform.claude.com/docs/en/about-claude/pricing', '2026-10-15', 0, NULL)`,
+      `INSERT INTO model_prices (id, provider, model, metric, unit, usd_per_unit, long_prompt_tokens, long_usd_per_unit, free_per_month, source_url, checked_on, updated_at, updated_by) VALUES ('anthropic-haiku-output', 'anthropic', 'claude-haiku-5-5', 'output_tokens', 'million_tokens', 0.5, 100000, 2.5, 0, 'https://platform.claude.com/docs/en/about-claude/pricing', '2026-10-15', 0, NULL)`,
+      `INSERT INTO model_prices (id, provider, model, metric, unit, usd_per_unit, long_prompt_tokens, long_usd_per_unit, free_per_month, source_url, checked_on, updated_at, updated_by) VALUES ('anthropic-haiku-cache-write', 'anthropic', 'claude-haiku-5-5', 'cache_write_tokens', 'million_tokens', 0.125, 100000, 0.625, 0, 'https://platform.claude.com/docs/en/about-claude/pricing', '2026-10-15', 0, NULL)`,
+      `INSERT INTO model_prices (id, provider, model, metric, unit, usd_per_unit, long_prompt_tokens, long_usd_per_unit, free_per_month, source_url, checked_on, updated_at, updated_by) VALUES ('anthropic-haiku-cache-read', 'anthropic', 'claude-haiku-5-5', 'cache_read_tokens', 'million_tokens', 0.01, 100000, 0.05, 0, 'https://platform.claude.com/docs/en/about-claude/pricing', '2026-10-15', 0, NULL)`,
+      `INSERT INTO model_prices (id, provider, model, metric, unit, usd_per_unit, long_prompt_tokens, long_usd_per_unit, free_per_month, source_url, checked_on, updated_at, updated_by) VALUES ('openai-whisper', 'openai', 'whisper-1', 'audio_seconds', 'minute', 0.006, NULL, NULL, 0, 'https://developers.openai.com/api/docs/models/whisper-1', '2026-10-15', 0, NULL)`,
+      `INSERT INTO model_prices (id, provider, model, metric, unit, usd_per_unit, long_prompt_tokens, long_usd_per_unit, free_per_month, source_url, checked_on, updated_at, updated_by) VALUES ('openai-live-transcribe', 'openai', 'gpt-live-transcribe', 'audio_seconds', 'minute', 0.017, NULL, NULL, 0, 'https://developers.openai.com/api/docs/models/gpt-live-transcribe', '2026-10-15', 0, NULL)`,
+      `INSERT INTO model_prices (id, provider, model, metric, unit, usd_per_unit, long_prompt_tokens, long_usd_per_unit, free_per_month, source_url, checked_on, updated_at, updated_by) VALUES ('openai-embedding-small', 'openai', 'text-embedding-3-small', 'input_tokens', 'million_tokens', 0.02, NULL, NULL, 0, 'https://developers.openai.com/api/docs/models/text-embedding-3-small', '2026-10-15', 0, NULL)`,
+      `INSERT INTO model_prices (id, provider, model, metric, unit, usd_per_unit, long_prompt_tokens, long_usd_per_unit, free_per_month, source_url, checked_on, updated_at, updated_by) VALUES ('cloudflare-r2-storage', 'cloudflare', 'r2', 'gb_month', 'gb_month', 0.015, NULL, NULL, 10, 'https://developers.cloudflare.com/r2/pricing/', '2026-10-15', 0, NULL)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

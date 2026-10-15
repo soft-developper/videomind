@@ -31,6 +31,8 @@ import { deleteAccountData } from "../lib/account.js";
 import crypto from "crypto";
 import { listJobsForAdmin, retryJobById, listOpenUploadsForAdmin, discardUpload, listAnchorsForAdmin, checkAnchorNow, runHousekeeping, securityOverview, endOtherAdminSessions, OpsError } from "../lib/adminOps.js";
 // vm_content: the Content section
+import { series, usageByFeature, topVideos, auditLog } from "../lib/adminInsights.js";
+import { monthReport, monthsWithUsage, listPrices, updatePrice, addFixed, removeFixed, CostsError } from "../lib/costs.js";
 import { listVideos, getVideoForAdmin, removeVideo, restoreVideo, listLive, endLiveEvent, listPublications, ContentError } from "../lib/adminContent.js";
 
 const router = Router();
@@ -76,6 +78,7 @@ function fail(res: Response, err: any, what: string) {
   if (err instanceof AdminError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof OpsError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof ContentError) return res.status(err.status).json({ error: err.message, code: err.code });
+  if (err instanceof CostsError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof UsersError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof MailError) return res.status(502).json({ error: "The email could not be sent. Check the Resend settings on the server and try again.", code: "mail_failed" });
   console.error(`[admin] ${what}: ${err?.message ?? err}`);
@@ -308,6 +311,50 @@ router.post("/security/end-other-sessions", requireAdmin, async (req, res) => {
     await audit(me(res), "admin_sessions_ended", null, r);
     return res.json(r);
   } catch (err) { fail(res, err, "Signing the other sessions out"); }
+});
+
+// ── vm_insights: Insights ───────────────────────────────────────────────────
+//   GET  /insights?metric=views&days=28     one daily series, with the previous period's total
+//   GET  /insights/top-videos?days=28       the most watched videos
+//   GET  /audit?action=&email=&q=&before=   the audit log, newest first
+router.get("/insights", requireAdmin, async (req, res) => {
+  try {
+    const [s, features] = await Promise.all([series(req.query.metric, req.query.days), usageByFeature(req.query.days)]);
+    return res.json({ ...s, features });
+  } catch (err) { fail(res, err, "Loading the insights"); }
+});
+router.get("/insights/top-videos", requireAdmin, async (req, res) => {
+  try { return res.json(await topVideos(req.query.days)); } catch (err) { fail(res, err, "Loading the top videos"); }
+});
+router.get("/audit", requireAdmin, async (req, res) => {
+  try { return res.json(await auditLog(req.query)); } catch (err) { fail(res, err, "Loading the audit log"); }
+});
+
+// ── vm_insights: Costs ──────────────────────────────────────────────────────
+//   GET  /costs?month=YYYY-MM          the month's estimate, prices and fixed costs
+//   POST /costs/prices/:id             change a price { usd, longUsd, freePerMonth }
+//   POST /costs/fixed                  add a fixed monthly cost { name, usdPerMonth, note }
+//   POST /costs/fixed/:id/delete       remove one
+router.get("/costs", requireAdmin, async (req, res) => {
+  try {
+    const [report, months, prices] = await Promise.all([monthReport(req.query.month), monthsWithUsage(), listPrices()]);
+    return res.json({ ...report, months, prices });
+  } catch (err) { fail(res, err, "Loading the costs"); }
+});
+router.post("/costs/prices/:id", requireAdmin, async (req, res) => {
+  try {
+    const p = await updatePrice(req.params.id, req.body, me(res)!.email);
+    await audit(me(res), "price_changed", p.id, { model: p.model, metric: p.metric, usd: p.usd, longUsd: p.longUsd, freePerMonth: p.freePerMonth });
+    return res.json(p);
+  } catch (err) { fail(res, err, "Changing the price"); }
+});
+router.post("/costs/fixed", requireAdmin, async (req, res) => {
+  try { const f = await addFixed(req.body); await audit(me(res), "fixed_cost_added", f.id, { name: f.name, usdPerMonth: f.usdPerMonth }); return res.status(201).json(f); }
+  catch (err) { fail(res, err, "Adding the cost"); }
+});
+router.post("/costs/fixed/:id/delete", requireAdmin, async (req, res) => {
+  try { await removeFixed(req.params.id); await audit(me(res), "fixed_cost_removed", req.params.id); return res.json({ ok: true }); }
+  catch (err) { fail(res, err, "Removing the cost"); }
 });
 
 export default router;

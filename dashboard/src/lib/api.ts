@@ -150,3 +150,44 @@ export const checkAnchor = (id: string) => call<{ id: string; state: string }>("
 export const runHousekeeping = () => call<{ videosCleaned: number; uploadsDiscarded: number }>("POST", "/ops/housekeeping", {});
 export const getSecurity = () => call<SecurityInfo>("GET", "/security");
 export const endOtherSessions = () => call<{ ended: number }>("POST", "/security/end-other-sessions", {});
+
+// ── vm_insights ──────────────────────────────────────────────────────────────
+export type InsightMetric = "views" | "watch_minutes" | "new_wallets" | "uploads" | "transcribed_minutes" | "ai_tokens" | "live_events";
+export type InsightRange = 7 | 28 | 90 | 365;
+export interface InsightSeries {
+  metric: InsightMetric; days: InsightRange; points: Array<{ day: string; value: number }>; total: number; previous: number;
+  features: Array<{ feature: string; audioMinutes: number; tokens: number }>;
+}
+export interface TopVideo { id: string; title: string; views: number; watchMinutes: number; owner: string | null; ownerName: string | null; visibility: string; removed: boolean; thumbUrl: string | null }
+export interface AuditEntry { id: number; at: number; email: string | null; action: string; target: string | null; detail: unknown }
+export interface AuditPage { entries: AuditEntry[]; next: number | null; actions: Array<{ action: string; count: number }>; admins: string[] }
+export const getInsights = (metric: InsightMetric, days: InsightRange) => call<InsightSeries>("GET", `/insights?metric=${metric}&days=${days}`);
+export const getTopVideos = (days: InsightRange) => call<{ days: number; videos: TopVideo[] }>("GET", `/insights/top-videos?days=${days}`);
+export function getAudit(o: { action?: string; email?: string; q?: string; before?: number | null }) {
+  const p = new URLSearchParams();
+  if (o.action) p.set("action", o.action); if (o.email) p.set("email", o.email); if (o.q) p.set("q", o.q); if (o.before) p.set("before", String(o.before));
+  p.set("limit", "50");
+  return call<AuditPage>("GET", `/audit?${p.toString()}`);
+}
+
+// ── vm_costs ─────────────────────────────────────────────────────────────────
+export interface Price {
+  id: string; provider: string; model: string; metric: string; unit: "minute" | "million_tokens" | "gb_month";
+  usd: number; longPromptTokens: number | null; longUsd: number | null; freePerMonth: number;
+  source: string | null; checkedOn: string | null; updatedAt: number; updatedBy: string | null;
+}
+export interface FixedCost { id: string; name: string; usdPerMonth: number; note: string | null; createdAt: number }
+export interface CostLine { provider: string; model: string; metric: string; unit: string; quantity: number; usd: number; priced: boolean; priceId: string | null }
+export interface CostReport {
+  month: string; start: number; end: number; days: number; elapsedShare: number;
+  totals: { usageUsd: number; fixedUsd: number; totalUsd: number };
+  lines: CostLine[]; byFeature: Array<{ feature: string; usd: number }>;
+  topWallets: Array<{ wallet: string; name: string | null; usd: number }>;
+  storage: { gbMonths: number; freeGbMonths: number };
+  unpriced: Array<{ provider: string; model: string; metric: string; quantity: number }>;
+  fixed: FixedCost[]; months: string[]; prices: Price[];
+}
+export const getCosts = (month?: string) => call<CostReport>("GET", `/costs${month ? `?month=${encodeURIComponent(month)}` : ""}`);
+export const updatePrice = (id: string, change: { usd?: number; longUsd?: number | null; freePerMonth?: number }) => call<Price>("POST", `/costs/prices/${encodeURIComponent(id)}`, change);
+export const addFixedCost = (name: string, usdPerMonth: number, note: string) => call<FixedCost>("POST", "/costs/fixed", { name, usdPerMonth, note });
+export const removeFixedCost = (id: string) => call<{ ok: boolean }>("POST", `/costs/fixed/${encodeURIComponent(id)}/delete`, {});

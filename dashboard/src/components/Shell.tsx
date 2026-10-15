@@ -16,8 +16,8 @@ const NAV: Array<{ label: string; href?: string; icon: LucideIcon }> = [
   { label: "Content", href: "/content", icon: Film },
   { label: "Security", href: "/security", icon: Shield },
   { label: "Operations", href: "/operations", icon: Wrench },
-  { label: "Insights", icon: BarChart3 },
-  { label: "Costs", icon: Receipt },
+  { label: "Insights", href: "/insights", icon: BarChart3 },
+  { label: "Costs", href: "/costs", icon: Receipt },
   { label: "Settings", icon: Settings },
 ];
 
