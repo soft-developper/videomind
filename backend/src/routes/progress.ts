@@ -10,7 +10,7 @@ import { store } from "../lib/store.js";
 import { getDb } from "../lib/db.js";
 import { requireAuth, authOf } from "../lib/auth.js";
 import { rateLimit } from "../lib/guard.js";
-import { canView, PRIVATE_VIDEO } from "../lib/videoInfo.js";
+import { canView, PRIVATE_VIDEO, blockedFor } from "../lib/videoInfo.js";
 import { saveProgress, getProgress, listProgress, clearProgress, finished, ProgressError, RESUME_AFTER } from "../lib/progress.js";
 import { thumbUrls } from "./videos.js";
 import type { VideoRecord } from "../types/video.js";
@@ -28,7 +28,7 @@ const limitProgress = rateLimit({
 async function videoFor(req: any, res: any): Promise<VideoRecord | null> {
   const video = await store.get(req.params.id);
   if (!video) { res.status(404).json({ error: "Video not found" }); return null; }
-  if (!canView(video, authOf(req)!.wallet)) { res.status(403).json(PRIVATE_VIDEO); return null; }
+  if (!canView(video, authOf(req)!.wallet)) { res.status(403).json(blockedFor(video)); return null; }
   return video;
 }
 const lengthOf = (v: VideoRecord) => v.meta?.durationSeconds ?? v.media?.durationSeconds ?? null;
@@ -73,7 +73,7 @@ router.get("/progress", requireAuth, async (req, res) => {
       sql: `SELECT v.id AS id, v.title AS title, v.duration_sec AS duration_sec
               FROM videos v LEFT JOIN video_shelby s ON s.video_id = v.id
              WHERE v.id IN (${ids.map(() => "?").join(",")}) AND v.status = 'ready'
-               AND (COALESCE(v.visibility, 'unlisted') != 'private' OR v.owner_wallet = ? OR s.account_address = ?)`,
+               AND ((COALESCE(v.visibility, 'unlisted') != 'private' AND v.removed_at IS NULL) OR v.owner_wallet = ? OR s.account_address = ?)`,
       args: [...ids, wallet, wallet],
     })).rows as Array<Record<string, unknown>>;
     const open = new Map(rows.map((r) => [String(r.id), r]));

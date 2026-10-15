@@ -534,6 +534,16 @@ const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    // vm_content: a video an admin took down (for example after a copyright
+    // complaint). Only its owner can still open it.
+    id: "021_removals",
+    statements: [
+      `ALTER TABLE videos ADD COLUMN removed_at INTEGER`,
+      `ALTER TABLE videos ADD COLUMN removed_reason TEXT`,
+      `ALTER TABLE videos ADD COLUMN removed_by TEXT`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

@@ -13,7 +13,7 @@ import { ApiError, getMe, logout, type AdminInfo } from "@/lib/api";
 const NAV: Array<{ label: string; href?: string; icon: LucideIcon }> = [
   { label: "Overview", href: "/", icon: LayoutDashboard },
   { label: "Users", href: "/users", icon: Users },
-  { label: "Content", icon: Film },
+  { label: "Content", href: "/content", icon: Film },
   { label: "Security", icon: Shield },
   { label: "Operations", icon: Wrench },
   { label: "Insights", icon: BarChart3 },

@@ -44,6 +44,8 @@ function rowToVideo(v: Record<string, unknown>, shelby: Record<string, unknown>,
     ownerWallet: (v.owner_wallet as string | null | undefined) ?? undefined,
     category:    (v.category as string | null | undefined) ?? null,
     visibility:  ((v.visibility as string | null | undefined) ?? "unlisted") as VideoRecord["visibility"],
+    // vm_content
+    removed:     v.removed_at != null ? { at: Number(v.removed_at), reason: String(v.removed_reason ?? "") } : null,
     tags:        extra.tags,
     collection:  extra.collection,
     // vm_media

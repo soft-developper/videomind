@@ -20,7 +20,7 @@ import { getOriginal, deleteAssetsForVideo, pictureKeys, PICTURE_KINDS, type Pic
 // The old reserve, prepare and confirm routes are gone.
 import { abortUpload } from "../lib/uploads.js";
 // vm_info: category, collection, tags, and who may open a video
-import { ownsVideo, canView, parseInfo, applyInfo, InfoError, PRIVATE_VIDEO } from "../lib/videoInfo.js";
+import { ownsVideo, canView, parseInfo, applyInfo, InfoError, PRIVATE_VIDEO, blockedFor } from "../lib/videoInfo.js";
 // vm_transcribe: how far a long transcription has come
 import { transcriptionProgress } from "../services/transcribe.js";
 // vm_captions
@@ -123,6 +123,16 @@ function signedFilePath(id: string, seconds: number): string {
   const exp = Date.now() + seconds * 1000;
   return `/api/videos/${id}/file?exp=${exp}&sig=${fileSignature(id, exp)}`;
 }
+/** vm_content: where a video plays from, as the video page gets it (also for the admin dashboard's review). */
+export async function playbackOf(video: VideoRecord): Promise<{ streamUrl: string | null; source: "storage" | "shelby" | null }> {
+  const original = video.status === "uploading" ? null : await getOriginal(video.id);
+  if (original) {
+    const url = (await getStorage().signedUrl(original.key, PLAY_URL_SECONDS).catch(() => null)) ?? signedFilePath(video.id, PLAY_URL_SECONDS);
+    return { streamUrl: url, source: "storage" };
+  }
+  if (onShelby(video) && video.shelby.videoBlobName) return { streamUrl: shelbyBlobUrl(video.shelby.videoBlobName, video.shelby.accountAddress), source: "shelby" };
+  return { streamUrl: null, source: null };
+}
 function fileSignatureOk(id: string, exp: number, sig: unknown): boolean {
   if (!Number.isFinite(exp) || exp < Date.now() || typeof sig !== "string") return false;
   const want = Buffer.from(fileSignature(id, exp), "hex");
@@ -203,7 +213,7 @@ router.get("/:id/anchors", optionalAuth, async (req, res) => {
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
     const wallet = authOf(req)?.wallet;
-    if (!canView(video, wallet)) return res.status(403).json(PRIVATE_VIDEO);
+    if (!canView(video, wallet)) return res.status(403).json(blockedFor(video));
     const owner = ownsVideo(video, wallet);
     const list = await listAnchors(video.id);
     const may = canStoreAgain(list);
@@ -259,7 +269,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
     if (!video) return res.status(404).json({ error: "Video not found" });
     // vm_info: a private video opens only for its owner. Nothing about it is sent to anyone else.
     const wallet = authOf(req)?.wallet;
-    if (!canView(video, wallet)) return res.status(403).json(PRIVATE_VIDEO);
+    if (!canView(video, wallet)) return res.status(403).json(blockedFor(video));
 
     // vm_upload: play from our own storage when the original is there,
     // otherwise from Shelby. Storage is the copy made for delivery.
@@ -346,7 +356,7 @@ router.get("/:id/picture/:kind", async (req, res) => {
 router.get("/:id/cover", async (req, res) => {
   try {
     const video = await store.get(req.params.id);
-    if (!video || (video.visibility ?? "unlisted") === "private") return res.status(404).json({ error: "Not found" });
+    if (!video || (video.visibility ?? "unlisted") === "private" || video.removed) return res.status(404).json({ error: "Not found" });
     const pics = (await pictureKeys([video.id]).catch(() => new Map())).get(video.id);
     const kind: PictureKind | null = pics?.poster ? "poster" : pics?.thumb ? "thumb" : null;
     const url = kind ? await pictureUrl(video.id, kind, pics?.[kind]) : null;
@@ -366,7 +376,7 @@ router.get("/:id/captions", optionalAuth, async (req, res) => {
   try {
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
-    if (!canView(video, authOf(req)?.wallet)) return res.status(403).json(PRIVATE_VIDEO);
+    if (!canView(video, authOf(req)?.wallet)) return res.status(403).json(blockedFor(video));
     const cues = buildCues(video.ai?.transcript ?? []);
     if (!cues.length) return res.status(404).json({ error: "This video has no captions.", code: "no_captions" });
     const srt = req.query.format === "srt";
@@ -388,7 +398,7 @@ router.get("/:id/status", optionalAuth, async (req, res) => {
   try {
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
-    if (!canView(video, authOf(req)?.wallet)) return res.status(403).json(PRIVATE_VIDEO);
+    if (!canView(video, authOf(req)?.wallet)) return res.status(403).json(blockedFor(video));
     return res.json({ id: video.id, status: video.status });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
@@ -404,7 +414,7 @@ router.get("/:id/jobs", optionalAuth, async (req, res) => {
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
     const wallet = authOf(req)?.wallet;
-    if (!canView(video, wallet)) return res.status(403).json(PRIVATE_VIDEO);
+    if (!canView(video, wallet)) return res.status(403).json(blockedFor(video));
     const owner = !!wallet && ownsVideo(video, wallet);
     // vm_transcribe: a long transcription says how many of its pieces are done
     const progress = await transcriptionProgress(req.params.id).catch(() => null);

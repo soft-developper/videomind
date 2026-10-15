@@ -92,6 +92,19 @@ export default function VideoPage({ params }: { params: { id: string } }) {
     );
   }
 
+  // vm_content: taken down by VideoMind, and the caller is not its owner
+  if (!video && error instanceof ApiError && error.code === "removed") {
+    return (
+      <AppShell>
+        <div className="section pt-10 max-w-[52ch]">
+          <h1 className="font-display text-[20px] text-paper">This video was removed</h1>
+          <p className="text-[14px] text-dim mt-1.5 leading-relaxed">VideoMind removed it because it broke the <Link href="/legal/terms" className="underline hover:text-paper">Terms of Service</Link>.</p>
+          <Link href="/library" className="btn btn-ghost h-9 px-3.5 inline-flex items-center mt-5">Back to the library</Link>
+        </div>
+      </AppShell>
+    );
+  }
+
   // vm_info: a private video, and the caller is not its owner (or has not signed in yet)
   if (!video && error instanceof ApiError && error.code === "private") {
     return (
@@ -168,6 +181,14 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   </p>
                 )}
                 <VideoDetails video={video} owner={mine} />
+                {/* vm_content: only the owner can still open a video VideoMind took down; tell them why */}
+                {mine && video.removed && (
+                  <div role="alert" className="mt-4 max-w-[860px] border border-error/50 rounded px-4 py-3 text-[13.5px] leading-relaxed" data-removed-notice>
+                    <p className="text-error font-medium">VideoMind removed this video on {new Date(video.removed.at).toLocaleDateString([], { dateStyle: "medium" })}.</p>
+                    <p className="text-paper-2 mt-1">Reason: {video.removed.reason}</p>
+                    <p className="text-dim mt-1">Only you can open it now. Its shared link, your public profile and previews no longer show it, and it cannot be published to YouTube. If you think this is a mistake, write to <a href="mailto:privacy@vidzmind.xyz" className="underline hover:text-paper">privacy@vidzmind.xyz</a>.</p>
+                  </div>
+                )}
                 {/* vm_courses: its place in its course */}
                 {video.course && <div className="mt-4 max-w-[860px]"><CourseStrip course={video.course} base="/video" owner={mine} /></div>}
                 {/* vm_media: only the owner can do something about the format, so only the owner is told */}
@@ -333,7 +354,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 )}
 
                 {/* vm_youtube: send the video or a clip to the owner's channel */}
-                {mine && <PublishPanel videoId={params.id} duration={video.meta.durationSeconds ?? dur} />}
+                {mine && !video.removed && <PublishPanel videoId={params.id} duration={video.meta.durationSeconds ?? dur} />}
               </div>
 
               <aside className="hidden lg:block lg:sticky lg:top-6 lg:h-[calc(100vh-48px)]">

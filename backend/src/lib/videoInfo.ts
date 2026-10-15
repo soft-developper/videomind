@@ -49,10 +49,16 @@ export function ownsVideo(video: VideoRecord, wallet: string | null | undefined)
 
 /** True if this caller may open the video. A private video opens only for its owner. */
 export function canView(video: VideoRecord, wallet: string | null | undefined): boolean {
+  // vm_content: a video an admin took down opens only for its owner.
+  if (video.removed) return ownsVideo(video, wallet);
   return (video.visibility ?? "unlisted") !== "private" || ownsVideo(video, wallet);
 }
 
 export const PRIVATE_VIDEO = { error: "This video is private. Only its owner can open it.", code: "private" };
+/** vm_content: what someone other than the owner is told about a video taken down. */
+export const REMOVED_VIDEO = { error: "This video was removed because it broke VideoMind's Terms of Service.", code: "removed" };
+/** The answer for a caller canView refused. */
+export const blockedFor = (video: VideoRecord) => (video.removed ? REMOVED_VIDEO : PRIVATE_VIDEO);
 
 // ── reading what the caller sent ──────────────────────────────────────────
 

@@ -10,7 +10,7 @@ import { Router } from "express";
 import { store } from "../lib/store.js";
 import { requireAuth, authOf } from "../lib/auth.js";
 import { rateLimit } from "../lib/guard.js";
-import { canView, PRIVATE_VIDEO } from "../lib/videoInfo.js";
+import { canView, PRIVATE_VIDEO, blockedFor } from "../lib/videoInfo.js";
 import { listNotes, addNote, editNote, deleteNote, NoteError } from "../lib/notes.js";
 import type { VideoRecord } from "../types/video.js";
 
@@ -27,7 +27,7 @@ const limitNotes = rateLimit({
 async function videoFor(req: any, res: any): Promise<VideoRecord | null> {
   const video = await store.get(req.params.id);
   if (!video) { res.status(404).json({ error: "Video not found" }); return null; }
-  if (!canView(video, authOf(req)!.wallet)) { res.status(403).json(PRIVATE_VIDEO); return null; }
+  if (!canView(video, authOf(req)!.wallet)) { res.status(403).json(blockedFor(video)); return null; }
   return video;
 }
 const lengthOf = (v: VideoRecord) => {

@@ -92,3 +92,37 @@ export function takeToken(): string | null {
   if (t) { taken = t; url.searchParams.delete("token"); window.history.replaceState(null, "", url.pathname + url.search + url.hash); }
   return taken;
 }
+
+// ── vm_content ───────────────────────────────────────────────────────────────
+export const apiUrl = (path: string) => (path.startsWith("/") ? `${BASE}${path}` : path);
+export type VideoFilter = "all" | "public" | "unlisted" | "private" | "removed";
+export type VideoSort = "newest" | "views" | "size";
+export interface Removal { at: number; reason: string; by?: string | null }
+export interface AdminVideo {
+  id: string; title: string; status: string; visibility: string; createdAt: number; sizeBytes: number; durationSeconds: number | null;
+  owner: string | null; ownerName: string | null; views30: number; thumbUrl: string | null; removed: Removal | null;
+}
+export interface AdminVideoDetail {
+  id: string; title: string; description: string | null; status: string; visibility: string; category: string | null; createdAt: number;
+  sizeBytes: number | null; durationSeconds: number | null; owner: string | null; ownerName: string | null;
+  summary: string | null; chapters: Array<{ title: string; startSeconds: number }>;
+  streamUrl: string | null; source: "storage" | "shelby" | null; onShelby: boolean; publicUrl: string | null; visibleToOthers: boolean;
+  views30: number; clips: number; youtube: Array<{ id: string; title: string; privacy: string; status: string; remoteId: string | null; createdAt: number }>;
+  removed: Removal | null;
+}
+export interface AdminLive {
+  id: string; title: string; status: string; owner: string; ownerName: string | null; startedAt: number | null; endedAt: number | null; createdAt: number;
+  peakViewers: number; chatMessages: number; chatMode: string; watchUrl: string;
+}
+export interface AdminPublication { id: string; videoId: string; clip: boolean; owner: string; ownerName: string | null; title: string; privacy: string; status: string; createdAt: number; youtubeUrl: string | null; error: string | null }
+export function getContentVideos(o: { q?: string; filter?: VideoFilter; sort?: VideoSort; offset?: number; limit?: number }) {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(o)) if (v !== undefined && v !== "") p.set(k, String(v));
+  return call<{ videos: AdminVideo[]; total: number }>("GET", `/content/videos?${p}`);
+}
+export const getContentVideo = (id: string) => call<AdminVideoDetail>("GET", `/content/videos/${encodeURIComponent(id)}`);
+export const removeVideo = (id: string, reason: string) => call<{ id: string }>("POST", `/content/videos/${encodeURIComponent(id)}/remove`, { reason });
+export const restoreVideo = (id: string) => call<{ id: string }>("POST", `/content/videos/${encodeURIComponent(id)}/restore`, {});
+export const getContentLive = (filter: "live" | "all") => call<{ events: AdminLive[] }>("GET", `/content/live?filter=${filter}`);
+export const endLive = (id: string) => call<{ id: string }>("POST", `/content/live/${encodeURIComponent(id)}/end`, {});
+export const getContentYouTube = () => call<{ publications: AdminPublication[] }>("GET", "/content/youtube");

@@ -27,6 +27,8 @@ import { MailError } from "../lib/mail.js";
 import { listUsers, getUser, suspendUser, liftSuspension, UsersError } from "../lib/adminUsers.js";
 import { revokeAllSessions, normalizeWallet } from "../lib/auth.js";
 import { deleteAccountData } from "../lib/account.js";
+// vm_content: the Content section
+import { listVideos, getVideoForAdmin, removeVideo, restoreVideo, listLive, endLiveEvent, listPublications, ContentError } from "../lib/adminContent.js";
 
 const router = Router();
 const SESSION = "vm_admin", PENDING = "vm_admin_mfa";
@@ -69,6 +71,7 @@ const limitMail = rateLimit({
 
 function fail(res: Response, err: any, what: string) {
   if (err instanceof AdminError) return res.status(err.status).json({ error: err.message, code: err.code });
+  if (err instanceof ContentError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof UsersError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof MailError) return res.status(502).json({ error: "The email could not be sent. Check the Resend settings on the server and try again.", code: "mail_failed" });
   console.error(`[admin] ${what}: ${err?.message ?? err}`);
@@ -210,6 +213,52 @@ router.post("/users/:wallet/delete", requireAdmin, async (req, res) => {
     await audit(me(res), "user_data_deleted", w, deleted);
     return res.json({ deleted });
   } catch (err) { fail(res, err, "Deleting the data"); }
+});
+
+// ── vm_content: Content ─────────────────────────────────────────────────────
+//   GET  /content/videos?q=&filter=all|public|unlisted|private|removed&sort=newest|views|size&limit=&offset=
+//   GET  /content/videos/:id                 details and a playback address, to review it
+//   POST /content/videos/:id/remove { reason }   take it down; the owner sees the reason
+//   POST /content/videos/:id/restore
+//   GET  /content/live?filter=live|all
+//   POST /content/live/:id/end
+//   GET  /content/youtube
+router.get("/content/videos", requireAdmin, async (req, res) => {
+  try { return res.json(await listVideos(req.query)); }
+  catch (err) { fail(res, err, "Loading the videos"); }
+});
+router.get("/content/videos/:id", requireAdmin, async (req, res) => {
+  try { return res.json(await getVideoForAdmin(req.params.id)); }
+  catch (err) { fail(res, err, "Loading the video"); }
+});
+router.post("/content/videos/:id/remove", requireAdmin, async (req, res) => {
+  try {
+    const r = await removeVideo(req.params.id, req.body?.reason, me(res).email);
+    await audit(me(res), "video_removed", r.id, { owner: r.owner, reason: String(req.body?.reason ?? "").slice(0, 500) });
+    return res.json(r);
+  } catch (err) { fail(res, err, "Taking the video down"); }
+});
+router.post("/content/videos/:id/restore", requireAdmin, async (req, res) => {
+  try {
+    const r = await restoreVideo(req.params.id);
+    await audit(me(res), "video_restored", r.id);
+    return res.json(r);
+  } catch (err) { fail(res, err, "Restoring the video"); }
+});
+router.get("/content/live", requireAdmin, async (req, res) => {
+  try { return res.json(await listLive(req.query)); }
+  catch (err) { fail(res, err, "Loading the live events"); }
+});
+router.post("/content/live/:id/end", requireAdmin, async (req, res) => {
+  try {
+    const r = await endLiveEvent(req.params.id);
+    await audit(me(res), "live_ended", r.id, { owner: r.owner });
+    return res.json(r);
+  } catch (err) { fail(res, err, "Ending the live event"); }
+});
+router.get("/content/youtube", requireAdmin, async (req, res) => {
+  try { return res.json(await listPublications(req.query)); }
+  catch (err) { fail(res, err, "Loading the YouTube uploads"); }
 });
 
 export default router;

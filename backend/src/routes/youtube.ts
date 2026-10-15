@@ -133,6 +133,8 @@ youtubeVideoRouter.post("/:id/youtube", limitYoutube, requireAuth, async (req, r
     const video = await ownVideo(req, res); if (!video) return;
     const wallet = authOf(req)!.wallet;
     if (video.status !== "ready") return res.status(409).json({ error: "A video can be published once it is ready.", code: "not_ready" });
+    // vm_content: a video an admin took down cannot be published anywhere.
+    if (video.removed) return res.status(403).json({ error: "This video was removed because it broke VideoMind's Terms of Service, so it cannot be published.", code: "removed" });
     if (!(await account(wallet))) return res.status(409).json({ error: "Connect your YouTube channel first.", code: "not_connected" });
     const details = parseDetails(req.body);
 

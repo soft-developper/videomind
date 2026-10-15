@@ -13,6 +13,7 @@ const ACTIONS: Record<string, string> = {
   setup_link_sent: "Setup link sent", set_up: "Dashboard set up", sign_in: "Signed in", sign_out: "Signed out",
   sign_in_failed: "Failed sign in", sign_in_while_locked: "Sign in while locked", locked: "Account locked",
   reset_link_sent: "Password reset link sent", reset_link_unknown_email: "Reset asked for an unknown email", password_reset: "Password changed",
+  video_removed: "Took a video down", video_restored: "Restored a video", live_ended: "Ended a live event",
   user_signed_out: "Signed a wallet out", user_suspended: "Suspended a wallet", user_unsuspended: "Lifted a suspension", user_data_deleted: "Deleted a wallet's data",
 };
 
@@ -117,6 +118,7 @@ export default function OverviewPage() {
                       <li key={a.id} className="py-2 text-[13.5px] flex flex-col sm:flex-row sm:items-baseline gap-x-3 gap-y-0.5 min-w-0">
                         <span className={clsx("shrink-0", /fail|lock/.test(a.action) ? "text-error" : "text-paper-2")}>{ACTIONS[a.action] ?? a.action}</span>
                         {a.email && <span className="text-dim truncate min-w-0">{a.email}</span>}
+                        {a.target && a.action.startsWith("video_") && <a href={`/content/videos/${a.target}`} className="text-dim underline hover:text-paper truncate min-w-0">Open the video</a>}
                         {a.target && a.action.startsWith("user_") && <a href={`/users/${a.target}`} className="text-dim underline hover:text-paper tc truncate min-w-0">{a.target.slice(0, 8)}...{a.target.slice(-6)}</a>}
                         <span className="sm:ml-auto text-dim tabular-nums text-[12.5px] sm:text-[13.5px] shrink-0">{when(a.at)}</span>
                       </li>

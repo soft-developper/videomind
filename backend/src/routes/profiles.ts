@@ -51,7 +51,7 @@ router.get("/profiles/:wallet", limitPublic, async (req, res) => {
     if (!wallet) return res.status(400).json({ error: "That is not a wallet address.", code: "bad_wallet" });
     const profile = await getProfile(wallet);
     const mine = (await store.getAll(wallet))
-      .filter((v) => normalizeWallet(v.ownerWallet) === wallet && v.visibility === "public" && v.status === "ready");
+      .filter((v) => normalizeWallet(v.ownerWallet) === wallet && v.visibility === "public" && v.status === "ready" && !v.removed);
     const thumbs = await thumbUrls(mine.map((v) => v.id));
     const videos = mine.map((v) => card(v, thumbs.get(v.id) ?? null));
 

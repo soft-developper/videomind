@@ -379,6 +379,8 @@ export interface VideoRecord {
   description?: string;
   createdAt: number;
   status: "uploading" | "processing" | "transcribing" | "analyzing" | "ready" | "error";
+  /** vm_content: taken down by VideoMind. Only the owner can still open it. */
+  removed?: { at: number; reason: string } | null;
   shelby: {
     videoBlobName: string;
     accountAddress: string;

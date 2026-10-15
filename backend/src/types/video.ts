@@ -11,6 +11,8 @@ export interface VideoRecord {
   category?: string | null;
   /** who may open the video. Videos from before this field existed are "unlisted". */
   visibility?: "private" | "unlisted" | "public";
+  /** vm_content: taken down by an admin. Only the owner can still open it. */
+  removed?: { at: number; reason: string } | null;
   /** the owner's own tags, in the order they were typed (not the AI's, which are in ai.tags) */
   tags?: string[];
   /** position is the video's place in the collection's order */

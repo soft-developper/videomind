@@ -57,6 +57,8 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
   });
   // vm_info: the owner has not shared this video
   const isPrivate = !video && error instanceof ApiError && error.code === "private";
+  // vm_content: taken down by VideoMind
+  const isRemoved = !video && error instanceof ApiError && error.code === "removed";
 
   const seek = useCallback((s: number) => player.current?.seekTo(s), []);
 
@@ -78,10 +80,12 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
         <div className="flex items-center justify-center min-h-[70vh] px-4">
           <div className="text-center space-y-3 max-w-sm">
             <p className="font-display text-[20px] text-paper">
-              {isPrivate ? "This video is private" : !video ? "This video was not found" : "This video is still being processed"}
+              {isRemoved ? "This video was removed" : isPrivate ? "This video is private" : !video ? "This video was not found" : "This video is still being processed"}
             </p>
             <p className="text-[13px] font-sans text-dim leading-relaxed">
-              {isPrivate
+              {isRemoved
+                ? "VideoMind removed it because it broke the Terms of Service."
+                : isPrivate
                 ? "Its owner has not shared it. If it is yours, open it from your library."
                 : !video
                 ? "This video may have been deleted, or the link is wrong."
