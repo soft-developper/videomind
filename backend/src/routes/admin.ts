@@ -32,6 +32,11 @@ import crypto from "crypto";
 import { listJobsForAdmin, retryJobById, listOpenUploadsForAdmin, discardUpload, listAnchorsForAdmin, checkAnchorNow, runHousekeeping, securityOverview, endOtherAdminSessions, OpsError } from "../lib/adminOps.js";
 // vm_content: the Content section
 import { series, usageByFeature, topVideos, auditLog } from "../lib/adminInsights.js";
+import {
+  listAdmins, inviteAdmin, cancelInvite, inviteStart, inviteComplete, removeAdmin,
+  changePassword, startAuthenticatorChange, finishAuthenticatorChange, renewRecoveryCodes,
+} from "../lib/admin.js";
+import { limitsOverview } from "../lib/adminSettings.js";
 import { monthReport, monthsWithUsage, listPrices, updatePrice, addFixed, removeFixed, CostsError } from "../lib/costs.js";
 import { listVideos, getVideoForAdmin, removeVideo, restoreVideo, listLive, endLiveEvent, listPublications, ContentError } from "../lib/adminContent.js";
 
@@ -355,6 +360,65 @@ router.post("/costs/fixed", requireAdmin, async (req, res) => {
 router.post("/costs/fixed/:id/delete", requireAdmin, async (req, res) => {
   try { await removeFixed(req.params.id); await audit(me(res), "fixed_cost_removed", req.params.id); return res.json({ ok: true }); }
   catch (err) { fail(res, err, "Removing the cost"); }
+});
+
+// ── vm_admin_settings: Settings ─────────────────────────────────────────────
+//   GET  /settings/admins                         admins and open invitations
+//   POST /settings/invites         { email, code }   email an invitation (48 hours)
+//   POST /settings/invites/cancel  { email }
+//   POST /settings/admins/:id/remove { code }      not yourself, not the founder (ADMIN_EMAIL)
+//   POST /settings/password        { current, password }   other sessions end
+//   POST /settings/authenticator/start              a new secret to add (15 minutes)
+//   POST /settings/authenticator/finish { password, code }  code from the new app; other sessions end
+//   POST /settings/recovery-codes  { password }     10 new codes; the old ones stop working
+//   GET  /settings/limits                           the limits in force (read only)
+//   POST /invite/start    { token }                 the invitation page (no session)
+//   POST /invite/complete { token, password, code } make the account; signs in; answers recovery codes
+router.get("/settings/admins", requireAdmin, async (_req, res) => {
+  try { return res.json(await listAdmins(me(res).id)); } catch (err) { fail(res, err, "Loading the admins"); }
+});
+router.post("/settings/invites", requireAdmin, limitMail, async (req, res) => {
+  try { return res.status(202).json(await inviteAdmin(me(res), req.body?.email, req.body?.code)); }
+  catch (err) { fail(res, err, "Sending the invitation"); }
+});
+router.post("/settings/invites/cancel", requireAdmin, async (req, res) => {
+  try { await cancelInvite(me(res), req.body?.email); return res.json({ cancelled: true }); }
+  catch (err) { fail(res, err, "Cancelling the invitation"); }
+});
+router.post("/settings/admins/:id/remove", requireAdmin, limitAuth, async (req, res) => {
+  try { return res.json(await removeAdmin(me(res), req.params.id, req.body?.code)); }
+  catch (err) { fail(res, err, "Removing the admin"); }
+});
+router.post("/settings/password", requireAdmin, limitAuth, async (req, res) => {
+  try { await changePassword(me(res), req.body?.current, req.body?.password, currentHash(req)); return res.json({ changed: true }); }
+  catch (err) { fail(res, err, "Changing the password"); }
+});
+router.post("/settings/authenticator/start", requireAdmin, limitAuth, async (_req, res) => {
+  try { return res.json(await startAuthenticatorChange(me(res))); }
+  catch (err) { fail(res, err, "Starting the change"); }
+});
+router.post("/settings/authenticator/finish", requireAdmin, limitAuth, async (req, res) => {
+  try { await finishAuthenticatorChange(me(res), req.body?.password, req.body?.code, currentHash(req)); return res.json({ changed: true }); }
+  catch (err) { fail(res, err, "Changing the authenticator"); }
+});
+router.post("/settings/recovery-codes", requireAdmin, limitAuth, async (req, res) => {
+  try { return res.json({ recoveryCodes: await renewRecoveryCodes(me(res), req.body?.password) }); }
+  catch (err) { fail(res, err, "Making new recovery codes"); }
+});
+router.get("/settings/limits", requireAdmin, (_req, res) => {
+  try { return res.json(limitsOverview()); } catch (err) { fail(res, err, "Loading the limits"); }
+});
+router.post("/invite/start", limitAuth, async (req, res) => {
+  try { return res.json(await inviteStart(req.body?.token)); }
+  catch (err) { fail(res, err, "Opening the invitation"); }
+});
+router.post("/invite/complete", limitAuth, async (req, res) => {
+  try {
+    const { admin, recoveryCodes } = await inviteComplete(req.body?.token, req.body?.password, req.body?.code);
+    const token = await openSession(admin);
+    setCookie(res, SESSION, token, ABSOLUTE_MS);
+    return res.status(201).json({ admin: publicAdmin(admin), recoveryCodes });
+  } catch (err) { fail(res, err, "Accepting the invitation"); }
 });
 
 export default router;

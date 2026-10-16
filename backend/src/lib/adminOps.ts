@@ -148,7 +148,8 @@ export async function securityOverview(currentAdminSession: string | null) {
       sql: `SELECT s.token_hash, s.created_at, s.last_seen_at, s.expires_at, u.email FROM admin_sessions s JOIN admin_users u ON u.id = s.admin_id
              WHERE s.stage = 'full' AND s.revoked_at IS NULL AND s.expires_at > ? ORDER BY s.last_seen_at DESC`, args: [now] }),
     db.execute(`SELECT at, email, action, detail FROM admin_audit
-                 WHERE action IN ('sign_in','sign_in_failed','sign_in_while_locked','locked','password_reset','reset_link_sent','reset_link_unknown_email','set_up','sign_out','admin_sessions_ended')
+                 WHERE action IN ('sign_in','sign_in_failed','sign_in_while_locked','locked','password_reset','reset_link_sent','reset_link_unknown_email','set_up','sign_out','admin_sessions_ended',
+                                  'invite_accepted','admin_removed','password_changed','authenticator_changed','recovery_codes_renewed')
                  ORDER BY id DESC LIMIT 60`),
   ]);
   const IDLE = 2 * 3600_000;

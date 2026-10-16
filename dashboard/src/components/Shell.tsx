@@ -1,7 +1,8 @@
 "use client";
 // vm_admin: the signed in frame, laid out like Atlassian Administration:
 // a sidebar of sections (in its order) and a top bar with the admin and
-// Sign out. Sections not built yet are listed greyed out and marked Soon.
+// Sign out. A section without a page yet would be greyed out and marked
+// Soon (none since 14f).
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
@@ -18,7 +19,7 @@ const NAV: Array<{ label: string; href?: string; icon: LucideIcon }> = [
   { label: "Operations", href: "/operations", icon: Wrench },
   { label: "Insights", href: "/insights", icon: BarChart3 },
   { label: "Costs", href: "/costs", icon: Receipt },
-  { label: "Settings", icon: Settings },
+  { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 const AdminCtx = createContext<{ admin: AdminInfo; signedOut: () => void } | null>(null);

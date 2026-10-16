@@ -12,7 +12,8 @@
 //   * two step codes: TOTP (RFC 6238, SHA1, 30 s, 6 digits, one step either
 //     side), a code never accepted twice; 10 one time recovery codes, hashed.
 // Nobody can sign up: the first account is made from a link emailed only to
-// ADMIN_EMAIL, while no admin exists. ADMIN_KEY (any long random text)
+// ADMIN_EMAIL, while no admin exists; later admins only from an invite an
+// admin sends (vm_admin_settings, below). ADMIN_KEY (any long random text)
 // encrypts the authenticator secrets in the database.
 import crypto from "crypto";
 import { promisify } from "util";
@@ -199,7 +200,8 @@ async function notify(to: string, subject: string, lines: string[], button?: { l
 
 // ── links by email (setup and reset) ────────────────────────────────────────
 
-type TokenKind = "setup" | "reset";
+// invite: admin_id is the admin who sent it. totp: a new authenticator being added, admin_id is its admin.
+type TokenKind = "setup" | "reset" | "invite" | "totp";
 async function issueToken(kind: TokenKind, email: string, adminId: string | null, ttl: number): Promise<string> {
   const t = newToken(), now = Date.now();
   await getDb().batch([
@@ -413,3 +415,190 @@ export async function signOut(token: unknown) {
   await getDb().execute({ sql: "UPDATE admin_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL", args: [Date.now(), sha(token)] });
 }
 export const publicAdmin = (a: Admin) => ({ id: a.id, email: a.email, createdAt: a.createdAt, lastSignInAt: a.lastSignInAt, recoveryCodesLeft: a.recovery.length });
+
+// ── vm_admin_settings: admins, invites, and your own account ────────────────
+// Settings, like Atlassian Administration's: invite another admin by email,
+// remove one, change your password or authenticator, new recovery codes.
+// Each change needs proof again (OWASP: re-authenticate for sensitive
+// features): a code from the authenticator for invites and removals, the
+// current password for your own account. A wrong answer counts toward the
+// lock like a failed sign in. The founder's account (ADMIN_EMAIL) cannot be
+// removed from the dashboard.
+const INVITE_MS = 48 * 3600_000;
+const TOTP_CHANGE_MS = 15 * 60_000;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// 400, not 401: the session is fine, only the proof was wrong.
+const WRONG_CODE = () => new AdminError(400, "wrong_code", "That code is not right. Use the current code from your authenticator app, or a recovery code.");
+const WRONG_PASSWORD = () => new AdminError(400, "wrong_password", "Your current password is not right.");
+const LOCKED = () => new AdminError(423, "locked", `Too many wrong answers. Your account is locked for up to ${LOCK_MINUTES} minutes; an email has the details.`);
+
+async function proveCode(a: Admin, code: unknown) {
+  const fresh = await adminById(a.id); if (!fresh) throw new AdminError(401, "admin_required", "Sign in to the dashboard.");
+  if (locked(fresh)) throw LOCKED();
+  const how = await useSecondFactor(fresh, code);
+  if (!how) { await countFailure(fresh, "settings code"); throw WRONG_CODE(); }
+  return how;
+}
+async function provePassword(a: Admin, password: unknown) {
+  const fresh = await adminById(a.id); if (!fresh) throw new AdminError(401, "admin_required", "Sign in to the dashboard.");
+  if (locked(fresh)) throw LOCKED();
+  const pw = typeof password === "string" ? password : "";
+  if (!pw || [...pw].length > MAX_PASSWORD || !(await checkPassword(pw, fresh.passwordHash))) { await countFailure(fresh, "settings password"); throw WRONG_PASSWORD(); }
+  return fresh;
+}
+const endOtherSessions = (adminId: string, keepTokenHash: string | null, now: number) => ({
+  sql: "UPDATE admin_sessions SET revoked_at = ? WHERE admin_id = ? AND revoked_at IS NULL AND token_hash != ?", args: [now, adminId, keepTokenHash ?? ""],
+});
+
+export async function listAdmins(currentId: string) {
+  const db = getDb(); const now = Date.now();
+  const [admins, invites] = await Promise.all([
+    db.execute("SELECT * FROM admin_users ORDER BY created_at"),
+    db.execute({ sql: `SELECT t.email, t.created_at, t.expires_at, u.email AS by_email FROM admin_tokens t LEFT JOIN admin_users u ON u.id = t.admin_id
+                        WHERE t.kind = 'invite' AND t.used_at IS NULL AND t.expires_at > ? ORDER BY t.created_at DESC`, args: [now] }),
+  ]);
+  const founder = adminEmail();
+  return {
+    admins: (admins.rows as any[]).map(rowToAdmin).map((a) => ({
+      id: a.id, email: a.email, createdAt: a.createdAt, lastSignInAt: a.lastSignInAt, recoveryCodesLeft: a.recovery.length,
+      lockedUntil: locked(a) ? a.lockedUntil : null, you: a.id === currentId, founder: a.email === founder,
+    })),
+    invites: (invites.rows as any[]).map((r) => ({ email: String(r.email), sentAt: Number(r.created_at), expiresAt: Number(r.expires_at), by: r.by_email == null ? null : String(r.by_email) })),
+  };
+}
+
+export async function inviteAdmin(by: Admin, email: unknown, code: unknown) {
+  const e = normEmail(email);
+  if (!EMAIL_RE.test(e) || e.length > 320) throw new AdminError(400, "bad_email", "Enter the email address of the person to invite.");
+  if (await adminByEmail(e)) throw new AdminError(409, "already_admin", "That email already has a dashboard account.");
+  if (!mailConfigured()) throw new AdminError(503, "not_configured", "Email is not set up on the server (RESEND_API_KEY and MAIL_FROM).");
+  await proveCode(by, code);
+  const t = await issueToken("invite", e, by.id, INVITE_MS);
+  await sendMail({
+    to: e, subject: "You are invited to the VideoMind dashboard",
+    lines: [`${by.email} invited you to be an administrator of the VideoMind dashboard.`, "You will choose a password and add VideoMind to an authenticator app. The link works once and expires in 48 hours."],
+    button: { label: "Accept the invitation", url: `${dashboardUrl()}/invite?token=${t}` },
+    after: ["If you did not expect this, you can ignore this email. Nothing happens until the link is used."],
+  });
+  await audit(by, "admin_invited", e);
+  return { email: e, expiresAt: Date.now() + INVITE_MS };
+}
+export async function cancelInvite(by: Admin, email: unknown) {
+  const e = normEmail(email);
+  const r = await getDb().execute({ sql: "UPDATE admin_tokens SET used_at = ? WHERE kind = 'invite' AND email = ? AND used_at IS NULL", args: [Date.now(), e] });
+  if (r.rowsAffected === 0) throw new AdminError(404, "not_found", "There is no open invitation for that email.");
+  await audit(by, "invite_cancelled", e);
+}
+
+/** The invitation page: the email, and the authenticator secret to add (kept until it is accepted). */
+export async function inviteStart(token: unknown): Promise<{ email: string; secret: string; uri: string; by: string | null }> {
+  const row = await tokenRow("invite", token); if (!row) throw LINK_GONE();
+  const email = String(row.email);
+  if (await adminByEmail(email)) throw new AdminError(409, "already_admin", "This email already has a dashboard account. Sign in instead.");
+  let secret: string;
+  if (row.data) secret = unseal(String(row.data));
+  else {
+    secret = base32(crypto.randomBytes(20));
+    await getDb().execute({ sql: "UPDATE admin_tokens SET data = ? WHERE token_hash = ?", args: [seal(secret), row.token_hash] });
+  }
+  const by = row.admin_id ? (await adminById(String(row.admin_id)))?.email ?? null : null;
+  return { email, secret, uri: otpauthUri(secret, email), by };
+}
+export async function inviteComplete(token: unknown, password: unknown, code: unknown): Promise<{ admin: Admin; recoveryCodes: string[] }> {
+  const row = await tokenRow("invite", token); if (!row) throw LINK_GONE();
+  if (!row.data) throw new AdminError(400, "no_secret", "Open the invitation page again to add VideoMind to your authenticator app.");
+  const email = String(row.email);
+  if (await adminByEmail(email)) throw new AdminError(409, "already_admin", "This email already has a dashboard account. Sign in instead.");
+  const bad = passwordProblem(password, email); if (bad) throw new AdminError(400, "weak_password", bad);
+  const secret = unseal(String(row.data));
+  const step = matchTotp(secret, String(code ?? "").replace(/\s/g, ""), 0);
+  if (step === null) throw CODE_FAILED();
+  const rc = newRecoveryCodes(), now = Date.now(), id = crypto.randomUUID();
+  const hash = await hashPassword(password as string);
+  const used = await getDb().execute({ sql: "UPDATE admin_tokens SET used_at = ? WHERE token_hash = ? AND used_at IS NULL", args: [now, row.token_hash] });
+  if (used.rowsAffected !== 1) throw LINK_GONE();
+  await getDb().execute({
+    sql: `INSERT INTO admin_users (id, email, password_hash, totp_secret, totp_last_step, recovery_hashes, failed_count, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [id, email, hash, seal(secret), step, JSON.stringify(rc.hashes), now, now],
+  });
+  const admin = (await adminById(id))!;
+  const inviter = row.admin_id ? await adminById(String(row.admin_id)) : null;
+  await audit(admin, "invite_accepted", null, { invitedBy: inviter?.email ?? null });
+  await notify(email, "Your VideoMind dashboard account is ready", ["Your admin account for the VideoMind dashboard was set up, with two step verification.", "Keep your recovery codes somewhere safe."]);
+  if (inviter) await notify(inviter.email, `${email} joined the VideoMind dashboard`, [`${email} accepted your invitation and is now an administrator of the VideoMind dashboard.`]);
+  return { admin, recoveryCodes: rc.shown };
+}
+
+export async function removeAdmin(by: Admin, id: string, code: unknown) {
+  const a = await adminById(id);
+  if (!a) throw new AdminError(404, "not_found", "No admin with that id.");
+  if (a.id === by.id) throw new AdminError(409, "not_yourself", "You cannot remove your own account. Ask another admin.");
+  if (a.email === adminEmail()) throw new AdminError(403, "founder", "This is the founder's account (ADMIN_EMAIL on the server). It cannot be removed from the dashboard.");
+  await proveCode(by, code);
+  const now = Date.now();
+  await getDb().batch([
+    { sql: "UPDATE admin_sessions SET revoked_at = ? WHERE admin_id = ? AND revoked_at IS NULL", args: [now, a.id] },
+    { sql: "UPDATE admin_tokens SET used_at = ? WHERE used_at IS NULL AND (email = ? OR (kind IN ('reset','totp') AND admin_id = ?))", args: [now, a.email, a.id] },
+    { sql: "DELETE FROM admin_users WHERE id = ?", args: [a.id] },
+  ], "write");
+  await audit(by, "admin_removed", a.email);
+  await notify(a.email, "You were removed from the VideoMind dashboard", [`${by.email} removed your administrator account from the VideoMind dashboard. You were signed out everywhere.`]);
+  return { email: a.email };
+}
+
+export async function changePassword(a: Admin, current: unknown, next: unknown, keepTokenHash: string | null) {
+  const fresh = await provePassword(a, current);
+  const bad = passwordProblem(next, fresh.email); if (bad) throw new AdminError(400, "weak_password", bad);
+  if (next === current) throw new AdminError(400, "same_password", "Choose a password different from the current one.");
+  const now = Date.now();
+  await getDb().batch([
+    { sql: "UPDATE admin_users SET password_hash = ?, updated_at = ? WHERE id = ?", args: [await hashPassword(next as string), now, fresh.id] },
+    { sql: "UPDATE admin_tokens SET used_at = ? WHERE kind = 'reset' AND admin_id = ? AND used_at IS NULL", args: [now, fresh.id] },
+    endOtherSessions(fresh.id, keepTokenHash, now),
+  ], "write");
+  await audit(fresh, "password_changed");
+  await notify(fresh.email, "Your VideoMind dashboard password was changed", [
+    "The password of your VideoMind dashboard account was changed in Settings, and your other sessions were signed out.",
+    "If this was not you, reset the password now from Forgot password on the sign in page, and check the audit log.",
+  ]);
+}
+
+/** A new authenticator: the secret to add. It replaces the old one only after a code from it. */
+export async function startAuthenticatorChange(a: Admin): Promise<{ secret: string; uri: string; expiresAt: number }> {
+  const secret = base32(crypto.randomBytes(20)), now = Date.now();
+  await getDb().batch([
+    { sql: "UPDATE admin_tokens SET used_at = ? WHERE kind = 'totp' AND admin_id = ? AND used_at IS NULL", args: [now, a.id] },
+    { sql: "INSERT INTO admin_tokens (token_hash, kind, email, admin_id, data, expires_at, used_at, created_at) VALUES (?, 'totp', ?, ?, ?, ?, NULL, ?)",
+      args: [sha(newToken()), a.email, a.id, seal(secret), now + TOTP_CHANGE_MS, now] },
+  ], "write");
+  return { secret, uri: otpauthUri(secret, a.email), expiresAt: now + TOTP_CHANGE_MS };
+}
+export async function finishAuthenticatorChange(a: Admin, password: unknown, code: unknown, keepTokenHash: string | null) {
+  const fresh = await provePassword(a, password);
+  const r = await getDb().execute({ sql: "SELECT * FROM admin_tokens WHERE kind = 'totp' AND admin_id = ? AND used_at IS NULL AND expires_at > ? ORDER BY created_at DESC LIMIT 1", args: [fresh.id, Date.now()] });
+  const row = r.rows[0] as any;
+  if (!row) throw new AdminError(410, "link_expired", "The time to add the new authenticator ran out. Start again.");
+  const secret = unseal(String(row.data));
+  const step = matchTotp(secret, String(code ?? "").replace(/\s/g, ""), 0);
+  if (step === null) throw new AdminError(400, "wrong_code", "That code is not right. Enter the code the new authenticator shows for VideoMind.");
+  const now = Date.now();
+  await getDb().batch([
+    { sql: "UPDATE admin_users SET totp_secret = ?, totp_last_step = ?, updated_at = ? WHERE id = ?", args: [seal(secret), step, now, fresh.id] },
+    { sql: "UPDATE admin_tokens SET used_at = ? WHERE token_hash = ?", args: [now, row.token_hash] },
+    endOtherSessions(fresh.id, keepTokenHash, now),
+  ], "write");
+  await audit(fresh, "authenticator_changed");
+  await notify(fresh.email, "Your VideoMind dashboard authenticator was changed", [
+    "Two step verification on your VideoMind dashboard account now uses a new authenticator app. Codes from the old one no longer work, and your other sessions were signed out.",
+    "If this was not you, reset your password now and tell the other admins.",
+  ]);
+}
+
+export async function renewRecoveryCodes(a: Admin, password: unknown): Promise<string[]> {
+  const fresh = await provePassword(a, password);
+  const rc = newRecoveryCodes();
+  await getDb().execute({ sql: "UPDATE admin_users SET recovery_hashes = ?, updated_at = ? WHERE id = ?", args: [JSON.stringify(rc.hashes), Date.now(), fresh.id] });
+  await audit(fresh, "recovery_codes_renewed");
+  await notify(fresh.email, "New recovery codes for your VideoMind dashboard account", ["New recovery codes were made for your VideoMind dashboard account. The old ones no longer work.", "If this was not you, reset your password now."]);
+  return rc.shown;
+}

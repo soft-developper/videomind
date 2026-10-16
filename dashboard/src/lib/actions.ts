@@ -8,6 +8,8 @@ export const ACTIONS: Record<string, string> = {
   video_removed: "Took a video down", video_restored: "Restored a video", live_ended: "Ended a live event",
   user_signed_out: "Signed a wallet out", user_suspended: "Suspended a wallet", user_unsuspended: "Lifted a suspension", user_data_deleted: "Deleted a wallet's data",
   price_changed: "Changed a price", fixed_cost_added: "Added a fixed cost", fixed_cost_removed: "Removed a fixed cost",
+  admin_invited: "Invited an admin", invite_cancelled: "Cancelled an invitation", invite_accepted: "Accepted an invitation", admin_removed: "Removed an admin",
+  password_changed: "Changed the password", authenticator_changed: "Changed the authenticator", recovery_codes_renewed: "Made new recovery codes",
 };
 export const actionLabel = (a: string) => ACTIONS[a] ?? a.replace(/_/g, " ");
 

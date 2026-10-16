@@ -80,6 +80,7 @@ export interface LimitOptions {
  * caller must stop. A rejected request does not consume budget.
  */
 export function takeBudget(opts: LimitOptions, req: Request, res: Response): boolean {
+  registry.set(opts.name, opts);
   const now = Date.now();
   sweep(now);
   const cKey = `${opts.name}:c:${clientKey(req)}`;
@@ -104,8 +105,14 @@ export function takeBudget(opts: LimitOptions, req: Request, res: Response): boo
   return true;
 }
 
+// vm_admin_settings: every limit in use, as the server reads it (with any
+// LIMIT_* setting applied), for the dashboard's Settings page.
+const registry = new Map<string, LimitOptions>();
+export const limitRules = (): LimitOptions[] => [...registry.values()];
+
 /** Express middleware form of takeBudget. */
 export function rateLimit(opts: LimitOptions): RequestHandler {
+  registry.set(opts.name, opts);
   return (req: Request, res: Response, next: NextFunction) => {
     if (takeBudget(opts, req, res)) next();
   };

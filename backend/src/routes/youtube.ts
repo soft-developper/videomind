@@ -37,9 +37,9 @@ const limitYoutube = rateLimit({
 });
 
 /** Uploads one wallet may start in 24 hours. */
-const perWallet = () => Number(process.env.YOUTUBE_UPLOADS_PER_DAY) || 10;
+export const perWallet = () => Number(process.env.YOUTUBE_UPLOADS_PER_DAY) || 10;
 /** Google allows 100 uploads a day for the whole Cloud project; a few are kept spare. */
-const perProject = () => Number(process.env.YOUTUBE_UPLOADS_PROJECT_DAY) || 90;
+export const perProject = () => Number(process.env.YOUTUBE_UPLOADS_PROJECT_DAY) || 90;
 
 const NOT_SET_UP = { error: "YouTube publishing is not set up on this server.", code: "youtube_off" };
 const NOT_OWNER = { error: "This video belongs to a different wallet.", code: "not_owner" };

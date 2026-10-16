@@ -30,7 +30,7 @@ function envInt(name: string, fallback: number): number {
   const n = Number(process.env[name]);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
 }
-const perCallerDay = () => envInt("VIEWS_PER_CALLER_DAY", 10);
+export const perCallerDay = () => envInt("VIEWS_PER_CALLER_DAY", 10);
 
 export const dayOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 

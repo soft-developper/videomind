@@ -191,3 +191,24 @@ export const getCosts = (month?: string) => call<CostReport>("GET", `/costs${mon
 export const updatePrice = (id: string, change: { usd?: number; longUsd?: number | null; freePerMonth?: number }) => call<Price>("POST", `/costs/prices/${encodeURIComponent(id)}`, change);
 export const addFixedCost = (name: string, usdPerMonth: number, note: string) => call<FixedCost>("POST", "/costs/fixed", { name, usdPerMonth, note });
 export const removeFixedCost = (id: string) => call<{ ok: boolean }>("POST", `/costs/fixed/${encodeURIComponent(id)}/delete`, {});
+
+// ── vm_admin_settings ────────────────────────────────────────────────────────
+export interface AdminRow { id: string; email: string; createdAt: number; lastSignInAt: number | null; recoveryCodesLeft: number; lockedUntil: number | null; you: boolean; founder: boolean }
+export interface InviteRow { email: string; sentAt: number; expiresAt: number; by: string | null }
+export interface Limits {
+  rates: Array<{ name: string; label: string; perCaller: { max: number; per: string }; everyone: { max: number; per: string } }>;
+  caps: Array<{ label: string; value: string; setting: string }>;
+  dashboard: Array<{ label: string; value: string }>;
+}
+export const getAdmins = () => call<{ admins: AdminRow[]; invites: InviteRow[] }>("GET", "/settings/admins");
+export const inviteAdmin = (email: string, code: string) => call<{ email: string; expiresAt: number }>("POST", "/settings/invites", { email, code });
+export const cancelInvite = (email: string) => call<{ cancelled: boolean }>("POST", "/settings/invites/cancel", { email });
+export const removeAdmin = (id: string, code: string) => call<{ email: string }>("POST", `/settings/admins/${encodeURIComponent(id)}/remove`, { code });
+export const changePassword = (current: string, password: string) => call<{ changed: boolean }>("POST", "/settings/password", { current, password });
+export const startAuthenticator = () => call<{ secret: string; uri: string; expiresAt: number }>("POST", "/settings/authenticator/start", {});
+export const finishAuthenticator = (password: string, code: string) => call<{ changed: boolean }>("POST", "/settings/authenticator/finish", { password, code });
+export const renewRecoveryCodes = (password: string) => call<{ recoveryCodes: string[] }>("POST", "/settings/recovery-codes", { password });
+export const getLimits = () => call<Limits>("GET", "/settings/limits");
+export const inviteStart = (token: string) => call<{ email: string; secret: string; uri: string; by: string | null }>("POST", "/invite/start", { token });
+export const inviteComplete = (token: string, password: string, code: string) =>
+  call<{ admin: AdminInfo; recoveryCodes: string[] }>("POST", "/invite/complete", { token, password, code });
