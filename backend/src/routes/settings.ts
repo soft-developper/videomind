@@ -3,6 +3,7 @@
 //
 //   GET  /me/settings           settings, session, active sessions
 //   PUT  /me/settings           { uploadVisibility?, uploadCategory? } (null or "" = remember last choice)
+//                               vm_lang: { language? } en, es, fr, ar or pt (null or "" = follow the browser)
 //   POST /me/logout-everywhere  end every session of this wallet, this one too
 //   POST /me/delete             { confirm: "DELETE" } delete everything VideoMind holds about this wallet
 import { Router } from "express";

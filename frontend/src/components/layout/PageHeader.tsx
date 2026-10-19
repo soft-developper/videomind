@@ -13,9 +13,9 @@ export function PageHeader({ title, description, actions, back }: {
       {back && (
         <Link
           href={back.href}
-          className="inline-flex items-center gap-1 -ml-1 mb-3 text-[13px] text-dim hover:text-paper transition-colors"
+          className="inline-flex items-center gap-1 -ms-1 mb-3 text-[13px] text-dim hover:text-paper transition-colors"
         >
-          <ChevronLeft size={14} /> {back.label}
+          <ChevronLeft size={14} className="rtl:rotate-180" /> {back.label}
         </Link>
       )}
       <div className="flex items-end justify-between gap-x-6 gap-y-4 flex-wrap">

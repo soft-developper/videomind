@@ -7,6 +7,8 @@ import { Network } from "@aptos-labs/ts-sdk";
 import { useState } from "react";
 import { shelbyClient } from "@/lib/shelby";
 import { AuthProvider } from "./AuthProvider";
+// vm_lang
+import { LanguageSync } from "./LanguagePicker";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -27,7 +29,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       >
         <ShelbyClientProvider client={shelbyClient}>
           {/* vm_signin: wallet sign in state for the whole app */}
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>{children}<LanguageSync /></AuthProvider>
         </ShelbyClientProvider>
       </AptosWalletAdapterProvider>
     </QueryClientProvider>

@@ -552,9 +552,11 @@ export async function liveCaptionsSocket(id: string): Promise<string> {
 }
 
 // ── vm_settings: the signed in wallet's settings ─────────────────────────────
-export interface MySettings { uploadVisibility: "private" | "unlisted" | "public" | null; uploadCategory: string | null }
+// vm_lang: the wallet's interface language travels with its settings.
+import type { Locale } from "@/i18n/config";
+export interface MySettings { uploadVisibility: "private" | "unlisted" | "public" | null; uploadCategory: string | null; language: Locale | null }
 export const getMySettings = () => call<{ wallet: string; sessionExpiresAt: number; activeSessions: number; settings: MySettings }>(() => raw.get("/api/me/settings"));
-export const saveMySettings = (s: Partial<{ uploadVisibility: string | null; uploadCategory: string | null }>) => call<{ settings: MySettings }>(() => raw.put("/api/me/settings", s));
+export const saveMySettings = (s: Partial<{ uploadVisibility: string | null; uploadCategory: string | null; language: Locale | null }>) => call<{ settings: MySettings }>(() => raw.put("/api/me/settings", s));
 export const logoutEverywhere = () => call<{ ended: number }>(() => raw.post("/api/me/logout-everywhere"));
 export const deleteMyData = () => call<{ deleted: Record<string, number> }>(() => raw.post("/api/me/delete", { confirm: "DELETE" }, { timeout: 300_000 }));
 

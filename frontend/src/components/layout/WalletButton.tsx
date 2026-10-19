@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { clsx } from "clsx";
 import { useAuth } from "./AuthProvider";
+// vm_lang
+import { useTranslations } from "next-intl";
 
 /**
  * vm_shell: `block` makes the button fill its container (the sidebar),
@@ -19,6 +21,7 @@ export function WalletButton({ block = false, placement = "down", quiet = false 
   // vm_signin: sign in right after a wallet the visitor picked connects,
   // and end the session when they disconnect.
   const { armSignIn, signOut, signedIn } = useAuth();
+  const t = useTranslations("wallet");
   const [menu, setMenu] = useState(false);
   const [picker, setPicker] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -39,7 +42,7 @@ export function WalletButton({ block = false, placement = "down", quiet = false 
   const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
   const pop = clsx(
     "absolute z-50 popover",
-    block ? "left-0 right-0" : "right-0 w-56",
+    block ? "inset-x-0" : "end-0 w-56",
     placement === "up" ? "bottom-full mb-1.5" : "top-full mt-1.5"
   );
 
@@ -47,7 +50,7 @@ export function WalletButton({ block = false, placement = "down", quiet = false 
     return (
       <div className={clsx("flex items-center gap-2 px-3 h-9 border border-rule rounded", block && "w-full")}>
         <span className="dot dot-work" />
-        <span className="text-[13px] text-dim">Connecting</span>
+        <span className="text-[13px] text-dim">{t("connecting")}</span>
       </div>
     );
   }
@@ -66,13 +69,13 @@ export function WalletButton({ block = false, placement = "down", quiet = false 
         >
           <span className={signedIn ? "dot dot-live" : "dot dot-dead"} />
           <span className="tc text-[13px] text-paper-2">{short(addr)}</span>
-          <ChevronDown size={13} className={clsx("ml-auto text-dim transition-transform", menu !== (placement === "up") && "rotate-180")} />
+          <ChevronDown size={13} className={clsx("ms-auto text-dim transition-transform", menu !== (placement === "up") && "rotate-180")} />
         </button>
 
         {menu && (
           <div className={pop}>
             <div className="px-3 py-2.5 border-b border-rule">
-              <p className="text-[13px] text-paper">{signedIn ? "Signed in" : "Connected, not signed in"}</p>
+              <p className="text-[13px] text-paper">{signedIn ? t("signedIn") : t("connectedNotSigned")}</p>
               <p className="tc mt-0.5">{short(addr)}</p>
             </div>
             <button
@@ -84,16 +87,16 @@ export function WalletButton({ block = false, placement = "down", quiet = false 
               className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-sans text-paper-2 hover:text-paper hover:bg-slate-2 transition-colors"
             >
               {copied ? <Check size={12} className="text-marker" /> : <Copy size={12} />}
-              {copied ? "Copied" : "Copy address"}
+              {copied ? t("copied") : t("copyAddress")}
             </button>
             {/* vm_profile */}
             {signedIn && (
               <>
                 <Link href="/wallet" onClick={() => setMenu(false)} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-sans text-paper-2 hover:text-paper hover:bg-slate-2 transition-colors border-t border-rule">
-                  <Wallet size={12} /> Your wallet
+                  <Wallet size={12} /> {t("yourWallet")}
                 </Link>
                 <Link href={`/u/${addr}`} onClick={() => setMenu(false)} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-sans text-paper-2 hover:text-paper hover:bg-slate-2 transition-colors">
-                  <User size={12} /> Your public page
+                  <User size={12} /> {t("yourPublicPage")}
                 </Link>
               </>
             )}
@@ -102,7 +105,7 @@ export function WalletButton({ block = false, placement = "down", quiet = false 
               className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-sans text-paper-2 hover:text-error hover:bg-slate-2 transition-colors border-t border-rule"
             >
               <LogOut size={12} />
-              Disconnect
+              {t("disconnect")}
             </button>
           </div>
         )}
@@ -117,28 +120,23 @@ export function WalletButton({ block = false, placement = "down", quiet = false 
         aria-expanded={picker}
         className={clsx("btn px-3.5 h-9 flex items-center gap-1.5", quiet ? "btn-ghost text-paper" : "btn-signal", block && "w-full justify-center")}
       >
-        Connect wallet
+        {t("connect")}
         <ChevronDown size={13} className={clsx("transition-transform", picker !== (placement === "up") && "rotate-180")} />
       </button>
 
       {picker && (
         <div className={pop}>
           <div className="px-3 py-2.5 border-b border-rule">
-            <p className="text-[13px] text-paper">Choose a wallet</p>
+            <p className="text-[13px] text-paper">{t("choose")}</p>
           </div>
 
           {wallets.length === 0 && (
             <p className="px-3 py-3 text-[12px] font-sans text-dim leading-relaxed">
-              No Aptos wallet found. Install{" "}
-              <a
-                href="https://petra.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-paper underline underline-offset-2"
-              >
-                Petra
-              </a>{" "}
-              to continue.
+              {t.rich("noWallet", {
+                petra: (chunks) => (
+                  <a href="https://petra.app" target="_blank" rel="noopener noreferrer" className="text-paper underline underline-offset-2">{chunks}</a>
+                ),
+              })}
             </p>
           )}
 
@@ -154,15 +152,16 @@ export function WalletButton({ block = false, placement = "down", quiet = false 
               )}
               {w.name}
               {w.readyState === "Installed" && (
-                <span className="ml-auto text-[12px] text-marker">Installed</span>
+                <span className="ms-auto text-[12px] text-marker">{t("installed")}</span>
               )}
             </button>
           ))}
           {/* vm_legal */}
           <p className="px-3 py-2.5 border-t border-rule text-[12px] font-sans text-dim leading-relaxed" data-legal-consent>
-            By connecting, you agree to the{" "}
-            <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="text-paper-2 underline underline-offset-2">Terms of Service</a>{" "}and{" "}
-            <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" className="text-paper-2 underline underline-offset-2">Privacy Policy</a>.
+            {t.rich("consent", {
+              terms: (chunks) => <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="text-paper-2 underline underline-offset-2">{chunks}</a>,
+              privacy: (chunks) => <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" className="text-paper-2 underline underline-offset-2">{chunks}</a>,
+            })}
           </p>
         </div>
       )}

@@ -59,7 +59,7 @@ html { scroll-behavior: smooth; }
 body {
   background: var(--void);
   color: var(--paper);
-  font-family: var(--font-ui), system-ui, sans-serif;
+  font-family: var(--font-stack);
   font-size: 14px;
   line-height: 1.5;
   min-height: 100vh;
@@ -115,7 +115,7 @@ body {
    Narrower setting and tabular figures, so columns of numbers line up
    and read as data without a second typeface. */
 .tc, .font-mono {
-  font-family: var(--font-ui), system-ui, sans-serif;
+  font-family: var(--font-stack);
   font-variant-numeric: tabular-nums;
   font-stretch: 86%;
   letter-spacing: 0;
@@ -125,6 +125,9 @@ body {
   color: var(--dim);
 }
 .tc-signal { color: var(--signal); }
+/* vm_lang: data keeps its own direction inside right to left text, so a
+   timecode or an address never reads backwards. */
+.tc { unicode-bidi: plaintext; }
 .tc-marker { color: var(--marker); }
 
 /* ─── Small label above a group of content ───────────────────────────────── */
@@ -136,6 +139,7 @@ body {
 
 /* ─── Timeline strip on the video page ───────────────────────────────────── */
 .strip {
+  direction: ltr; /* vm_lang: time runs left to right in every language */
   background: var(--screen);
   border: 1px solid var(--rule);
   border-radius: var(--radius-panel);
@@ -187,7 +191,7 @@ body {
 
 /* ─── Buttons ────────────────────────────────────────────────────────────── */
 .btn {
-  font-family: var(--font-ui), sans-serif;
+  font-family: var(--font-stack);
   font-weight: 500;
   font-size: 13.5px;
   letter-spacing: 0;
@@ -226,7 +230,7 @@ body {
 
 /* ─── Inputs ─────────────────────────────────────────────────────────────── */
 input, textarea, select {
-  font-family: var(--font-ui), sans-serif;
+  font-family: var(--font-stack);
   background: var(--side);
   border: 1px solid var(--rule);
   border-radius: var(--radius-control);
@@ -295,7 +299,7 @@ input::placeholder, textarea::placeholder { color: var(--dim-2); }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
 .rule-x { border-top: 1px solid var(--rule); }
-.rule-y { border-left: 1px solid var(--rule); }
+.rule-y { border-inline-start: 1px solid var(--rule); }
 
 /* Keyboard focus: visible, never removed. Yellow locates. */
 :focus-visible {
@@ -388,4 +392,15 @@ video::cue {
   color: #fff;
   font-family: inherit;
   line-height: 1.35;
+}
+
+/* ─── vm_lang: the font stack ─────────────────────────────────────────────
+   Instrument Sans has no Arabic letters. Anything marked Arabic (the whole
+   page in Arabic, or the language's own name in the picker) puts Noto Sans
+   Arabic first; its file covers Arabic only, so Latin letters, digits and
+   data still fall through to Instrument Sans. */
+:root { --font-stack: var(--font-ui), system-ui, sans-serif; }
+:lang(ar) {
+  --font-stack: var(--font-arabic), var(--font-ui), system-ui, sans-serif;
+  font-family: var(--font-stack);
 }

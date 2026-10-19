@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Instrument_Sans } from "next/font/google";
+import { Instrument_Sans, Noto_Sans_Arabic } from "next/font/google";
+// vm_lang
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
+import { dirOf, type Locale } from "@/i18n/config";
 import "./globals.css";
 import { AppProviders } from "@/components/layout/AppProviders";
 
@@ -11,6 +15,19 @@ const ui = Instrument_Sans({
   variable: "--font-ui",
   axes: ["wdth"],
   display: "swap",
+});
+
+// vm_lang: Arabic letters, with the same weight and width axes as the UI
+// face. Only Arabic glyphs are in it (unicode range), so the browser only
+// downloads it when Arabic text is on screen. No metric fallback: that
+// fallback would also catch Latin letters before Instrument Sans.
+const arabic = Noto_Sans_Arabic({
+  subsets: ["arabic"],
+  variable: "--font-arabic",
+  axes: ["wdth"],
+  display: "swap",
+  preload: false,
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
@@ -44,14 +61,18 @@ export const viewport: Viewport = {
   themeColor: "#171A18",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = (await getLocale()) as Locale;
   return (
     <html
-      lang="en"
-      className={ui.variable}
+      lang={locale}
+      dir={dirOf(locale)}
+      className={`${ui.variable} ${arabic.variable}`}
     >
       <body className="bg-void text-paper antialiased">
-        <AppProviders>{children}</AppProviders>
+        <NextIntlClientProvider>
+          <AppProviders>{children}</AppProviders>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

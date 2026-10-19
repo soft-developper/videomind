@@ -587,6 +587,14 @@ const MIGRATIONS: Migration[] = [
       `INSERT INTO model_prices (id, provider, model, metric, unit, usd_per_unit, long_prompt_tokens, long_usd_per_unit, free_per_month, source_url, checked_on, updated_at, updated_by) VALUES ('cloudflare-r2-storage', 'cloudflare', 'r2', 'gb_month', 'gb_month', 0.015, NULL, NULL, 10, 'https://developers.cloudflare.com/r2/pricing/', '2026-10-15', 0, NULL)`,
     ],
   },
+  {
+    // vm_lang: the interface language a wallet picked (en, es, fr, ar, pt).
+    // Empty means it follows the browser.
+    id: "023_language",
+    statements: [
+      `ALTER TABLE user_settings ADD COLUMN language TEXT`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

@@ -16,9 +16,10 @@ const config: Config = {
       fontFamily: {
         // One family. Data (timecodes, sizes, addresses) is set narrower
         // with tabular figures instead of switching to a monospace face.
-        sans:    ["var(--font-ui)", "system-ui", "sans-serif"],
-        display: ["var(--font-ui)", "system-ui", "sans-serif"],
-        mono:    ["var(--font-ui)", "system-ui", "sans-serif"],
+        // vm_lang: --font-stack (globals.css) puts the Arabic face first in Arabic.
+        sans:    ["var(--font-stack)"],
+        display: ["var(--font-stack)"],
+        mono:    ["var(--font-stack)"],
       },
       colors: {
         void:    c("void"),                                   // page

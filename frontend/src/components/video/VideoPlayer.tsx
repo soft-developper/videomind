@@ -171,6 +171,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
 
     return (
       <div
+        dir="ltr" /* vm_lang: the player reads left to right in every language */
         className="relative aspect-video rounded-md bg-screen border border-rule group overflow-hidden"
         onMouseMove={bump}
         onMouseLeave={() => playing && setShow(false)}

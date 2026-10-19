@@ -12,9 +12,12 @@ import { eventsOf, endEvent, liveConfig } from "./live.js";
 import { dropVideoWork } from "../routes/videos.js";
 
 export type Visibility = "private" | "unlisted" | "public";
-export interface Settings { uploadVisibility: Visibility | null; uploadCategory: string | null }
+export interface Settings { uploadVisibility: Visibility | null; uploadCategory: string | null; language: Language | null }
 
 const VIS: Visibility[] = ["private", "unlisted", "public"];
+// vm_lang: the interface languages (frontend/src/i18n/config.ts holds the same list).
+export const LANGUAGES = ["en", "es", "fr", "ar", "pt"] as const;
+export type Language = (typeof LANGUAGES)[number];
 const w = (wallet: string) => normalizeWallet(wallet) ?? wallet;
 
 export async function getSettings(wallet: string): Promise<Settings> {
@@ -23,6 +26,7 @@ export async function getSettings(wallet: string): Promise<Settings> {
   return {
     uploadVisibility: row && VIS.includes(row.upload_visibility) ? row.upload_visibility : null,
     uploadCategory: row && (CATEGORIES as readonly string[]).includes(row.upload_category) ? row.upload_category : null,
+    language: row && (LANGUAGES as readonly string[]).includes(row.language) ? row.language : null,
   };
 }
 
@@ -45,10 +49,15 @@ export async function saveSettings(wallet: string, body: unknown): Promise<Setti
     if (c !== null && !(CATEGORIES as readonly string[]).includes(String(c))) throw new SettingsError("bad_category", "That category is not one VideoMind knows.");
     next.uploadCategory = c as string | null;
   }
+  if ("language" in b) {
+    const l = b.language === "" ? null : b.language;
+    if (l !== null && !(LANGUAGES as readonly string[]).includes(String(l))) throw new SettingsError("bad_language", "That language is not one VideoMind offers.");
+    next.language = l as Language | null;
+  }
   await getDb().execute({
-    sql: `INSERT INTO user_settings (wallet, upload_visibility, upload_category, updated_at) VALUES (?, ?, ?, ?)
-          ON CONFLICT(wallet) DO UPDATE SET upload_visibility = excluded.upload_visibility, upload_category = excluded.upload_category, updated_at = excluded.updated_at`,
-    args: [w(wallet), next.uploadVisibility, next.uploadCategory, Date.now()],
+    sql: `INSERT INTO user_settings (wallet, upload_visibility, upload_category, language, updated_at) VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(wallet) DO UPDATE SET upload_visibility = excluded.upload_visibility, upload_category = excluded.upload_category, language = excluded.language, updated_at = excluded.updated_at`,
+    args: [w(wallet), next.uploadVisibility, next.uploadCategory, next.language, Date.now()],
   });
   return next;
 }

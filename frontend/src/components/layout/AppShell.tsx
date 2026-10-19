@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations, useLocale } from "next-intl";
 import { clsx } from "clsx";
 import {
   Home, Film, Upload, Disc, Radio, Search, BookOpen, MessageSquare,
@@ -17,6 +18,9 @@ import { SHELBYNET_URLS } from "@/lib/network";
 import { WalletButton } from "./WalletButton";
 import { SignInNotice } from "./SignInNotice";
 import { useSessionWallet } from "./AuthProvider";
+// vm_lang
+import { LanguagePicker } from "./LanguagePicker";
+import { LANGUAGES_ON, intlLocale, type Locale } from "@/i18n/config";
 
 /**
  * The preview shows the whole planned structure. Items that are not
@@ -25,46 +29,48 @@ import { useSessionWallet } from "./AuthProvider";
  */
 const SHOW_PLANNED = true;
 
-interface Item { label: string; href?: string; icon?: LucideIcon; match?: (path: string) => boolean }
-interface Group { label?: string; items: Item[] }
+// vm_lang: labels are message keys under "nav".
+type NavKey = Parameters<ReturnType<typeof useTranslations<"nav">>>[0];
+interface Item { label: NavKey; href?: string; icon?: LucideIcon; match?: (path: string) => boolean }
+interface Group { label?: NavKey; items: Item[] }
 
 const NAV: Group[] = [
-  { items: [{ label: "Home", href: "/", icon: Home }] },
+  { items: [{ label: "home", href: "/", icon: Home }] },
   {
-    label: "Library",
+    label: "library",
     items: [
-      { label: "All videos", href: "/library", icon: Film, match: (p) => p === "/library" || p.startsWith("/video/") },
+      { label: "allVideos", href: "/library", icon: Film, match: (p) => p === "/library" || p.startsWith("/video/") },
       // vm_info: Courses lists collections. The rest list videos by category (see src/lib/categories.ts).
-      { label: "Courses", href: "/library/courses", match: (p) => p.startsWith("/library/courses") },
-      { label: "Lectures", href: "/library/lectures" }, { label: "Seminars", href: "/library/seminars" },
-      { label: "Presentations", href: "/library/presentations" }, { label: "Events", href: "/library/events" },
-      { label: "Live recordings", href: "/library/live" },
+      { label: "courses", href: "/library/courses", match: (p) => p.startsWith("/library/courses") },
+      { label: "lectures", href: "/library/lectures" }, { label: "seminars", href: "/library/seminars" },
+      { label: "presentations", href: "/library/presentations" }, { label: "events", href: "/library/events" },
+      { label: "liveRecordings", href: "/library/live" },
     ],
   },
   {
-    label: "Create",
+    label: "create",
     items: [
-      { label: "Upload", href: "/upload", icon: Upload },
-      { label: "Record", href: "/record", icon: Disc },   // vm_record
-      { label: "Go live", href: "/live", icon: Radio, match: (p) => p === "/live" || p.endsWith("/studio") },   // vm_live
+      { label: "upload", href: "/upload", icon: Upload },
+      { label: "record", href: "/record", icon: Disc },   // vm_record
+      { label: "goLive", href: "/live", icon: Radio, match: (p) => p === "/live" || p.endsWith("/studio") },   // vm_live
     ],
   },
   {
-    label: "Discover",
+    label: "discover",
     items: [
-      { label: "Search", href: "/search", icon: Search },
-      { label: "Knowledge", href: "/learn", icon: BookOpen },
-      { label: "Ask your library", href: "/assistant", icon: MessageSquare },
+      { label: "search", href: "/search", icon: Search },
+      { label: "knowledge", href: "/learn", icon: BookOpen },
+      { label: "askLibrary", href: "/assistant", icon: MessageSquare },
     ],
   },
   {
-    label: "Workspace",
+    label: "workspace",
     items: [
-      { label: "Analytics", href: "/analytics", icon: BarChart3 },   // vm_analytics
+      { label: "analytics", href: "/analytics", icon: BarChart3 },   // vm_analytics
       // vm_profile
-      { label: "Wallet", href: "/wallet", icon: Wallet },
-      { label: "Profile", href: "/profile", icon: User, match: (p) => p === "/profile" || p.startsWith("/u/") },
-      { label: "Settings", href: "/settings", icon: Settings },   // vm_settings
+      { label: "wallet", href: "/wallet", icon: Wallet },
+      { label: "profile", href: "/profile", icon: User, match: (p) => p === "/profile" || p.startsWith("/u/") },
+      { label: "settings", href: "/settings", icon: Settings },   // vm_settings
     ],
   },
 ];
@@ -78,16 +84,21 @@ function Mark() {
   );
 }
 
-function formatBytes(n: number): string {
-  if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
-  if (n < 1024 * 1024 * 1024) return `${Math.round(n / (1024 * 1024))} MB`;
+// vm_lang: sizes in the reader's language (Intl units: "12 MB", "12 Mo").
+function formatBytes(n: number, locale: Locale): string {
+  const unit = (value: number, u: string, digits: number) =>
+    new Intl.NumberFormat(intlLocale(locale), { style: "unit", unit: u, unitDisplay: "short", maximumFractionDigits: digits }).format(value);
+  if (n < 1024 * 1024) return unit(Math.max(1, Math.round(n / 1024)), "kilobyte", 0);
+  if (n < 1024 * 1024 * 1024) return unit(Math.round(n / (1024 * 1024)), "megabyte", 0);
   const gb = n / (1024 * 1024 * 1024);
-  if (gb < 1024) return `${gb < 10 ? gb.toFixed(1) : Math.round(gb)} GB`;
-  return `${(gb / 1024).toFixed(1)} TB`;
+  if (gb < 1024) return unit(gb < 10 ? Math.round(gb * 10) / 10 : Math.round(gb), "gigabyte", 1);
+  return unit(Math.round((gb / 1024) * 10) / 10, "terabyte", 1);
 }
 
 /** Storage used by this wallet's library. Shares the library's own query, so it costs no extra request there. */
 function StorageRow() {
+  const t = useTranslations("shell");
+  const locale = useLocale() as Locale;
   const wallet = useSessionWallet();
   const { data } = useQuery({
     queryKey: ["videos", wallet],
@@ -99,9 +110,9 @@ function StorageRow() {
   const bytes = data.reduce((sum, v) => sum + (v.meta?.sizeBytes ?? 0), 0);
   return (
     <div className="flex items-baseline justify-between gap-3 px-2.5">
-      <span className="text-[13px] text-dim">Storage</span>
+      <span className="text-[13px] text-dim">{t("storage")}</span>
       <span className="tc text-paper-2">
-        {data.length === 0 ? "Nothing stored yet" : `${formatBytes(bytes)} in ${data.length} video${data.length === 1 ? "" : "s"}`}
+        {data.length === 0 ? t("nothingStored") : t("storageUsed", { size: formatBytes(bytes, locale), count: data.length })}
       </span>
     </div>
   );
@@ -113,6 +124,7 @@ function StorageRow() {
  * showing a dot that is always green.
  */
 function ShelbyRow() {
+  const t = useTranslations("shell");
   const { data, isLoading } = useQuery({
     queryKey: ["shelby-reachable"],
     queryFn: async () => {
@@ -135,7 +147,7 @@ function ShelbyRow() {
       <span className="flex items-center gap-2">
         <span className={clsx("dot", state === "up" ? "dot-live" : state === "down" ? "dot-dead" : "dot-off")} />
         <span className={clsx("tc", state === "down" ? "text-error" : "text-paper-2")}>
-          {state === "up" ? "Online" : state === "down" ? "Not responding" : "Checking"}
+          {state === "up" ? t("online") : state === "down" ? t("notResponding") : t("checking")}
         </span>
       </span>
     </div>
@@ -143,15 +155,16 @@ function ShelbyRow() {
 }
 
 function NavList({ path }: { path: string }) {
+  const t = useTranslations("nav");
   return (
-    <nav aria-label="Main" className="flex-1 overflow-y-auto px-2.5 pb-4 scrollbar-hide">
+    <nav aria-label={t("main")} className="flex-1 overflow-y-auto px-2.5 pb-4 scrollbar-hide">
       {NAV.map((group, gi) => {
         const items = group.items.filter((it) => SHOW_PLANNED || it.href);
         if (!items.length) return null;
         return (
           <div key={gi} className={gi === 0 ? "" : "mt-5"}>
             {group.label && (
-              <p className="px-2.5 mb-1 text-[12px] font-medium text-dim">{group.label}</p>
+              <p className="px-2.5 mb-1 text-[12px] font-medium text-dim">{t(group.label)}</p>
             )}
             <ul>
               {items.map((it) => {
@@ -162,8 +175,8 @@ function NavList({ path }: { path: string }) {
                     <span className="w-4 shrink-0 flex justify-center">
                       {Icon && <Icon size={15} strokeWidth={1.75} />}
                     </span>
-                    <span className="truncate">{it.label}</span>
-                    {!it.href && <span className="ml-auto text-[11px] text-dim-2">Soon</span>}
+                    <span className="truncate">{t(it.label)}</span>
+                    {!it.href && <span className="ms-auto text-[11px] text-dim-2">{t("soon")}</span>}
                   </>
                 );
                 return (
@@ -177,7 +190,7 @@ function NavList({ path }: { path: string }) {
                           active ? "bg-slate-2 text-paper font-medium" : "text-paper-2 hover:bg-slate hover:text-paper"
                         )}
                       >
-                        {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-signal" />}
+                        {active && <span className="absolute start-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-signal" />}
                         {inner}
                       </Link>
                     ) : (
@@ -200,6 +213,7 @@ function NavList({ path }: { path: string }) {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("shell");
   const path = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
 
@@ -215,22 +229,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-void">
       <a
         href="#content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[70] btn btn-signal px-3 h-9 inline-flex items-center"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:start-3 focus:z-[70] btn btn-signal px-3 h-9 inline-flex items-center"
       >
-        Skip to content
+        {t("skip")}
       </a>
 
       {/* Top bar, narrow screens only */}
       <header className="lg:hidden fixed top-0 inset-x-0 z-40 h-[52px] bg-side border-b border-rule flex items-center gap-2 px-3">
         <button
           onClick={() => setOpen(true)}
-          aria-label="Open menu"
+          aria-label={t("openMenu")}
           aria-expanded={open}
-          className="w-9 h-9 -ml-1 flex items-center justify-center rounded text-paper-2 hover:text-paper hover:bg-slate"
+          className="w-9 h-9 -ms-1 flex items-center justify-center rounded text-paper-2 hover:text-paper hover:bg-slate"
         >
           <Menu size={18} />
         </button>
-        <Link href="/" className="flex items-center gap-2 mr-auto">
+        <Link href="/" className="flex items-center gap-2 me-auto">
           <Mark />
           <span className="text-[15px] font-semibold tracking-tight text-paper">VideoMind</span>
         </Link>
@@ -247,11 +261,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       />
 
       <aside
-        aria-label="Sidebar"
+        aria-label={t("sidebar")}
         className={clsx(
-          "fixed inset-y-0 left-0 z-50 w-[272px] lg:w-[236px] bg-side border-r border-rule flex flex-col",
+          "fixed inset-y-0 start-0 z-50 w-[272px] lg:w-[236px] bg-side border-e border-rule flex flex-col",
           "transition-transform duration-200 lg:translate-x-0",
-          open ? "translate-x-0" : "-translate-x-full"
+          open ? "translate-x-0" : "-translate-x-full rtl:translate-x-full lg:rtl:translate-x-0"
         )}
       >
         <div className="h-[56px] shrink-0 flex items-center justify-between px-5">
@@ -261,8 +275,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
           <button
             onClick={() => setOpen(false)}
-            aria-label="Close menu"
-            className="lg:hidden w-9 h-9 -mr-2 flex items-center justify-center rounded text-paper-2 hover:text-paper hover:bg-slate"
+            aria-label={t("closeMenu")}
+            className="lg:hidden w-9 h-9 -me-2 flex items-center justify-center rounded text-paper-2 hover:text-paper hover:bg-slate"
           >
             <X size={18} />
           </button>
@@ -273,18 +287,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="shrink-0 border-t border-rule px-2.5 pt-3.5 pb-3 space-y-2.5">
           <StorageRow />
           <ShelbyRow />
+          {/* vm_lang */}
+          {LANGUAGES_ON && <LanguagePicker variant="sidebar" />}
           <div className="pt-1">
             <WalletButton block quiet placement="up" />
           </div>
           {/* vm_legal */}
           <div className="flex gap-4 px-1 text-[12px] text-dim">
-            <Link href="/legal/privacy" className="hover:text-paper">Privacy</Link>
-            <Link href="/legal/terms" className="hover:text-paper">Terms</Link>
+            <Link href="/legal/privacy" className="hover:text-paper">{t("privacy")}</Link>
+            <Link href="/legal/terms" className="hover:text-paper">{t("terms")}</Link>
           </div>
         </div>
       </aside>
 
-      <div className="lg:pl-[236px]">
+      <div className="lg:ps-[236px]">
         <main id="content" className="pt-[52px] lg:pt-0 min-h-screen">
           {children}
         </main>
