@@ -3,6 +3,8 @@ import { useRef, useEffect, useState, useCallback, useMemo, memo } from "react";
 import { Search } from "lucide-react";
 import { clsx } from "clsx";
 import { readableTime } from "@/lib/exports";
+// vm_lang
+import { useTranslations } from "next-intl";
 
 // vm_shell: following the video scrolls this list only, never the page.
 // The moment the reader scrolls the list by hand, following stops, and a
@@ -48,6 +50,7 @@ const Row = memo(function Row({
   line: TranscriptLine; on: boolean; wordAt: number; q: string;
   onSeek: (s: number) => void; rowRef?: React.Ref<HTMLDivElement>;
 }) {
+  const tt = useTranslations("transcript");
   const words = useMemo(() => (q ? null : wordsOf(line)), [line, q]);
   return (
     <div
@@ -55,17 +58,17 @@ const Row = memo(function Row({
       aria-current={on ? "true" : undefined}
       className={clsx(
         "w-full flex items-start gap-3 px-4 py-1.5 transition-colors group",
-        on ? "bg-signal/[0.13] shadow-[inset_2px_0_0_var(--signal)]" : "hover:bg-slate-2"
+        on ? "bg-signal/[0.13] shadow-[inset_2px_0_0_var(--signal)] rtl:shadow-[inset_-2px_0_0_var(--signal)]" : "hover:bg-slate-2"
       )}
     >
       <button
         onClick={() => onSeek(line.start)}
-        aria-label={`Play from ${readableTime(line.start)}`}
-        className={clsx("tc shrink-0 pt-[3px] w-11 text-left transition-colors no-min", on ? "text-paper" : "text-dim group-hover:text-paper-2")}
+        aria-label={tt("playFrom", { time: readableTime(line.start) })}
+        className={clsx("tc shrink-0 pt-[3px] w-11 text-start transition-colors no-min", on ? "text-paper" : "text-dim group-hover:text-paper-2")}
       >
         {readableTime(line.start)}
       </button>
-      <p className={clsx("text-[14px] font-sans leading-[1.55] transition-colors", on ? "text-paper" : "text-paper-2 group-hover:text-paper")}>
+      <p dir="auto" className={clsx("text-[14px] font-sans leading-[1.55] transition-colors", on ? "text-paper" : "text-paper-2 group-hover:text-paper")}>
         {words
           ? words.map((w, i) => (
               <span key={i}>
@@ -96,6 +99,7 @@ export function TranscriptPanel({
   /** vm_workspace: shown as headings where each chapter starts */
   chapters?: ChapterMark[];
 }) {
+  const tt = useTranslations("transcript");
   const [q, setQ] = useState("");
   const [follow, setFollow] = useState(true);
   const listRef = useRef<HTMLDivElement>(null);
@@ -141,19 +145,20 @@ export function TranscriptPanel({
   const hits = needle ? rows.reduce((n, { s }) => n + marked(s.text, needle).filter((p) => p.hit).length, 0) : 0;
 
   return (
-    <section className="panel overflow-hidden" aria-label="Transcript">
+    <section className="panel overflow-hidden" aria-label={tt("title")}>
       <header className="flex items-center gap-3 px-4 h-12 border-b border-rule">
-        <h2 className="text-[14px] font-semibold text-paper">Transcript</h2>
+        <h2 className="text-[14px] font-semibold text-paper">{tt("title")}</h2>
 
-        <label className="relative ml-auto w-48 min-w-0">
-          <span className="sr-only">Find in transcript</span>
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-dim pointer-events-none" />
+        <label className="relative ms-auto w-48 min-w-0">
+          <span className="sr-only">{tt("find")}</span>
+          <Search size={13} className="absolute start-2.5 top-1/2 -translate-y-1/2 text-dim pointer-events-none" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Escape") setQ(""); }}
-            placeholder="Find in transcript"
-            className="w-full h-8 pl-8 pr-2 text-[13px] font-sans"
+            placeholder={tt("find")}
+            dir="auto"
+            className="w-full h-8 ps-8 pe-2 text-[13px] font-sans"
           />
         </label>
 
@@ -165,13 +170,13 @@ export function TranscriptPanel({
             follow ? "border-rule text-paper-2 hover:text-paper" : "border-rule-lit text-paper bg-slate-2 hover:bg-rule"
           )}
         >
-          {follow ? "Following" : "Follow the video"}
+          {follow ? tt("following") : tt("follow")}
         </button>
       </header>
 
       {needle && rows.length > 0 && (
         <p className="px-4 pt-2 tc" aria-live="polite">
-          {hits} {hits === 1 ? "match" : "matches"} in {rows.length} {rows.length === 1 ? "sentence" : "sentences"}
+          {tt("matches", { hits, sentences: rows.length })}
         </p>
       )}
 
@@ -183,7 +188,7 @@ export function TranscriptPanel({
         className="relative max-h-80 overflow-y-auto py-1.5"
       >
         {rows.length === 0 && (
-          <p className="px-4 py-8 text-[13.5px] text-dim">Nothing in the transcript contains "{needle}".</p>
+          <p className="px-4 py-8 text-[13.5px] text-dim">{tt("noMatch", { q: needle })}</p>
         )}
 
         {rows.map(({ s, i }) => {
@@ -194,10 +199,10 @@ export function TranscriptPanel({
               {heading && (
                 <button
                   onClick={() => onSeek(heading.startSeconds)}
-                  className="w-full flex items-baseline gap-3 px-4 pt-3 pb-1 text-left no-min group/h"
+                  className="w-full flex items-baseline gap-3 px-4 pt-3 pb-1 text-start no-min group/h"
                 >
                   <span className="tc w-11 shrink-0 text-dim">{readableTime(heading.startSeconds)}</span>
-                  <span className="text-[13px] font-semibold text-paper group-hover/h:underline">{heading.title}</span>
+                  <span dir="auto" className="text-[13px] font-semibold text-paper group-hover/h:underline">{heading.title}</span>
                 </button>
               )}
               <Row line={s} on={on} wordAt={on ? wordAt : -1} q={needle} onSeek={onSeek} rowRef={on ? activeRef : undefined} />

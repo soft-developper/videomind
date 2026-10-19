@@ -4,6 +4,8 @@ import { Send, RefreshCw } from "lucide-react";
 import { chatWithVideo } from "@/lib/api";
 import { clsx } from "clsx";
 import { readableTime } from "@/lib/exports";
+// vm_lang
+import { useTranslations } from "next-intl";
 
 interface Msg {
   role: "you" | "ai";
@@ -12,18 +14,16 @@ interface Msg {
   failed?: boolean;
 }
 
-const PROMPTS = [
-  "Summarize this",
-  "What are the key points?",
-  "What questions does this leave open?",
-  "Find the most useful moment",
-];
+// vm_lang: suggested questions, in the reader's language (message keys under "ask.prompts").
+// Asked in that language, the answer comes back in it too.
+const PROMPTS = ["summary", "points", "open", "useful"] as const;
 
 export function ChatPanel({ videoId, videoTitle, onSeek }: {
   videoId: string; videoTitle: string;
   /** vm_workspace: a source in an answer plays the video from that moment */
   onSeek?: (seconds: number) => void;
 }) {
+  const ta = useTranslations("ask");
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
@@ -70,14 +70,14 @@ export function ChatPanel({ videoId, videoTitle, onSeek }: {
       const r = await chatWithVideo(videoId, question);
       setMsgs((m) => [...m, { role: "ai", text: r.answer, sources: r.sources }]);
     } catch (e: any) {
-      setMsgs((m) => [...m, { role: "ai", text: e.message ?? "Something broke.", failed: true }]);
+      setMsgs((m) => [...m, { role: "ai", text: e.message ?? ta("failed"), failed: true }]);
     } finally { setBusy(false); }
   };
 
   return (
     <div className="flex flex-col h-full">
       <header className="flex items-center px-4 h-12 border-b border-rule shrink-0">
-        <h2 className="text-[14px] font-semibold text-paper">Ask about this video</h2>
+        <h2 className="text-[14px] font-semibold text-paper">{ta("title")}</h2>
       </header>
 
       <div className="relative flex-1 min-h-0 flex flex-col">
@@ -85,16 +85,16 @@ export function ChatPanel({ videoId, videoTitle, onSeek }: {
         {msgs.length === 0 && (
           <div className="space-y-4 pt-4">
             <p className="text-[13.5px] font-sans text-dim leading-relaxed">
-              Answers point to the moments in the video they came from.
+              {ta("intro")}
             </p>
             <div className="space-y-2">
               {PROMPTS.map((p) => (
                 <button
                   key={p}
-                  onClick={() => ask(p)}
-                  className="w-full text-left px-3 py-2 rounded-md text-[13.5px] font-sans text-paper-2 border border-rule hover:border-rule-lit hover:text-paper hover:bg-slate-2 transition-colors no-min"
+                  onClick={() => ask(ta(`prompts.${p}`))}
+                  className="w-full text-start px-3 py-2 rounded-md text-[13.5px] font-sans text-paper-2 border border-rule hover:border-rule-lit hover:text-paper hover:bg-slate-2 transition-colors no-min"
                 >
-                  {p}
+                  {ta(`prompts.${p}`)}
                 </button>
               ))}
             </div>
@@ -105,11 +105,11 @@ export function ChatPanel({ videoId, videoTitle, onSeek }: {
           <div key={i} className="space-y-2">
             <div className={clsx(
               "px-3 py-2.5",
-              m.failed  ? "border-l-2 border-error bg-error/5"
+              m.failed  ? "border-s-2 border-error bg-error/5"
               : m.role === "you" ? "bubble-you"
               : "bubble-ai"
             )}>
-              <p className={clsx(
+              <p dir="auto" className={clsx(
                 "text-[13px] font-sans leading-[1.6]",
                 m.failed ? "text-error" : m.role === "you" ? "text-paper" : "text-paper-2"
               )}>
@@ -122,24 +122,24 @@ export function ChatPanel({ videoId, videoTitle, onSeek }: {
                 onClick={() => { setMsgs((x) => x.slice(0, -1)); ask(last); }}
                 className="flex items-center gap-1.5 tc hover:text-paper transition-colors no-min"
               >
-                <RefreshCw size={9} /> Retry
+                <RefreshCw size={9} /> {ta("retry")}
               </button>
             )}
 
             {m.sources && m.sources.length > 0 && (
-              <div className="space-y-px pl-2">
+              <div className="space-y-px ps-2">
                 {m.sources.map((s, j) => (
                   <button
                     key={j}
                     onClick={() => onSeek?.(s.time)}
                     disabled={!onSeek}
-                    aria-label={`Play from ${readableTime(s.time)}: ${s.text}`}
-                    className="w-full flex items-start gap-2.5 px-2 py-1.5 border-l border-rule text-left hover:border-signal hover:bg-slate-2 transition-colors no-min group/src disabled:hover:bg-transparent"
+                    aria-label={ta("playFrom", { time: readableTime(s.time), text: s.text })}
+                    className="w-full flex items-start gap-2.5 px-2 py-1.5 border-s border-rule text-start hover:border-signal hover:bg-slate-2 transition-colors no-min group/src disabled:hover:bg-transparent"
                   >
                     <span className="tc tc-signal tabular-nums shrink-0">
                       {readableTime(s.time)}
                     </span>
-                    <span className="text-[11px] font-sans text-dim leading-relaxed line-clamp-2 group-hover/src:text-paper-2">
+                    <span dir="auto" className="text-[11px] font-sans text-dim leading-relaxed line-clamp-2 group-hover/src:text-paper-2">
                       {s.text}
                     </span>
                   </button>
@@ -152,7 +152,7 @@ export function ChatPanel({ videoId, videoTitle, onSeek }: {
         {busy && (
           <div className="flex items-center gap-2 px-3 py-2.5 bubble-ai">
             <span className="dot dot-work" />
-            <span className="tc">Reading the transcript</span>
+            <span className="tc">{ta("reading")}</span>
           </div>
         )}
 
@@ -160,7 +160,7 @@ export function ChatPanel({ videoId, videoTitle, onSeek }: {
       </div>
       {unseen && (
         <button onClick={toBottom} className="absolute bottom-2 left-1/2 -translate-x-1/2 h-8 px-3 rounded-full btn btn-ghost bg-slate-2 text-[12.5px] no-min">
-          New answer below
+          {ta("newBelow")}
         </button>
       )}
       </div>
@@ -171,13 +171,15 @@ export function ChatPanel({ videoId, videoTitle, onSeek }: {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && ask(q)}
-            placeholder="Ask a question"
+            placeholder={ta("placeholder")}
+            dir="auto"
             disabled={busy}
             className="flex-1 h-9 px-3 text-[13px] font-sans disabled:opacity-50"
           />
           <button
             onClick={() => ask(q)}
             disabled={!q.trim() || busy}
+            aria-label={ta("send")}
             className={clsx(
               "w-9 h-9 rounded flex items-center justify-center transition-colors shrink-0 no-min",
               q.trim() && !busy
@@ -185,7 +187,7 @@ export function ChatPanel({ videoId, videoTitle, onSeek }: {
                 : "border border-rule text-dim-2 cursor-not-allowed"
             )}
           >
-            <Send size={13} />
+            <Send size={13} className="rtl:-scale-x-100" />
           </button>
         </div>
       </div>

@@ -1,6 +1,9 @@
 // src/lib/media.ts
 // vm_media: how the facts the server read from a file are worded.
 import type { MediaFacts } from "./api";
+// vm_lang
+import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 
 const CODEC: Record<string, string> = {
   h264: "H.264", hevc: "HEVC", vp8: "VP8", vp9: "VP9", av1: "AV1", mpeg4: "MPEG-4", mpeg2video: "MPEG-2",
@@ -43,4 +46,29 @@ export function playbackNote(m?: MediaFacts | null): { tone: "warn" | "quiet"; t
     return { tone: "quiet", text: `This file is ${format}. Some browsers cannot play that. An MP4 with H.264 video plays everywhere.` };
   }
   return null;
+}
+
+/**
+ * vm_lang: formatLabel and playbackNote in the reader's language. Codec and
+ * container names stay as they are ("HEVC", "MOV").
+ */
+export function useMediaText() {
+  const t = useTranslations("media");
+  return useMemo(() => {
+    const format = (m?: MediaFacts | null): string | null => {
+      if (!m) return null;
+      const codec = codecLabel(m.videoCodec), box = containerLabel(m.container);
+      if (codec && box) return t("codecIn", { codec, box });
+      return codec ?? box;
+    };
+    const note = (m?: MediaFacts | null): { tone: "warn" | "quiet"; text: string } | null => {
+      if (!m) return null;
+      if (!m.hasVideo) return { tone: "warn", text: t("noPicture") };
+      const f = format(m) ?? t("unusual");
+      if (m.playable === "no") return { tone: "warn", text: t("cannotPlay", { format: f }) };
+      if (m.playable === "some") return { tone: "quiet", text: t("somePlay", { format: f }) };
+      return null;
+    };
+    return { format, note };
+  }, [t]);
 }

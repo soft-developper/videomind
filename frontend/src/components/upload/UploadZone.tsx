@@ -430,7 +430,7 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
               </span>
             </div>
             <div
-              role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={tu("progress")} dir="ltr"
+              role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={tu("progress")}
               className="h-1.5 rounded-full bg-rule overflow-hidden"
             >
               <div className="h-full rounded-full bg-signal transition-[width] duration-300" style={{ width: `${pct}%` }} />

@@ -6,6 +6,8 @@ import { Play, Pause, Volume2, VolumeX, Maximize, AlertTriangle, Captions, Capti
 import { clsx } from "clsx";
 import Link from "next/link";
 import { useViewCounter } from "@/lib/useViewCounter";
+// vm_lang
+import { useTranslations } from "next-intl";
 
 export interface VideoPlayerHandle {
   seekTo: (seconds: number) => void;
@@ -54,6 +56,7 @@ function ccPreference(): boolean {
 
 export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
   function VideoPlayer({ streamUrl, source, poster, format, captions, chapters, startAt, resumed, onStartOver, onProgress, upNext, onDuration, onTimeUpdate, countViewsOf }, ref) {
+    const tp = useTranslations("player");
     const v = useRef<HTMLVideoElement>(null);
     const views = useViewCounter(countViewsOf);
     const [loading, setLoading] = useState(true);
@@ -164,7 +167,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
     if (!streamUrl) {
       return (
         <div className="aspect-video rounded-md bg-screen border border-rule flex items-center justify-center">
-          <span className="tc">This video has no file to play yet</span>
+          <span className="tc">{tp("noFile")}</span>
         </div>
       );
     }
@@ -180,7 +183,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
           <div className={clsx("absolute inset-0 flex items-center justify-center z-10 pointer-events-none", !poster && "bg-screen")}>
             <div className={clsx("flex items-center gap-2.5", poster && "px-3 py-1.5 rounded bg-screen/85 border border-rule")}>
               <span className="dot dot-work" />
-              <span className="tc">Loading the video</span>
+              <span className="tc">{tp("loading")}</span>
             </div>
           </div>
         )}
@@ -188,15 +191,15 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10 bg-screen px-6 text-center">
             <AlertTriangle size={20} className="text-error" />
-            <p className="font-display text-[17px] text-paper">
-              {source === "shelby" ? "This video could not be loaded from Shelby" : "This video could not be played"}
+            <p dir="auto" className="font-display text-[17px] text-paper">
+              {source === "shelby" ? tp("shelbyFailed") : tp("cannotPlay")}
             </p>
-            <p className="text-[12px] font-sans text-dim max-w-xs leading-relaxed">
+            <p dir="auto" className="text-[12px] font-sans text-dim max-w-xs leading-relaxed">
               {source === "shelby"
-                ? "The network may be unreachable right now, or the paid storage period may have ended."
+                ? tp("shelbyFailedHint")
                 : format
-                  ? `This file is ${format}, which this browser cannot play. An MP4 with H.264 video plays everywhere.`
-                  : "The file may be in a format this browser cannot play, or storage may be unreachable right now."}
+                  ? tp("formatHint", { format })
+                  : tp("cannotPlayHint")}
             </p>
           </div>
         )}
@@ -229,7 +232,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
             <track
               key={ccUrl}
               kind="captions"
-              label="Captions"
+              label={tp("captions")}
               src={ccUrl}
               onLoad={() => { const t = v.current?.textTracks?.[0]; if (t) t.mode = ccOn ? "showing" : "hidden"; placeCues(); }}
             />
@@ -241,7 +244,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
           "absolute inset-x-0 bottom-0 flex items-center gap-3 px-3 h-10 bg-void/80 border-t border-rule transition-all duration-200 z-20",
           show || !playing ? "opacity-100 translate-y-0" : "opacity-0 translate-y-full"
         )}>
-          <button onClick={toggle} aria-label={playing ? "Pause" : "Play"} className="text-paper-2 hover:text-paper transition-colors no-min">
+          <button onClick={toggle} aria-label={playing ? tp("pause") : tp("play")} className="text-paper-2 hover:text-paper transition-colors no-min">
             {playing ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
           </button>
           <button
@@ -249,35 +252,36 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
               const el = v.current; if (!el) return;
               el.muted = !el.muted; setMuted(el.muted);
             }}
+            aria-label={muted ? tp("unmute") : tp("mute")}
             className="text-dim hover:text-paper transition-colors no-min"
           >
             {muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
           </button>
           {marks.length > 0 ? (
             <>
-              <button onClick={prevChapter} aria-label="Previous chapter" title="Previous chapter" className="text-dim hover:text-paper transition-colors no-min">
+              <button onClick={prevChapter} aria-label={tp("prevChapter")} title={tp("prevChapter")} className="text-dim hover:text-paper transition-colors no-min">
                 <SkipBack size={13} />
               </button>
-              <button onClick={nextChapter} disabled={ch + 1 >= marks.length} aria-label="Next chapter" title="Next chapter" className="text-dim hover:text-paper transition-colors no-min disabled:opacity-40">
+              <button onClick={nextChapter} disabled={ch + 1 >= marks.length} aria-label={tp("nextChapter")} title={tp("nextChapter")} className="text-dim hover:text-paper transition-colors no-min disabled:opacity-40">
                 <SkipForward size={13} />
               </button>
               <span className="text-[12.5px] text-paper-2 truncate min-w-0" aria-live="off">
-                {ch >= 0 ? <><span className="tc mr-1.5">{ch + 1}/{marks.length}</span>{marks[ch].title}</> : <span className="text-dim">Before the first chapter</span>}
+                {ch >= 0 ? <><span className="tc mr-1.5">{ch + 1}/{marks.length}</span><span dir="auto">{marks[ch].title}</span></> : <span dir="auto" className="text-dim">{tp("beforeFirst")}</span>}
               </span>
               <span className="ml-auto" />
             </>
           ) : (
             <>
-              <span className="tc ml-auto truncate hidden sm:block">Use the timeline below to move through the video</span>
+              <span dir="auto" className="tc ml-auto truncate hidden sm:block">{tp("useTimeline")}</span>
               <span className="ml-auto sm:hidden" />
             </>
           )}
           {ccUrl && (
             <button
               onClick={toggleCaptions}
-              aria-label={ccOn ? "Turn captions off" : "Turn captions on"}
+              aria-label={ccOn ? tp("captionsOff") : tp("captionsOn")}
               aria-pressed={ccOn}
-              title={ccOn ? "Captions on" : "Captions off"}
+              title={ccOn ? tp("captionsAreOn") : tp("captionsAreOff")}
               className={clsx("transition-colors no-min", ccOn ? "text-paper" : "text-dim hover:text-paper")}
             >
               {ccOn ? <Captions size={14} /> : <CaptionsOff size={14} />}
@@ -288,6 +292,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
               const el = v.current; if (!el) return;
               document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
             }}
+            aria-label={tp("fullscreen")}
             className="text-dim hover:text-paper transition-colors no-min"
           >
             <Maximize size={13} />
@@ -297,12 +302,12 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
         {/* vm_progress: where this viewer stopped last time */}
         {chip !== null && (
           <div className="absolute top-3 left-3 z-20 flex items-center gap-2 pl-3 pr-1.5 h-8 rounded bg-screen/90 border border-rule" role="status">
-            <span className="text-[12.5px] text-paper-2">Resumed at <span className="tc text-paper">{readable(chip)}</span></span>
+            <span dir="auto" className="text-[12.5px] text-paper-2">{tp.rich("resumedAt", { time: readable(chip), t: (c) => <span className="tc text-paper">{c}</span> })}</span>
             <button
               onClick={() => { const el = v.current; if (el) { el.currentTime = 0; setNow(0); } setChip(null); onStartOver?.(); }}
               className="h-6 px-2 rounded text-[12.5px] text-paper hover:bg-slate-2 no-min"
             >
-              Start over
+              {tp("startOver")}
             </button>
           </div>
         )}
@@ -311,11 +316,11 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
         {ended && upNext && (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-screen/80 px-6">
             <div className="text-center space-y-3 max-w-sm">
-              <p className="tc">Up next in this course</p>
-              <p className="text-[16px] font-medium text-paper leading-snug">{upNext.title}</p>
+              <p dir="auto" className="tc">{tp("upNext")}</p>
+              <p dir="auto" className="text-[16px] font-medium text-paper leading-snug">{upNext.title}</p>
               <div className="flex items-center justify-center gap-2">
-                <Link href={upNext.href} className="btn btn-signal h-9 px-4 inline-flex items-center">Play next lesson</Link>
-                <button onClick={() => setEnded(false)} className="btn btn-ghost h-9 px-3.5">Stay here</button>
+                <Link href={upNext.href} className="btn btn-signal h-9 px-4 inline-flex items-center">{tp("playNext")}</Link>
+                <button onClick={() => setEnded(false)} className="btn btn-ghost h-9 px-3.5">{tp("stay")}</button>
               </div>
             </div>
           </div>
@@ -323,7 +328,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
 
         {/* Big play */}
         {!playing && !loading && !error && (
-          <button onClick={toggle} className="absolute inset-0 flex items-center justify-center z-10">
+          <button onClick={toggle} aria-label={tp("play")} className="absolute inset-0 flex items-center justify-center z-10">
             <span className="w-14 h-14 rounded-full bg-paper/95 flex items-center justify-center">
               <Play size={20} className="text-void ml-1" fill="currentColor" />
             </span>

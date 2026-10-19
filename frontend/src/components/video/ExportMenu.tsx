@@ -7,6 +7,8 @@ import {
 } from "@/lib/exports";
 // vm_captions: subtitles come from the server, cut for reading on screen
 import { getCaptions } from "@/lib/api";
+// vm_lang
+import { useTranslations } from "next-intl";
 
 interface Props {
   /** vm_captions: when given, .srt and .vtt are the server's captions */
@@ -20,6 +22,7 @@ interface Props {
 }
 
 export function ExportMenu(props: Props) {
+  const tx = useTranslations("export");
   const { title, transcript } = props;
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
@@ -45,10 +48,10 @@ export function ExportMenu(props: Props) {
   const flash = () => { setDone(true); setTimeout(() => setDone(false), 1800); setOpen(false); };
 
   const OPTS = [
-    { ext: "srt", note: "subtitles for editors",  run: async () => { downloadFile(await captionsOr("srt", () => toSRT(transcript)), `${slug}.srt`); flash(); } },
-    { ext: "vtt", note: "web video players",       run: async () => { downloadFile(await captionsOr("vtt", () => toVTT(transcript)), `${slug}.vtt`, "text/vtt"); flash(); } },
-    { ext: "md",  note: "notes, cuts and quotes",  run: () => { downloadFile(toMarkdown(props), `${slug}.md`, "text/markdown"); flash(); } },
-    { ext: "txt", note: "transcript, no timecodes",run: () => { downloadFile(toPlainText(transcript), `${slug}.txt`); flash(); } },
+    { ext: "srt", note: tx("srt"),  run: async () => { downloadFile(await captionsOr("srt", () => toSRT(transcript)), `${slug}.srt`); flash(); } },
+    { ext: "vtt", note: tx("vtt"),  run: async () => { downloadFile(await captionsOr("vtt", () => toVTT(transcript)), `${slug}.vtt`, "text/vtt"); flash(); } },
+    { ext: "md",  note: tx("md"),  run: () => { downloadFile(toMarkdown(props), `${slug}.md`, "text/markdown"); flash(); } },
+    { ext: "txt", note: tx("txt"), run: () => { downloadFile(toPlainText(transcript), `${slug}.txt`); flash(); } },
   ];
 
   return (
@@ -58,17 +61,17 @@ export function ExportMenu(props: Props) {
         className="flex items-center gap-1.5 h-8 px-3 btn-ghost text-[12px] no-min"
       >
         {done ? <Check size={11} className="text-marker" /> : <Download size={11} />}
-        {done ? "Downloaded" : "Export"}
+        {done ? tx("downloaded") : tx("button")}
         <ChevronDown size={10} className={clsx("transition-transform", open && "rotate-180")} />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 w-56 bg-void border border-rule z-40">
+        <div className="absolute start-0 top-full mt-1 w-56 bg-void border border-rule z-40">
           {OPTS.map(({ ext, note, run }) => (
             <button
               key={ext}
               onClick={run}
-              className="w-full flex items-baseline gap-3 px-3 py-2.5 text-left border-b border-rule last:border-0 hover:bg-slate transition-colors no-min"
+              className="w-full flex items-baseline gap-3 px-3 py-2.5 text-start border-b border-rule last:border-0 hover:bg-slate transition-colors no-min"
             >
               <span className="tc tc-signal">.{ext}</span>
               <span className="text-[12px] font-sans text-dim">{note}</span>

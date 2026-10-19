@@ -13,6 +13,8 @@
  */
 import { useMemo, useRef, useState, useCallback } from "react";
 import { clsx } from "clsx";
+// vm_lang
+import { useTranslations } from "next-intl";
 
 interface Segment { start: number; end: number; text: string; }
 interface Chapter { title: string; startSeconds: number; summary: string; }
@@ -41,6 +43,7 @@ function tc(sec: number) {
 export function IntelligenceStrip({
   duration, currentTime, transcript, chapters, highlights, onSeek,
 }: Props) {
+  const ts = useTranslations("timeline");
   const railRef = useRef<HTMLDivElement>(null);
   const [hoverX, setHoverX] = useState<number | null>(null);
   const [tip, setTip] = useState<{ x: number; label: string; kind: "cut" | "found" } | null>(null);
@@ -100,19 +103,19 @@ export function IntelligenceStrip({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-rule">
         <div className="flex items-center gap-3">
-          <span className="text-[13px] font-semibold text-paper">Timeline</span>
+          <span className="text-[13px] font-semibold text-paper">{ts("title")}</span>
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-[3px] bg-paper-2" />
-              <span className="strip-lane-label">Speech</span>
+              <span className="strip-lane-label">{ts("speech")}</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-[1px] h-2.5 bg-paper-2" />
-              <span className="strip-lane-label">Chapters</span>
+              <span className="strip-lane-label">{ts("chapters")}</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 bg-marker rotate-45" />
-              <span className="strip-lane-label">Key moments</span>
+              <span className="strip-lane-label">{ts("moments")}</span>
             </span>
           </div>
         </div>
@@ -127,7 +130,7 @@ export function IntelligenceStrip({
         onMouseLeave={() => { setHoverX(null); setTip(null); }}
         onClick={(e) => seekFromEvent(e.clientX)}
         role="slider"
-        aria-label="Video timeline"
+        aria-label={ts("rail")}
         aria-valuemin={0}
         aria-valuemax={duration}
         aria-valuenow={currentTime}
@@ -166,7 +169,7 @@ export function IntelligenceStrip({
               onMouseLeave={() => setTip(null)}
               className="absolute top-0 bottom-0 w-3 -translate-x-1/2 flex justify-center group no-min"
               style={{ left: `${pct(ch.startSeconds)}%` }}
-              aria-label={`Chapter: ${ch.title}`}
+              aria-label={ts("chapter", { title: ch.title })}
             >
               <span className="w-px h-full bg-dim group-hover:bg-paper transition-colors" />
             </button>
@@ -186,7 +189,7 @@ export function IntelligenceStrip({
               onMouseLeave={() => setTip(null)}
               className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center no-min"
               style={{ left: `${pct(hl.startSeconds)}%` }}
-              aria-label={`Highlight: ${hl.reason}`}
+              aria-label={ts("moment", { reason: hl.reason })}
             >
               <span className={clsx("diamond", i === activeHl && "diamond-active")} />
             </button>
@@ -223,7 +226,7 @@ export function IntelligenceStrip({
               borderColor: tip.kind === "found" ? "var(--marker-dim)" : "var(--rule-lit)",
             }}
           >
-            <p className={clsx(
+            <p dir="auto" className={clsx(
               "text-[11px] font-sans leading-tight truncate",
               tip.kind === "found" ? "text-marker" : "text-paper-2"
             )}>
@@ -238,10 +241,10 @@ export function IntelligenceStrip({
         <span className="tc tabular-nums">0:00</span>
         <div className="flex items-center gap-4">
           {(chapters?.length ?? 0) > 0 && (
-            <span className="tc">{chapters!.length} {chapters!.length === 1 ? "chapter" : "chapters"}</span>
+            <span className="tc">{ts("chapterCount", { count: chapters!.length })}</span>
           )}
           {(highlights?.length ?? 0) > 0 && (
-            <span className="tc tc-marker">{highlights!.length} key moments</span>
+            <span className="tc tc-marker">{ts("momentCount", { count: highlights!.length })}</span>
           )}
         </div>
         <span className="tc tabular-nums">{tc(duration)}</span>

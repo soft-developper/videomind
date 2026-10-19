@@ -32,9 +32,16 @@ import { Lock } from "lucide-react";
 // vm_present
 import { Presentation } from "lucide-react";
 // vm_media: the picture before playback, and what to say about a format browsers cannot all play
-import { formatLabel, playbackNote } from "@/lib/media";
+import { useMediaText } from "@/lib/media";
+// vm_lang
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/lib/format";
 
 export default function VideoPage({ params }: { params: { id: string } }) {
+  const tv = useTranslations("videoPage");
+  const fmt = useFormat();
+  const media = useMediaText();
+  const formatLabel = media.format;
   const [chatOpen, setChatOpen] = useState(false);
   const [t, setT] = useState(0);
   const [dur, setDur] = useState(0);
@@ -97,9 +104,9 @@ export default function VideoPage({ params }: { params: { id: string } }) {
     return (
       <AppShell>
         <div className="section pt-10 max-w-[52ch]">
-          <h1 className="font-display text-[20px] text-paper">This video was removed</h1>
-          <p className="text-[14px] text-dim mt-1.5 leading-relaxed">VideoMind removed it because it broke the <Link href="/legal/terms" className="underline hover:text-paper">Terms of Service</Link>.</p>
-          <Link href="/library" className="btn btn-ghost h-9 px-3.5 inline-flex items-center mt-5">Back to the library</Link>
+          <h1 className="font-display text-[20px] text-paper">{tv("removedTitle")}</h1>
+          <p className="text-[14px] text-dim mt-1.5 leading-relaxed">{tv.rich("removedBody", { terms: (c) => <Link href="/legal/terms" className="underline hover:text-paper">{c}</Link> })}</p>
+          <Link href="/library" className="btn btn-ghost h-9 px-3.5 inline-flex items-center mt-5">{tv("backToLibrary")}</Link>
         </div>
       </AppShell>
     );
@@ -110,17 +117,17 @@ export default function VideoPage({ params }: { params: { id: string } }) {
     return (
       <AppShell>
         <div className="section pt-10 max-w-[52ch]">
-          <h1 className="font-display text-[20px] text-paper flex items-center gap-2"><Lock size={16} className="text-paper-2" /> This video is private</h1>
+          <h1 className="font-display text-[20px] text-paper flex items-center gap-2"><Lock size={16} className="text-paper-2" /> {tv("privateTitle")}</h1>
           <p className="text-[14px] text-dim mt-1.5 leading-relaxed">
             {me
-              ? "It belongs to a different wallet, and its owner has not shared it."
+              ? tv("privateOther")
               : connected
-                ? "Only its owner can open it. If it is yours, sign in with your wallet. The prompt is at the bottom of the page."
-                : "Only its owner can open it. If it is yours, connect the wallet you uploaded it with."}
+                ? tv("privateSignIn")
+                : tv("privateConnect")}
           </p>
           <div className="flex items-center gap-2.5 mt-5 flex-wrap">
             {!connected && <WalletButton />}
-            <Link href="/library" className="btn btn-ghost h-9 px-3.5 inline-flex items-center">Back to the library</Link>
+            <Link href="/library" className="btn btn-ghost h-9 px-3.5 inline-flex items-center">{tv("backToLibrary")}</Link>
           </div>
         </div>
       </AppShell>
@@ -131,10 +138,10 @@ export default function VideoPage({ params }: { params: { id: string } }) {
     return (
       <AppShell>
         <div className="section pt-10">
-          <h1 className="font-display text-[20px] text-paper">This video was not found</h1>
-          <p className="text-[14px] text-dim mt-1.5">It may have been deleted.</p>
+          <h1 className="font-display text-[20px] text-paper">{tv("notFoundTitle")}</h1>
+          <p className="text-[14px] text-dim mt-1.5">{tv("notFoundBody")}</p>
           <Link href="/library" className="btn btn-ghost h-9 px-3.5 inline-flex items-center mt-5">
-            Back to the library
+            {tv("backToLibrary")}
           </Link>
         </div>
       </AppShell>
@@ -148,7 +155,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
   const unfinished = video.status === "uploading";
   const mine = video.isOwner ?? (!!me && !!video.ownerWallet && me.toLowerCase() === video.ownerWallet.toLowerCase());
   const isPrivate = video.visibility === "private";
-  const note = playbackNote(video.media);
+  const note = media.note(video.media);
   // vm_transcribe: transcribed, and nothing was said. There is nothing to analyze or to ask about.
   const speechless = ready && Array.isArray(video.ai?.transcript) && video.ai!.transcript!.length === 0;
   const source = video.source;
@@ -165,18 +172,18 @@ export default function VideoPage({ params }: { params: { id: string } }) {
           <div className="section pt-6 lg:pt-8 pb-1">
             <Link
               href="/library"
-              className="inline-flex items-center gap-1 -ml-1 mb-3 text-[13px] text-dim hover:text-paper transition-colors"
+              className="inline-flex items-center gap-1 -ms-1 mb-3 text-[13px] text-dim hover:text-paper transition-colors"
             >
-              <ArrowLeft size={13} /> Library
+              <ArrowLeft size={13} className="rtl:rotate-180" /> {tv("library")}
             </Link>
 
             <div className="flex items-start justify-between gap-6 flex-wrap">
               <div className="min-w-0 flex-1">
-                <h1 className="font-display text-[22px] sm:text-[24px] leading-[1.2] text-paper">
+                <h1 dir="auto" className="font-display text-[22px] sm:text-[24px] leading-[1.2] text-paper">
                   {video.title}
                 </h1>
                 {video.description && (
-                  <p className="text-[13px] font-sans text-dim mt-2 max-w-2xl leading-relaxed whitespace-pre-line">
+                  <p dir="auto" className="text-[13px] font-sans text-dim mt-2 max-w-2xl leading-relaxed whitespace-pre-line">
                     {video.description}
                   </p>
                 )}
@@ -184,9 +191,9 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 {/* vm_content: only the owner can still open a video VideoMind took down; tell them why */}
                 {mine && video.removed && (
                   <div role="alert" className="mt-4 max-w-[860px] border border-error/50 rounded px-4 py-3 text-[13.5px] leading-relaxed" data-removed-notice>
-                    <p className="text-error font-medium">VideoMind removed this video on {new Date(video.removed.at).toLocaleDateString([], { dateStyle: "medium" })}.</p>
-                    <p className="text-paper-2 mt-1">Reason: {video.removed.reason}</p>
-                    <p className="text-dim mt-1">Only you can open it now. Its shared link, your public profile and previews no longer show it, and it cannot be published to YouTube. If you think this is a mistake, write to <a href="mailto:privacy@vidzmind.xyz" className="underline hover:text-paper">privacy@vidzmind.xyz</a>.</p>
+                    <p className="text-error font-medium">{tv("removedOn", { date: fmt.date(video.removed.at) })}</p>
+                    <p className="text-paper-2 mt-1">{tv("reason", { reason: video.removed.reason })}</p>
+                    <p className="text-dim mt-1">{tv.rich("removedOwner", { mail: (c) => <a href="mailto:privacy@vidzmind.xyz" className="underline hover:text-paper">{c}</a> })}</p>
                   </div>
                 )}
                 {/* vm_courses: its place in its course */}
@@ -205,7 +212,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   className="flex items-center gap-2 shrink-0 group"
                 >
                   <span className="tc group-hover:text-paper transition-colors">
-                    Owner {video.shelby.accountAddress.slice(0, 6)}…{video.shelby.accountAddress.slice(-4)}
+                    {tv("owner", { address: `${video.shelby.accountAddress.slice(0, 6)}…${video.shelby.accountAddress.slice(-4)}` })}
                   </span>
                   <ExternalLink size={11} className="text-dim" />
                 </a>
@@ -215,14 +222,14 @@ export default function VideoPage({ params }: { params: { id: string } }) {
             {ready && (
               <div className="flex items-center gap-2 mt-4 flex-wrap">
                 {isPrivate
-                  ? <span className="text-[13px] text-dim">Private videos have no share link. Use Edit details to change who can watch.</span>
+                  ? <span className="text-[13px] text-dim">{tv("privateNoShare")}</span>
                   : <ShareButton videoId={params.id} title={video.title} currentTime={t} />}
                 {/* vm_present: a projector view for a room */}
                 <Link
                   href={`/present/${params.id}${t >= 1 ? `?t=${Math.floor(t)}` : ""}`}
                   className="flex items-center gap-1.5 h-8 px-3 btn-ghost text-[12px] no-min"
                 >
-                  <Presentation size={11} /> Present
+                  <Presentation size={11} /> {tv("present")}
                 </Link>
                 <ExportMenu
                   videoId={params.id}
@@ -244,13 +251,13 @@ export default function VideoPage({ params }: { params: { id: string } }) {
               which step, why, and a retry for the owner. */}
           {unfinished && (
             <div className="max-w-[46ch] py-6">
-              <h2 className="font-display text-[17px] text-paper">This upload is not finished</h2>
+              <h2 className="font-display text-[17px] text-paper">{tv("unfinishedTitle")}</h2>
               <p className="text-[14px] text-dim mt-1.5 leading-relaxed">
                 {mine
-                  ? "Part of the file has arrived. Open Upload and choose the same file to continue from where it stopped."
-                  : "The owner has not finished uploading this video yet."}
+                  ? tv("unfinishedOwner")
+                  : tv("unfinishedOther")}
               </p>
-              {mine && <Link href="/upload" className="btn btn-signal h-9 px-3.5 inline-flex items-center mt-5">Continue the upload</Link>}
+              {mine && <Link href="/upload" className="btn btn-signal h-9 px-3.5 inline-flex items-center mt-5">{tv("continueUpload")}</Link>}
             </div>
           )}
 
@@ -318,12 +325,12 @@ export default function VideoPage({ params }: { params: { id: string } }) {
 
                 {speechless ? (
                   <div className="panel p-5">
-                    <p className="text-[14.5px] font-medium text-paper">No speech was found in this video</p>
+                    <p className="text-[14.5px] font-medium text-paper">{tv("noSpeech")}</p>
                     <p className="text-[13.5px] text-dim mt-1 leading-relaxed max-w-[62ch]">
                       {video.media && !video.media.hasAudio
-                        ? "It has no sound, so there is nothing to transcribe."
-                        : "Its sound was transcribed and no words came back."}{" "}
-                      Chapters, the summary and questions all come from what is said, so this video has none.
+                        ? tv("noSound")
+                        : tv("noWords")}{" "}
+                      {tv("noSpeechMeans")}
                     </p>
                   </div>
                 ) : (
@@ -360,7 +367,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
               <aside className="hidden lg:block lg:sticky lg:top-6 lg:h-[calc(100vh-48px)]">
                 <div className={clsx("panel flex flex-col overflow-hidden", !speechless && "h-full")}>
                   {speechless
-                    ? <p className="p-5 text-[13.5px] text-dim leading-relaxed">Questions are answered from what is said in a video. This one has no speech.</p>
+                    ? <p className="p-5 text-[13.5px] text-dim leading-relaxed">{tv("noSpeechAsk")}</p>
                     : <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={seek} />}
                 </div>
               </aside>
@@ -374,9 +381,9 @@ export default function VideoPage({ params }: { params: { id: string } }) {
         <>
           <button
             onClick={() => setChatOpen(true)}
-            className="lg:hidden fixed bottom-5 right-4 z-30 flex items-center gap-2 h-11 px-4 btn btn-signal"
+            className="lg:hidden fixed bottom-5 end-4 z-30 flex items-center gap-2 h-11 px-4 btn btn-signal"
           >
-            <MessageSquare size={14} /> Ask
+            <MessageSquare size={14} /> {tv("ask")}
           </button>
 
           <div className={clsx(
@@ -395,8 +402,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
               chatOpen ? "translate-y-0" : "translate-y-full"
             )}>
               <div className="flex items-center justify-between px-4 h-12 border-b border-rule shrink-0">
-                <span className="text-[14px] font-medium text-paper">Ask about this video</span>
-                <button onClick={() => setChatOpen(false)} className="text-dim hover:text-paper no-min">
+                <span className="text-[14px] font-medium text-paper">{tv("askTitle")}</span>
+                <button onClick={() => setChatOpen(false)} aria-label={tv("close")} className="text-dim hover:text-paper no-min">
                   <X size={15} />
                 </button>
               </div>

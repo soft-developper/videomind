@@ -8,6 +8,8 @@ import { clsx } from "clsx";
 import { QrCode } from "@/components/share/QrCode";
 import { sharedLink, downloadQrPng } from "@/lib/qr";
 import { slugify } from "@/lib/exports";
+// vm_lang
+import { useTranslations } from "next-intl";
 
 const clock = (sec: number) => {
   const s = Math.floor(sec), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
@@ -23,6 +25,7 @@ export function ShareButton({
   currentTime?: number;
   align?: "left" | "right";
 }) {
+  const ts = useTranslations("share");
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [canShare, setCanShare] = useState(false);
@@ -63,57 +66,58 @@ export function ShareButton({
         aria-expanded={open}
         className="flex items-center gap-1.5 h-8 px-3 btn-ghost text-[12px] no-min"
       >
-        <Share2 size={11} /> Share
+        <Share2 size={11} /> {ts("button")}
       </button>
 
       {open && (
         <div
           role="dialog"
-          aria-label="Share this video"
+          aria-label={ts("title")}
           className={clsx(
             "popover z-40 p-4 space-y-3",
             // On a phone the panel spans the screen under the bar; wider screens anchor it to the button.
             "max-sm:fixed max-sm:inset-x-4 max-sm:top-[72px] sm:absolute sm:top-full sm:mt-1 sm:w-[300px]",
-            align === "right" ? "sm:right-0" : "sm:left-0",
+            align === "right" ? "sm:end-0" : "sm:start-0",
           )}
         >
-          <p className="text-[14px] font-semibold text-paper">Share this video</p>
+          <p className="text-[14px] font-semibold text-paper">{ts("title")}</p>
 
           <div className="flex gap-2">
-            <label htmlFor={`share-link-${videoId}`} className="sr-only">Link</label>
+            <label htmlFor={`share-link-${videoId}`} className="sr-only">{ts("link")}</label>
             <input
               id={`share-link-${videoId}`}
               readOnly
               value={link}
               onFocus={(e) => e.currentTarget.select()}
+              dir="ltr"
               className="flex-1 min-w-0 h-9 px-2.5 text-[12.5px] text-paper-2"
             />
             <button onClick={copy} className="btn btn-ghost h-9 px-3 text-[12.5px] shrink-0 inline-flex items-center gap-1.5">
               {copied ? <Check size={12} /> : <Copy size={12} />}
-              {copied ? "Copied" : "Copy link"}
+              {copied ? ts("copied") : ts("copy")}
             </button>
           </div>
 
           {at >= 1 && (
             <label className="flex items-center gap-2 text-[13px] text-paper-2 cursor-pointer">
               <input type="checkbox" checked={fromMoment} onChange={(e) => setFromMoment(e.target.checked)} />
-              Start at <span className="tc">{clock(at)}</span>
+              {ts.rich("startAt", { time: clock(at), t: (c) => <span className="tc">{c}</span> })}
             </label>
           )}
 
           <div className="flex items-start gap-3">
-            <QrCode text={link} label="QR code for this link" className="w-[132px] h-[132px] rounded-sm shrink-0" />
+            <QrCode text={link} label={ts("qr")} className="w-[132px] h-[132px] rounded-sm shrink-0" />
             <div className="space-y-2 min-w-0">
-              <p className="text-[12.5px] text-dim leading-snug">Point a phone camera at the code to open the video.</p>
+              <p className="text-[12.5px] text-dim leading-snug">{ts("qrHint")}</p>
               <button
                 onClick={() => downloadQrPng(link, `${slugify(title) || "video"}-qr.png`)}
                 className="text-[12.5px] text-paper-2 hover:text-paper underline underline-offset-2 inline-flex items-center gap-1 no-min"
               >
-                <Download size={11} /> Download QR code
+                <Download size={11} /> {ts("download")}
               </button>
               {canShare && (
                 <button onClick={shareSheet} className="block text-[12.5px] text-paper-2 hover:text-paper underline underline-offset-2 no-min">
-                  Share with an app
+                  {ts("app")}
                 </button>
               )}
             </div>
