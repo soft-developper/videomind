@@ -14,6 +14,27 @@
       "demo": "Démonstration de produit",
       "livestream": "Diffusion en direct",
       "other": "Autre"
+    },
+    "tryAgain": "Réessayer",
+    "dismiss": "Fermer",
+    "uploadVideo": "Importer une vidéo",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "deleting": "Suppression",
+    "save": "Enregistrer",
+    "saving": "Enregistrement",
+    "underMinute": "Moins d’une minute",
+    "underMinuteLower": "moins d’une minute",
+    "justNow": "À l’instant",
+    "visibility": {
+      "private": "Privée",
+      "unlisted": "Non répertoriée",
+      "public": "Publique"
+    },
+    "visibilityHint": {
+      "private": "Vous seul, connecté avec votre portefeuille.",
+      "unlisted": "Toute personne qui a le lien peut la regarder. Elle n’apparaît nulle part.",
+      "public": "Toute personne qui a le lien peut la regarder, et elle apparaît sur votre profil public."
     }
   },
   "nav": {
@@ -142,5 +163,324 @@
     "deleteTypeLabel": "Tapez DELETE pour confirmer",
     "deleting": "Suppression",
     "deleteButton": "Supprimer mes données"
+  },
+  "card": {
+    "step": {
+      "uploading": "Import inachevé",
+      "processing": "Traitement",
+      "transcribing": "Transcription",
+      "analyzing": "Recherche des chapitres",
+      "error": "Arrêté"
+    },
+    "watched": "Vue",
+    "chapters": "{count, plural, one {# chapitre} many {# de chapitres} other {# chapitres}}",
+    "more": "{count} de plus",
+    "noChapters": "Pas encore de chapitres",
+    "stopped": "Le traitement s’est arrêté",
+    "stoppedHint": "Ouvrez la vidéo pour voir à quelle étape, puis relancez.",
+    "deleteNamed": "Supprimer {title}",
+    "deleteTitle": "Supprimer cette vidéo ?",
+    "deleteBody": "Elle quitte votre bibliothèque. La copie sur Shelby reste jusqu’à la fin de sa période payée."
+  },
+  "library": {
+    "title": "Bibliothèque",
+    "collection": "Collection",
+    "collectionNotFound": "Collection introuvable",
+    "videoCount": "{count, plural, one {# vidéo} many {# de vidéos} other {# vidéos}}",
+    "processingCount": "{count} en cours de traitement",
+    "coursesBack": "Cours",
+    "connectTitle": "Reliez un portefeuille pour ouvrir votre bibliothèque",
+    "connectBody": "Votre bibliothèque appartient à votre portefeuille. C’est grâce à lui que VideoMind sait quelles vidéos sont à vous.",
+    "signInTitle": "Connexion requise pour ouvrir votre bibliothèque",
+    "signInBody": "Votre portefeuille est relié. Une signature prouve qu’il est à vous, puis vos vidéos se chargent. L’invitation se trouve en bas de la page.",
+    "loadFailed": "La bibliothèque n’a pas pu être chargée",
+    "noPageTitle": "Cette page n’existe pas",
+    "noPageBody": "Il n’y a aucune page de bibliothèque à cette adresse.",
+    "openLibrary": "Ouvrir la bibliothèque",
+    "missingTitle": "Cette collection est introuvable",
+    "missingBody": "Elle a pu être supprimée, ou elle appartient à un autre portefeuille.",
+    "allCourses": "Tous les cours",
+    "firstTitle": "Importez votre première vidéo",
+    "firstBody": "Un cours, un séminaire, une conférence. Elle revient transcrite et découpée en chapitres, et chaque phrase devient consultable.",
+    "chooseVideo": "Choisir une vidéo",
+    "emptyViewBody": "Les vidéos de la catégorie {categories} apparaissent ici. Choisissez la catégorie à l’import, ou avec Modifier les détails sur la page de la vidéo.",
+    "emptyCollectionTitle": "Rien dans cette collection pour l’instant",
+    "emptyCollectionBody": "Choisissez cette collection à l’import, ou avec Modifier les détails sur la page d’une vidéo.",
+    "filterLabel": "Filtrer par titre ou étiquette",
+    "categoryLabel": "Catégorie",
+    "allCategories": "Toutes les catégories",
+    "noCategory": "Sans catégorie",
+    "sortLabel": "Trier",
+    "sortRecent": "Ajoutées récemment",
+    "sortTitle": "Titre",
+    "sortLongest": "Les plus longues d’abord",
+    "deleteAll": "Tout supprimer",
+    "deleteAllVideos": "Supprimer toutes les vidéos",
+    "wipeTitle": "Supprimer {count, plural, one {la vidéo} many {les # de vidéos} other {les # vidéos}} ?",
+    "wipeBody": "Elles quittent votre bibliothèque. Les copies stockées sur Shelby y restent jusqu’à la fin de leur période payée.",
+    "noMatchTitle": "Aucun résultat pour « {filter} »",
+    "noCategoryVideos": "Aucune vidéo dans cette catégorie",
+    "clearFilters": "Effacer les filtres",
+    "noMatchBody": "Ce champ ne regarde que les titres et les étiquettes. Pour trouver quelque chose qui a été dit dans une vidéo, utilisez Rechercher.",
+    "views": {
+      "lectures": {
+        "label": "Cours magistraux",
+        "covers": "Cours magistraux",
+        "empty": "Pas encore de cours magistraux"
+      },
+      "seminars": {
+        "label": "Séminaires",
+        "covers": "Séminaires et webinaires",
+        "empty": "Pas encore de séminaires"
+      },
+      "presentations": {
+        "label": "Présentations",
+        "covers": "Présentations et démonstrations de produit",
+        "empty": "Pas encore de présentations"
+      },
+      "events": {
+        "label": "Événements",
+        "covers": "Conférences",
+        "empty": "Pas encore d’événements"
+      },
+      "live": {
+        "label": "Enregistrements en direct",
+        "covers": "Enregistrements en direct",
+        "empty": "Pas encore d’enregistrements en direct"
+      }
+    }
+  },
+  "course": {
+    "orderFailed": "Le nouvel ordre n’a pas pu être enregistré. Réessayez.",
+    "descriptionFailed": "La description n’a pas pu être enregistrée.",
+    "aboutLabel": "Le sujet du cours",
+    "aboutPlaceholder": "Ce que couvre le cours, et à qui il s’adresse",
+    "editDescription": "Modifier la description",
+    "addDescription": "Ajouter une description",
+    "continue": "Reprendre le cours",
+    "start": "Commencer le cours",
+    "allWatched": "Toutes les leçons sont vues",
+    "watchedOf": "{done} sur {count, plural, one {# leçon vue} many {# de leçons vues} other {# leçons vues}}",
+    "next": "Suivante : {title}",
+    "lessons": "Leçons",
+    "watched": "Vue",
+    "lesson": "Leçon {n}",
+    "beingProcessed": "en cours de traitement",
+    "watchedLower": "vue",
+    "stoppedAt": "arrêtée à {time}",
+    "moveUp": "Monter {title}",
+    "moveDown": "Descendre {title}"
+  },
+  "courses": {
+    "title": "Cours",
+    "description": "Un cours est une collection de vidéos, comme les séances d’une même classe. Ajoutez une vidéo à un cours lors de l’import, ou avec Modifier les détails sur sa page.",
+    "renameNamed": "Renommer {name}",
+    "deleteNamed": "Supprimer {name}",
+    "newNameFor": "Nouveau nom pour {name}",
+    "deleteTitle": "Supprimer « {name} » ?",
+    "deleteEmpty": "Elle ne contient aucune vidéo.",
+    "deleteKeeps": "{count, plural, one {Sa vidéo reste} many {Ses # de vidéos restent} other {Ses # vidéos restent}} dans votre bibliothèque. Seule la collection disparaît.",
+    "createFailed": "La collection n’a pas pu être créée.",
+    "connectTitle": "Reliez un portefeuille pour ouvrir vos cours",
+    "connectBody": "Votre bibliothèque appartient à votre portefeuille. C’est grâce à lui que VideoMind sait quelles collections sont à vous.",
+    "signInTitle": "Connexion requise pour ouvrir vos cours",
+    "signInBody": "Votre portefeuille est relié. Une signature prouve qu’il est à vous, puis vos collections se chargent. L’invitation se trouve en bas de la page.",
+    "loadFailed": "Vos cours n’ont pas pu être chargés",
+    "newLabel": "Nom d’une nouvelle collection",
+    "newPlaceholder": "Nouvelle collection, par exemple Blockchain 101",
+    "creating": "Création",
+    "create": "Créer",
+    "emptyTitle": "Pas encore de collections",
+    "emptyBody": "Donnez un nom à une collection plus haut, ou tapez un nouveau nom dans le champ Collection lors de l’import d’une vidéo."
+  },
+  "home": {
+    "greeting": {
+      "welcome": "Bon retour",
+      "morning": "Bonjour",
+      "afternoon": "Bonjour",
+      "evening": "Bonsoir"
+    },
+    "heroTitle": "Une bibliothèque pour les vidéos longues",
+    "heroBody": "Importez un cours, un séminaire ou une conférence. La vidéo revient transcrite et découpée en chapitres, et chaque phrase devient un passage que vous pouvez rechercher et retrouver.",
+    "howItWorks": "Comment ça marche",
+    "what": {
+      "transcript": {
+        "term": "Transcription",
+        "text": "Chaque phrase avec son moment. Cliquez sur une phrase et la vidéo s’y rend."
+      },
+      "chapters": {
+        "term": "Chapitres",
+        "text": "L’enregistrement est découpé là où le sujet change, pour parcourir une longue vidéo comme un document."
+      },
+      "search": {
+        "term": "Recherche",
+        "text": "Cherchez quelque chose qui a été dit et retrouvez le moment où cela a été dit."
+      },
+      "questions": {
+        "term": "Questions",
+        "text": "Posez une question sur une vidéo et obtenez une réponse qui renvoie aux moments d’où elle vient."
+      },
+      "ownership": {
+        "term": "Propriété",
+        "text": "Le fichier est stocké sur Shelby et signé par votre portefeuille, avec une preuve que chacun peut vérifier."
+      }
+    },
+    "example": {
+      "title": "Introduction aux systèmes distribués : cours 01",
+      "facts": "8 chapitres, 58 min",
+      "c1": "Introduction",
+      "c2": "Définir un système distribué",
+      "c3": "Pourquoi la distribution est difficile",
+      "c4": "Réplication",
+      "c5": "Tolérance aux pannes",
+      "c6": "Le théorème CAP",
+      "c7": "Un exemple concret",
+      "c8": "Résumé et lectures",
+      "l1": "Jusqu’ici, nous avons supposé que les messages arrivent toujours.",
+      "l2": "Le réseau n’est pas fiable, et ce seul fait détermine tout ce que nous faisons.",
+      "l3": "Un message peut arriver en retard, se perdre, ou arriver deux fois.",
+      "caption": "Un exemple. Les repères jaunes suivent la vidéo pendant la lecture."
+    },
+    "stoppedAt": "Arrêtée à {time}",
+    "left": "reste {time}",
+    "inLibrary": "{count, plural, one {# vidéo} many {# de vidéos} other {# vidéos}} dans votre bibliothèque",
+    "loadFailed": "Vos vidéos n’ont pas pu être chargées",
+    "searchLabel": "Rechercher dans votre bibliothèque",
+    "searchPlaceholder": "Recherchez tout ce qui a été dit dans vos vidéos",
+    "continueWatching": "Reprendre la lecture",
+    "inProgress": "En cours",
+    "recent": "Vidéos récentes"
+  },
+  "uploadPage": {
+    "title": "Importer une vidéo",
+    "description": "Le fichier rejoint votre bibliothèque, il est transcrit et découpé en chapitres, et peut être stocké sur Shelby avec votre portefeuille.",
+    "next": "La suite",
+    "steps": {
+      "uploaded": {
+        "n": "Importée",
+        "d": "Le fichier arrive dans votre bibliothèque par morceaux. Si la connexion coupe, l’import reprend là où il s’est arrêté."
+      },
+      "transcribed": {
+        "n": "Transcrite",
+        "d": "Chaque phrase est écrite avec le moment où elle a été dite."
+      },
+      "chaptered": {
+        "n": "Découpée en chapitres",
+        "d": "L’enregistrement est découpé là où le sujet change, avec un résumé et des moments clés."
+      },
+      "stored": {
+        "n": "Stockée sur Shelby",
+        "d": "Votre portefeuille signe le fichier et il est écrit sur Shelby. Cela peut aussi se faire plus tard."
+      }
+    },
+    "prepaid": "Le stockage sur Shelby est payé d’avance à l’import, pour un nombre fixe de périodes de paiement de 24 heures. La preuve de propriété de chaque vidéo indique la date jusqu’à laquelle elle est payée."
+  },
+  "upload": {
+    "wallet": {
+      "declined": "Vous avez refusé la demande dans votre portefeuille.",
+      "funds": "Votre portefeuille a besoin d’APT de testnet (pour les frais) et de ShelbyUSD (pour le stockage). Alimentez ce portefeuille depuis le faucet Shelby, puis réessayez.",
+      "submit": "La transaction n’a pas pu être envoyée. En général, le portefeuille n’a pas encore d’APT de testnet ou de ShelbyUSD, ou le réseau Shelby ne répond pas. Vérifiez l’état de Shelby dans la barre latérale, alimentez le portefeuille depuis le faucet Shelby si besoin, puis réessayez."
+    },
+    "connectToStore": "Reliez votre portefeuille pour stocker le fichier sur Shelby.",
+    "storeFailed": "Le stockage sur Shelby a échoué.",
+    "expired": "Cet import a expiré dans le stockage. Abandonnez cet import et recommencez.",
+    "stopped": "L’import s’est arrêté.",
+    "signInFirst": "Commencez par vous connecter avec votre portefeuille. L’invitation se trouve en bas de la page.",
+    "startFailed": "L’import n’a pas pu démarrer.",
+    "differentFile": "Ce n’est pas le même fichier. La vidéo fait {video}, ce fichier fait {file}.",
+    "tooLarge": "Ce fichier dépasse 10 Go. Utilisez un fichier plus petit.",
+    "badType": "Format non pris en charge. Utilisez MP4, WebM, MOV, AVI ou MKV.",
+    "cannotUse": "Ce fichier ne peut pas être utilisé.",
+    "status": {
+      "starting": "Démarrage",
+      "paused": "En pause à {size}",
+      "waiting": "Connexion perdue. L’import reprendra à {size} dès son retour.",
+      "finishing": "Finalisation",
+      "checking": "Vérification de ce qui est déjà arrivé",
+      "uploading": "Import en cours"
+    },
+    "connectToUpload": "Reliez un portefeuille pour importer. Votre bibliothèque appartient à votre portefeuille.",
+    "signInToUpload": "Connexion requise pour importer. L’invitation se trouve en bas de la page.",
+    "uploaded": "Importée. Le traitement a commencé.",
+    "storeTitle": "Stocker sur Shelby",
+    "storeBody": "Votre portefeuille signe le fichier et il est écrit sur Shelby, ce qui donne à la vidéo une preuve de propriété que chacun peut vérifier.",
+    "approve": "Approuvez la demande dans votre portefeuille. Gardez cette page ouverte jusqu’à la fin.",
+    "stored": "Stockée sur Shelby.",
+    "held": "Cette vidéo est privée, elle n’a donc pas été envoyée sur Shelby. Un fichier stocké sur Shelby peut être lu par toute personne qui a son adresse. Vous pouvez quand même l’y stocker, maintenant ou plus tard depuis la page de la vidéo.",
+    "shelbyTooLarge": "Ce fichier fait {size}. Les fichiers de plus de 2 Go ne peuvent pas encore être stockés sur Shelby depuis le navigateur. La vidéo est en sécurité dans votre bibliothèque et se lit normalement.",
+    "openVideo": "Ouvrir la vidéo",
+    "later": "Le faire plus tard et ouvrir la vidéo",
+    "storeAnyway": "Stocker sur Shelby malgré tout",
+    "of": "{done} sur {total}",
+    "progress": "Progression de l’import",
+    "resume": "Reprendre",
+    "pause": "Pause",
+    "cancelUpload": "Annuler l’import",
+    "nothingLost": "Si la connexion coupe ou si cet onglet se ferme, rien n’est perdu. Revenez sur cette page et choisissez le même fichier pour reprendre là où l’import s’est arrêté.",
+    "anchorTitle": "Stocker cette vidéo sur Shelby",
+    "anchorTitleNamed": "Stocker « {title} » sur Shelby",
+    "anchorBody": "Choisissez à nouveau le même fichier. Votre portefeuille le signe et il est écrit sur Shelby. Rien n’est importé deux fois dans la bibliothèque.",
+    "anchorBodySize": "Choisissez à nouveau le même fichier ({size}). Votre portefeuille le signe et il est écrit sur Shelby. Rien n’est importé deux fois dans la bibliothèque.",
+    "anchorPrivate": "Cette vidéo est privée. Un fichier stocké sur Shelby peut être lu par toute personne qui a son adresse.",
+    "unfinished": "{count, plural, one {Un import n’a pas été terminé} many {# d’imports n’ont pas été terminés} other {# imports n’ont pas été terminés}}",
+    "unfinishedHint": "Choisissez le même fichier plus bas pour reprendre là où il s’est arrêté.",
+    "uploadedOf": "{done} sur {total} importés",
+    "discard": "Abandonner",
+    "remove": "Retirer",
+    "dropHere": "Déposez la vidéo ici",
+    "dragHere": "Faites glisser une vidéo ici",
+    "orClick": "ou cliquez pour choisir un fichier",
+    "formats": "MP4, WebM, MOV, AVI ou MKV, jusqu’à {size}",
+    "chooseFirst": "Choisissez d’abord une vidéo",
+    "addTitle": "Ajoutez un titre",
+    "upload": "Importer"
+  },
+  "info": {
+    "removeTag": "Retirer l’étiquette {tag}",
+    "addAnother": "Ajouter une autre",
+    "tagsExample": "blockchain, consensus",
+    "tagsFull": "Une vidéo peut avoir au plus {max} étiquettes.",
+    "tagsHint": "Appuyez sur Entrée ou tapez une virgule après chaque étiquette.",
+    "title": "Titre",
+    "titlePlaceholder": "Quel est cet enregistrement ?",
+    "description": "Description",
+    "optional": "(facultatif)",
+    "descriptionPlaceholder": "Tout ce qui vous aidera à la retrouver plus tard",
+    "category": "Catégorie",
+    "noCategory": "Sans catégorie",
+    "collection": "Collection",
+    "none": "Aucune",
+    "currentCollection": "Collection actuelle",
+    "newCollection": "Nouvelle collection",
+    "newCollectionName": "Nom de la nouvelle collection",
+    "newCollectionPlaceholder": "Nom, par exemple Blockchain 101",
+    "collectionHint": "Une collection regroupe des vidéos, comme les séances d’un même cours.",
+    "tags": "Étiquettes",
+    "whoCanWatch": "Qui peut la regarder"
+  },
+  "search": {
+    "title": "Rechercher",
+    "description": "Décrivez ce dont vous vous souvenez. Chaque résultat ouvre la vidéo au moment où cela a été dit.",
+    "signInFirst": "Commencez par vous connecter avec votre portefeuille. L’invitation se trouve en bas de la page.",
+    "failed": "La recherche n’a pas fonctionné. Réessayez.",
+    "connectTitle": "Reliez un portefeuille pour rechercher",
+    "connectBody": "La recherche parcourt votre propre bibliothèque, elle doit donc savoir laquelle est à vous.",
+    "label": "Rechercher dans votre bibliothèque",
+    "placeholder": "Décrivez ce que vous cherchez",
+    "button": "Rechercher",
+    "kind": "Type de vidéo",
+    "allKinds": "Tous les types de vidéo",
+    "collection": "Collection",
+    "allCollections": "Toutes les collections",
+    "idle": "Décrivez ce passage comme vous vous en souvenez, avec vos propres mots. Par exemple : le passage où le compromis entre cohérence et disponibilité est expliqué.",
+    "again": "Relancer la recherche",
+    "nothingFound": "Aucun résultat",
+    "summary": "{moments, plural, one {# moment} many {# de moments} other {# moments}} dans {videos, plural, one {# vidéo} many {# de vidéos} other {# vidéos}}",
+    "clear": "Effacer",
+    "notIndexed": "{count, plural, one {1 de vos vidéos est encore en préparation pour la recherche et n’a pas été parcourue.} many {# de vos vidéos sont encore en préparation pour la recherche et n’ont pas été parcourues.} other {# de vos vidéos sont encore en préparation pour la recherche et n’ont pas été parcourues.}}",
+    "noneFiltered": "Rien ne correspond avec ces filtres. Essayez tous les types de vidéo et toutes les collections, ou d’autres mots.",
+    "none": "Rien dans votre bibliothèque ne correspond. Essayez de le décrire autrement.",
+    "moments": "{count, plural, one {# moment} many {# de moments} other {# moments}}",
+    "openAt": "Ouvrir {title} à {time}"
   }
 }

@@ -14,7 +14,11 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { WalletButton } from "@/components/layout/WalletButton";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
-import { CATEGORIES, LIBRARY_VIEWS, categoryLabel } from "@/lib/categories";
+import { CATEGORIES, LIBRARY_VIEWS, useLabels } from "@/lib/categories";
+// vm_lang
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/lib/format";
+import { intlLocale } from "@/i18n/config";
 import { Search, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -25,15 +29,13 @@ export type LibraryScope = { kind: "all" } | { kind: "view"; key: string } | { k
 
 const NONE = "__none__";
 
-function total(videos: VideoRecord[]): string | null {
-  const min = Math.round(videos.reduce((n, v) => n + (v.meta.durationSeconds ?? 0), 0) / 60);
-  if (min < 1) return null;
-  if (min < 60) return `${min} min`;
-  const h = Math.floor(min / 60), m = min % 60;
-  return m ? `${h} h ${m} min` : `${h} h`;
-}
+const totalSeconds = (videos: VideoRecord[]) => videos.reduce((n, v) => n + (v.meta.durationSeconds ?? 0), 0);
 
 export function LibraryView({ scope }: { scope: LibraryScope }) {
+  const t = useTranslations("library");
+  const tc = useTranslations("common");
+  const labels = useLabels();
+  const fmt = useFormat();
   const { connected } = useWallet();
   // vm_signin: data loads only once the wallet has signed in
   const wallet = useSessionWallet();
@@ -129,26 +131,30 @@ export function LibraryView({ scope }: { scope: LibraryScope }) {
   const unknownView = scope.kind === "view" && !view;
   const missingCollection = scope.kind === "collection" && loaded && collections.isSuccess && !collection;
 
-  const title = scope.kind === "all" ? "Library"
-    : scope.kind === "view" ? (view?.label ?? "Library")
-    : (collection?.name ?? (missingCollection ? "Collection not found" : "Collection"));
+  const viewText = scope.kind === "view" ? labels.view(scope.key) : null;
+  const title = scope.kind === "all" ? t("title")
+    : scope.kind === "view" ? (viewText?.label ?? t("title"))
+    : (collection?.name ?? (missingCollection ? t("collectionNotFound") : t("collection")));
+  const runtime = scope.kind === "collection" ? fmt.length(totalSeconds(videos)) : null;
   const facts = [
-    `${videos.length} video${videos.length === 1 ? "" : "s"}` + (scope.kind === "collection" && total(videos) ? `, ${total(videos)}` : ""),
-    working ? `${working} being processed` : null,
+    t("videoCount", { count: videos.length }) + (runtime && totalSeconds(videos) >= 60 ? `, ${runtime}` : ""),
+    working ? t("processingCount", { count: working }) : null,
   ].filter(Boolean).join(", ");
   const description = !loaded || unknownView || missingCollection ? undefined
-    : videos.length === 0 ? view?.covers
-    : view?.covers ? `${view.covers}. ${facts}.` : facts;
+    : videos.length === 0 ? viewText?.covers
+    : viewText?.covers ? `${viewText.covers}. ${facts}.` : facts;
+  // "Lecture or Seminar", joined the way each language joins a list.
+  const orList = (items: string[]) => new Intl.ListFormat(intlLocale(fmt.locale), { type: "disjunction" }).format(items);
 
   return (
     <AppShell>
       <PageHeader
         title={title}
         description={description}
-        back={scope.kind === "collection" ? { href: "/library/courses", label: "Courses" } : undefined}
+        back={scope.kind === "collection" ? { href: "/library/courses", label: t("coursesBack") } : undefined}
         actions={connected && wallet ? (
           // vm_courses: on a course, "Continue the course" is the one primary button
-          <Link href="/upload" className={`btn ${scope.kind === "collection" ? "btn-ghost" : "btn-signal"} h-9 px-3.5 inline-flex items-center`}>Upload video</Link>
+          <Link href="/upload" className={`btn ${scope.kind === "collection" ? "btn-ghost" : "btn-signal"} h-9 px-3.5 inline-flex items-center`}>{tc("uploadVideo")}</Link>
         ) : undefined}
       />
 
@@ -156,23 +162,22 @@ export function LibraryView({ scope }: { scope: LibraryScope }) {
         {note && (
           <div role="status" className="flex items-center gap-3 px-3.5 py-2.5 mb-6 rounded-md border border-rule bg-slate">
             <span className="text-[13.5px] text-paper-2">{note}</span>
-            <button onClick={() => setNote(null)} aria-label="Dismiss" className="ml-auto text-dim hover:text-paper no-min">
+            <button onClick={() => setNote(null)} aria-label={tc("dismiss")} className="ms-auto text-dim hover:text-paper no-min">
               <X size={14} />
             </button>
           </div>
         )}
 
         {!connected && (
-          <EmptyState title="Connect a wallet to open your library" action={<WalletButton />}>
-            Your library belongs to your wallet. The wallet is how VideoMind knows which videos are yours.
+          <EmptyState title={t("connectTitle")} action={<WalletButton />}>
+            {t("connectBody")}
           </EmptyState>
         )}
 
         {/* vm_signin: connected but not signed in. The library is not empty, it is not loaded. */}
         {connected && !wallet && (
-          <EmptyState title="Sign in to open your library">
-            Your wallet is connected. One signature proves it is yours, then your videos load.
-            The prompt is at the bottom of the page.
+          <EmptyState title={t("signInTitle")}>
+            {t("signInBody")}
           </EmptyState>
         )}
 
@@ -184,22 +189,22 @@ export function LibraryView({ scope }: { scope: LibraryScope }) {
 
         {connected && wallet && isError && (
           <EmptyState
-            title="The library could not be loaded"
-            action={<button onClick={() => refetch()} className="btn btn-ghost h-9 px-3.5">Try again</button>}
+            title={t("loadFailed")}
+            action={<button onClick={() => refetch()} className="btn btn-ghost h-9 px-3.5">{tc("tryAgain")}</button>}
           >
             {(error as Error)?.message}
           </EmptyState>
         )}
 
         {loaded && unknownView && (
-          <EmptyState title="This page does not exist" action={<Link href="/library" className="btn btn-ghost h-9 px-3.5 inline-flex items-center">Open the library</Link>}>
-            There is no library page at this address.
+          <EmptyState title={t("noPageTitle")} action={<Link href="/library" className="btn btn-ghost h-9 px-3.5 inline-flex items-center">{t("openLibrary")}</Link>}>
+            {t("noPageBody")}
           </EmptyState>
         )}
 
         {missingCollection && (
-          <EmptyState title="This collection was not found" action={<Link href="/library/courses" className="btn btn-ghost h-9 px-3.5 inline-flex items-center">All courses</Link>}>
-            It may have been deleted, or it belongs to a different wallet.
+          <EmptyState title={t("missingTitle")} action={<Link href="/library/courses" className="btn btn-ghost h-9 px-3.5 inline-flex items-center">{t("allCourses")}</Link>}>
+            {t("missingBody")}
           </EmptyState>
         )}
 
@@ -208,29 +213,29 @@ export function LibraryView({ scope }: { scope: LibraryScope }) {
             href="/upload"
             className="block max-w-xl rounded-lg border border-dashed border-rule-lit hover:border-dim hover:bg-slate/50 transition-colors px-6 py-10"
           >
-            <p className="font-display text-[17px] text-paper">Upload your first video</p>
+            <p className="font-display text-[17px] text-paper">{t("firstTitle")}</p>
             <p className="text-[14px] text-dim mt-1.5 leading-relaxed max-w-[46ch]">
-              A lecture, a seminar, a talk. It comes back transcribed and split into chapters, and every sentence becomes searchable.
+              {t("firstBody")}
             </p>
-            <span className="btn btn-signal h-9 px-3.5 inline-flex items-center mt-5">Choose a video</span>
+            <span className="btn btn-signal h-9 px-3.5 inline-flex items-center mt-5">{t("chooseVideo")}</span>
           </Link>
         )}
 
-        {loaded && view && videos.length === 0 && (
+        {loaded && view && scope.kind === "view" && videos.length === 0 && (
           <EmptyState
-            title={`No ${view.label.toLowerCase()} yet`}
-            action={<Link href="/upload" className="btn btn-ghost h-9 px-3.5 inline-flex items-center">Upload video</Link>}
+            title={t(`views.${scope.key as "lectures"}.empty`)}
+            action={<Link href="/upload" className="btn btn-ghost h-9 px-3.5 inline-flex items-center">{tc("uploadVideo")}</Link>}
           >
-            Videos with the category {view.categories.map((c) => categoryLabel(c)).join(" or ")} are listed here. Choose the category when you upload, or with Edit details on a video's page.
+            {t("emptyViewBody", { categories: orList(view.categories.map((c) => labels.category(c) ?? c)) })}
           </EmptyState>
         )}
 
         {loaded && scope.kind === "collection" && collection && videos.length === 0 && (
           <EmptyState
-            title="Nothing in this collection yet"
-            action={<Link href="/upload" className="btn btn-ghost h-9 px-3.5 inline-flex items-center">Upload video</Link>}
+            title={t("emptyCollectionTitle")}
+            action={<Link href="/upload" className="btn btn-ghost h-9 px-3.5 inline-flex items-center">{tc("uploadVideo")}</Link>}
           >
-            Choose this collection when you upload, or with Edit details on a video's page.
+            {t("emptyCollectionBody")}
           </EmptyState>
         )}
 
@@ -248,62 +253,62 @@ export function LibraryView({ scope }: { scope: LibraryScope }) {
           <>
             <div className="flex items-center gap-2.5 flex-wrap mb-6">
               <label className="relative">
-                <span className="sr-only">Filter by title or tag</span>
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-dim pointer-events-none" />
+                <span className="sr-only">{t("filterLabel")}</span>
+                <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-dim pointer-events-none" />
                 <input
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
-                  placeholder="Filter by title or tag"
-                  className="h-9 w-[240px] max-w-full pl-9 pr-3 text-[13.5px]"
+                  placeholder={t("filterLabel")}
+                  className="h-9 w-[240px] max-w-full ps-9 pe-3 text-[13.5px]"
                 />
               </label>
               {scope.kind === "all" && inUse.size > 1 && (
                 <label>
-                  <span className="sr-only">Category</span>
+                  <span className="sr-only">{t("categoryLabel")}</span>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                     className="h-9 px-2.5 text-[13.5px] text-paper-2"
                   >
-                    <option value="">All categories</option>
+                    <option value="">{t("allCategories")}</option>
                     {CATEGORIES.filter((c) => inUse.has(c.id)).map((c) => (
-                      <option key={c.id} value={c.id}>{c.label} ({inUse.get(c.id)})</option>
+                      <option key={c.id} value={c.id}>{labels.category(c.id)} ({fmt.number(inUse.get(c.id) ?? 0)})</option>
                     ))}
-                    {inUse.has(NONE) && <option value={NONE}>No category ({inUse.get(NONE)})</option>}
+                    {inUse.has(NONE) && <option value={NONE}>{t("noCategory")} ({fmt.number(inUse.get(NONE) ?? 0)})</option>}
                   </select>
                 </label>
               )}
               <label>
-                <span className="sr-only">Sort</span>
+                <span className="sr-only">{t("sortLabel")}</span>
                 <select
                   value={sort}
                   onChange={(e) => setSort(e.target.value as Sort)}
                   className="h-9 px-2.5 text-[13.5px] text-paper-2"
                 >
 
-                  <option value="recent">Recently added</option>
-                  <option value="title">Title</option>
-                  <option value="longest">Longest first</option>
+                  <option value="recent">{t("sortRecent")}</option>
+                  <option value="title">{t("sortTitle")}</option>
+                  <option value="longest">{t("sortLongest")}</option>
                 </select>
               </label>
               {scope.kind === "all" && (
                 <button
                   onClick={() => setWipe(true)}
-                  className="ml-auto h-9 px-2 text-[13px] text-dim hover:text-error transition-colors"
+                  className="ms-auto h-9 px-2 text-[13px] text-dim hover:text-error transition-colors"
                 >
-                  Delete all
+                  {t("deleteAll")}
                 </button>
               )}
             </div>
 
             {wipe && scope.kind === "all" && (
-              <div role="alertdialog" aria-label="Delete all videos" className="rounded-md border border-error/50 bg-slate px-4 py-3.5 mb-6 flex items-center gap-4 flex-wrap">
+              <div role="alertdialog" aria-label={t("deleteAllVideos")} className="rounded-md border border-error/50 bg-slate px-4 py-3.5 mb-6 flex items-center gap-4 flex-wrap">
                 <div className="flex-1 min-w-[220px]">
                   <p className="text-[14px] font-medium text-paper">
-                    Delete all {videos.length} video{videos.length === 1 ? "" : "s"}?
+                    {t("wipeTitle", { count: videos.length })}
                   </p>
                   <p className="text-[13px] text-dim mt-0.5">
-                    They leave your library. Copies stored on Shelby stay there until their paid period ends.
+                    {t("wipeBody")}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -312,10 +317,10 @@ export function LibraryView({ scope }: { scope: LibraryScope }) {
                     disabled={wiping}
                     className="h-9 px-3.5 rounded text-[13.5px] font-medium bg-error/15 border border-error/50 text-error hover:bg-error/25 transition-colors disabled:opacity-50"
                   >
-                    {wiping ? "Deleting" : "Delete all"}
+                    {wiping ? tc("deleting") : t("deleteAll")}
                   </button>
                   <button onClick={() => setWipe(false)} className="h-9 px-3.5 btn-ghost text-[13.5px]">
-                    Cancel
+                    {tc("cancel")}
                   </button>
                 </div>
               </div>
@@ -323,10 +328,10 @@ export function LibraryView({ scope }: { scope: LibraryScope }) {
 
             {shown.length === 0 ? (
               <EmptyState
-                title={filter.trim() ? `Nothing matches "${filter.trim()}"` : "No videos in this category"}
-                action={<button onClick={() => { setFilter(""); setCategory(""); }} className="btn btn-ghost h-9 px-3.5">Clear the filters</button>}
+                title={filter.trim() ? t("noMatchTitle", { filter: filter.trim() }) : t("noCategoryVideos")}
+                action={<button onClick={() => { setFilter(""); setCategory(""); }} className="btn btn-ghost h-9 px-3.5">{t("clearFilters")}</button>}
               >
-                This box looks at titles and tags only. To find something that was said in a video, use Search.
+                {t("noMatchBody")}
               </EmptyState>
             ) : (
               <div className={VIDEO_GRID}>

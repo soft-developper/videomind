@@ -6,7 +6,9 @@ import { useQuery } from "@tanstack/react-query";
 import { X, Lock, Link2, Globe } from "lucide-react";
 import { clsx } from "clsx";
 import { getCollections, type VideoInfoPatch, type VideoRecord, type Visibility } from "@/lib/api";
-import { CATEGORIES, VISIBILITY, MAX_TAGS, MAX_TAG_LENGTH } from "@/lib/categories";
+import { CATEGORIES, VISIBILITY, MAX_TAGS, MAX_TAG_LENGTH, useLabels } from "@/lib/categories";
+// vm_lang
+import { useTranslations } from "next-intl";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 
 /** Value of the collection field when a new collection is being named. */
@@ -50,6 +52,7 @@ const LABEL = "block text-[13px] font-medium text-paper-2 mb-1.5";
 
 /** Tags as small removable labels, with a box to type the next one. */
 function TagInput({ id, tags, onChange }: { id: string; tags: string[]; onChange: (t: string[]) => void }) {
+  const t = useTranslations("info");
   const [text, setText] = useState("");
   const full = tags.length >= MAX_TAGS;
 
@@ -67,13 +70,13 @@ function TagInput({ id, tags, onChange }: { id: string; tags: string[]; onChange
   return (
     <div>
       <div className="flex flex-wrap items-center gap-1.5 min-h-10 px-2 py-1.5 rounded border border-rule bg-side focus-within:border-dim transition-colors">
-        {tags.map((t) => (
-          <span key={t.toLowerCase()} className="inline-flex items-center gap-1 h-6 pl-2 pr-1 rounded-full bg-slate-2 text-[12.5px] text-paper-2 max-w-full">
-            <span className="truncate">{t}</span>
+        {tags.map((tag) => (
+          <span key={tag.toLowerCase()} className="inline-flex items-center gap-1 h-6 ps-2 pe-1 rounded-full bg-slate-2 text-[12.5px] text-paper-2 max-w-full">
+            <span className="truncate">{tag}</span>
             <button
               type="button"
-              onClick={() => onChange(tags.filter((x) => x !== t))}
-              aria-label={`Remove tag ${t}`}
+              onClick={() => onChange(tags.filter((x) => x !== tag))}
+              aria-label={t("removeTag", { tag })}
               className="w-4 h-4 flex items-center justify-center rounded-full text-dim hover:text-paper hover:bg-rule-lit no-min"
             >
               <X size={11} />
@@ -90,13 +93,13 @@ function TagInput({ id, tags, onChange }: { id: string; tags: string[]; onChange
             else if (e.key === "Backspace" && !text && tags.length) onChange(tags.slice(0, -1));
           }}
           onBlur={() => { if (text.trim()) add(text); }}
-          placeholder={full ? "" : tags.length ? "Add another" : "blockchain, consensus"}
+          placeholder={full ? "" : tags.length ? t("addAnother") : t("tagsExample")}
           aria-describedby={`${id}-hint`}
           className="flex-1 min-w-[120px] h-7 px-1 text-[14px] !bg-transparent !border-0 focus:!outline-none disabled:hidden"
         />
       </div>
       <p id={`${id}-hint`} className="text-[12.5px] text-dim mt-1.5">
-        {full ? `${MAX_TAGS} tags is the most a video can have.` : "Press Enter or type a comma after each tag."}
+        {full ? t("tagsFull", { max: MAX_TAGS }) : t("tagsHint")}
       </p>
     </div>
   );
@@ -109,6 +112,8 @@ export function VideoInfoForm({ value, onChange, idPrefix = "info", autoFocusTit
   idPrefix?: string;
   autoFocusTitle?: boolean;
 }) {
+  const t = useTranslations("info");
+  const labels = useLabels();
   const wallet = useSessionWallet();
   const collections = useQuery({
     queryKey: ["collections", wallet],
@@ -125,83 +130,86 @@ export function VideoInfoForm({ value, onChange, idPrefix = "info", autoFocusTit
   return (
     <div className="space-y-4">
       <div>
-        <label htmlFor={id("title")} className={LABEL}>Title</label>
+        <label htmlFor={id("title")} className={LABEL}>{t("title")}</label>
         <input
           id={id("title")}
+          dir="auto"
           value={value.title}
           onChange={(e) => set("title", e.target.value)}
           maxLength={300}
           autoFocus={autoFocusTitle}
-          placeholder="What is this recording?"
+          placeholder={t("titlePlaceholder")}
           className="w-full h-10 px-3 text-[14px]"
         />
       </div>
 
       <div>
-        <label htmlFor={id("description")} className={LABEL}>Description <span className="font-normal text-dim">(optional)</span></label>
+        <label htmlFor={id("description")} className={LABEL}>{t("description")} <span className="font-normal text-dim">{t("optional")}</span></label>
         <textarea
           id={id("description")}
+          dir="auto"
           value={value.description}
           onChange={(e) => set("description", e.target.value)}
           rows={3}
           maxLength={5000}
-          placeholder="Anything that helps you find it later"
+          placeholder={t("descriptionPlaceholder")}
           className="w-full px-3 py-2 text-[14px] resize-y min-h-[76px]"
         />
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor={id("category")} className={LABEL}>Category</label>
+          <label htmlFor={id("category")} className={LABEL}>{t("category")}</label>
           <select
             id={id("category")}
             value={value.category}
             onChange={(e) => set("category", e.target.value)}
             className="w-full h-10 px-2.5 text-[14px]"
           >
-            <option value="">No category</option>
-            {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+            <option value="">{t("noCategory")}</option>
+            {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{labels.category(c.id)}</option>)}
           </select>
         </div>
 
         <div>
-          <label htmlFor={id("collection")} className={LABEL}>Collection</label>
+          <label htmlFor={id("collection")} className={LABEL}>{t("collection")}</label>
           <select
             id={id("collection")}
             value={value.collection}
             onChange={(e) => onChange({ ...value, collection: e.target.value, newCollection: e.target.value === NEW ? value.newCollection : "" })}
             className="w-full h-10 px-2.5 text-[14px]"
           >
-            <option value="">None</option>
-            {!known && <option value={value.collection}>Current collection</option>}
+            <option value="">{t("none")}</option>
+            {!known && <option value={value.collection}>{t("currentCollection")}</option>}
             {list.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            <option value={NEW}>New collection</option>
+            <option value={NEW}>{t("newCollection")}</option>
           </select>
           {value.collection === NEW && (
             <div className="mt-2">
-              <label htmlFor={id("new-collection")} className="sr-only">Name of the new collection</label>
+              <label htmlFor={id("new-collection")} className="sr-only">{t("newCollectionName")}</label>
               <input
                 id={id("new-collection")}
+          dir="auto"
                 value={value.newCollection}
                 onChange={(e) => set("newCollection", e.target.value)}
                 maxLength={120}
                 autoFocus
-                placeholder="Name, for example Blockchain 101"
+                placeholder={t("newCollectionPlaceholder")}
                 className="w-full h-10 px-3 text-[14px]"
               />
             </div>
           )}
-          <p className="text-[12.5px] text-dim mt-1.5">A collection groups videos, such as the lectures of one course.</p>
+          <p className="text-[12.5px] text-dim mt-1.5">{t("collectionHint")}</p>
         </div>
       </div>
 
       <div>
-        <label htmlFor={id("tags")} className={LABEL}>Tags <span className="font-normal text-dim">(optional)</span></label>
+        <label htmlFor={id("tags")} className={LABEL}>{t("tags")} <span className="font-normal text-dim">{t("optional")}</span></label>
         <TagInput id={id("tags")} tags={value.tags} onChange={(t) => set("tags", t)} />
       </div>
 
       <fieldset>
-        <legend className={LABEL}>Who can watch</legend>
+        <legend className={LABEL}>{t("whoCanWatch")}</legend>
         <div className="grid gap-2">
           {VISIBILITY.map((o) => {
             const Icon = VISIBILITY_ICON[o.id];
@@ -233,9 +241,9 @@ export function VideoInfoForm({ value, onChange, idPrefix = "info", autoFocusTit
                 </span>
                 <span className="min-w-0">
                   <span className="flex items-center gap-1.5 text-[14px] font-medium text-paper">
-                    <Icon size={13} strokeWidth={1.75} className="text-paper-2" /> {o.label}
+                    <Icon size={13} strokeWidth={1.75} className="text-paper-2" /> {labels.visibility(o.id)}
                   </span>
-                  <span className="block text-[13px] text-dim mt-0.5 leading-relaxed">{o.hint}</span>
+                  <span className="block text-[13px] text-dim mt-0.5 leading-relaxed">{labels.visibilityHint(o.id)}</span>
                 </span>
               </label>
             );

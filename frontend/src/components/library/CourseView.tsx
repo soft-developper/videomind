@@ -8,6 +8,8 @@ import { ArrowUp, ArrowDown, Check, Pencil } from "lucide-react";
 import { clsx } from "clsx";
 import { reorderCourse, updateCollection, type Collection, type VideoRecord, type MyProgress } from "@/lib/api";
 import { clock } from "@/components/video/VideoCard";
+// vm_lang
+import { useTranslations } from "next-intl";
 
 export function CourseView({
   collection, videos, watched, onChanged,
@@ -17,6 +19,8 @@ export function CourseView({
   watched?: MyProgress["watched"];
   onChanged: () => void;
 }) {
+  const t = useTranslations("course");
+  const tc = useTranslations("common");
   const ordered = [...videos].sort((a, b) => (a.collection?.position ?? 0) - (b.collection?.position ?? 0) || a.createdAt - b.createdAt);
   const [order, setOrder] = useState<string[] | null>(null);
   const lessons = order ? order.map((id) => ordered.find((v) => v.id === id)!).filter(Boolean) : ordered;
@@ -37,14 +41,14 @@ export function CourseView({
     [ids[i], ids[j]] = [ids[j], ids[i]];
     setOrder(ids); setBusy(true); setErr(null);
     try { await reorderCourse(collection.id, ids); onChanged(); }
-    catch (e: any) { setOrder(null); setErr(e?.message ?? "The new order could not be saved. Please try again."); }
+    catch (e: any) { setOrder(null); setErr(e?.message ?? t("orderFailed")); }
     finally { setBusy(false); }
   };
 
   const saveDescription = async () => {
     setBusy(true); setErr(null);
     try { await updateCollection(collection.id, { description: text.trim() || null }); setEditing(false); onChanged(); }
-    catch (e: any) { setErr(e?.message ?? "The description could not be saved."); }
+    catch (e: any) { setErr(e?.message ?? t("descriptionFailed")); }
     finally { setBusy(false); }
   };
 
@@ -54,39 +58,39 @@ export function CourseView({
       <div className="space-y-3">
         {editing ? (
           <div className="space-y-2">
-            <label htmlFor="course-description" className="sr-only">What the course is about</label>
+            <label htmlFor="course-description" className="sr-only">{t("aboutLabel")}</label>
             <textarea
               id="course-description"
               value={text}
               rows={3}
               maxLength={2000}
               onChange={(e) => setText(e.target.value)}
-              placeholder="What the course covers, and who it is for"
+              placeholder={t("aboutPlaceholder")}
               className="w-full px-3 py-2 text-[14px] leading-relaxed resize-y"
             />
             <div className="flex gap-2">
-              <button onClick={saveDescription} disabled={busy} className="btn btn-signal h-9 px-3.5 text-[13px]">Save</button>
-              <button onClick={() => { setEditing(false); setText(collection.description ?? ""); }} className="btn btn-ghost h-9 px-3.5 text-[13px]">Cancel</button>
+              <button onClick={saveDescription} disabled={busy} className="btn btn-signal h-9 px-3.5 text-[13px]">{tc("save")}</button>
+              <button onClick={() => { setEditing(false); setText(collection.description ?? ""); }} className="btn btn-ghost h-9 px-3.5 text-[13px]">{tc("cancel")}</button>
             </div>
           </div>
         ) : collection.description ? (
-          <p className="text-[14px] text-paper-2 leading-relaxed whitespace-pre-line max-w-[70ch]">
+          <p dir="auto" className="text-[14px] text-paper-2 leading-relaxed whitespace-pre-line max-w-[70ch]">
             {collection.description}{" "}
-            <button onClick={() => setEditing(true)} aria-label="Edit the description" className="inline-flex align-middle text-dim hover:text-paper no-min"><Pencil size={12} /></button>
+            <button onClick={() => setEditing(true)} aria-label={t("editDescription")} className="inline-flex align-middle text-dim hover:text-paper no-min"><Pencil size={12} /></button>
           </p>
         ) : (
-          <button onClick={() => setEditing(true)} className="text-[13.5px] text-dim hover:text-paper underline underline-offset-2 no-min">Add a description</button>
+          <button onClick={() => setEditing(true)} className="text-[13.5px] text-dim hover:text-paper underline underline-offset-2 no-min">{t("addDescription")}</button>
         )}
 
         <div className="flex items-center gap-4 flex-wrap">
           {nextUp && (
             <Link href={`/video/${nextUp.id}`} className="btn btn-signal h-9 px-3.5 inline-flex items-center">
-              {started ? "Continue the course" : "Start the course"}
+              {started ? t("continue") : t("start")}
             </Link>
           )}
           <span className="text-[13.5px] text-dim" aria-live="polite">
-            {done === lessons.length && lessons.length > 0 ? "All lessons watched" : `${done} of ${lessons.length} lesson${lessons.length === 1 ? "" : "s"} watched`}
-            {nextUp ? `. Next: ${nextUp.title}` : ""}
+            {done === lessons.length && lessons.length > 0 ? t("allWatched") : t("watchedOf", { done, count: lessons.length })}
+            {nextUp ? `. ${t("next", { title: nextUp.title })}` : ""}
           </span>
         </div>
         {/* How far through the course */}
@@ -99,17 +103,17 @@ export function CourseView({
       </div>
 
       {/* The lessons */}
-      <ol className="rounded-md border border-rule divide-y divide-rule overflow-hidden" aria-label="Lessons">
+      <ol className="rounded-md border border-rule divide-y divide-rule overflow-hidden" aria-label={t("lessons")}>
         {lessons.map((v, i) => {
           const w = watched?.[v.id];
           const dur = w?.durationSeconds ?? v.meta.durationSeconds ?? 0;
           const pct = w ? (w.finished ? 100 : dur ? Math.min(100, (w.positionSeconds / dur) * 100) : 0) : 0;
           const isNext = nextUp?.id === v.id;
           return (
-            <li key={v.id} className={clsx("flex items-center gap-3 pr-2", isNext && "bg-signal/[0.06]")}>
-              <Link href={`/video/${v.id}`} className="flex-1 min-w-0 flex items-center gap-3.5 pl-3.5 py-3 group">
+            <li key={v.id} className={clsx("flex items-center gap-3 pe-2", isNext && "bg-signal/[0.06]")}>
+              <Link href={`/video/${v.id}`} className="flex-1 min-w-0 flex items-center gap-3.5 ps-3.5 py-3 group">
                 <span className={clsx("w-7 h-7 shrink-0 rounded-full border flex items-center justify-center tc", w?.finished ? "border-signal text-paper" : "border-rule-lit")}>
-                  {w?.finished ? <Check size={13} aria-label="Watched" /> : i + 1}
+                  {w?.finished ? <Check size={13} aria-label={t("watched")} /> : i + 1}
                 </span>
                 <span className="relative w-24 aspect-video rounded-sm overflow-hidden bg-screen shrink-0 hidden sm:block">
                   {v.thumbUrl && (
@@ -121,24 +125,24 @@ export function CourseView({
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[14px] font-medium text-paper truncate group-hover:underline">{v.title}</span>
+                  <span dir="auto" className="block text-[14px] font-medium text-paper truncate group-hover:underline">{v.title}</span>
                   <span className="tc block mt-0.5">
-                    Lesson {i + 1}{clock(v.meta.durationSeconds) ? `, ${clock(v.meta.durationSeconds)}` : ""}
-                    {v.status !== "ready" ? ", being processed" : w?.finished ? ", watched" : w ? `, stopped at ${clock(w.positionSeconds)}` : ""}
+                    {t("lesson", { n: i + 1 })}{clock(v.meta.durationSeconds) ? `, ${clock(v.meta.durationSeconds)}` : ""}
+                    {v.status !== "ready" ? `, ${t("beingProcessed")}` : w?.finished ? `, ${t("watchedLower")}` : w ? `, ${t("stoppedAt", { time: clock(w.positionSeconds) ?? "" })}` : ""}
                   </span>
                 </span>
               </Link>
               <div className="flex flex-col sm:flex-row gap-1 shrink-0">
                 <button
                   onClick={() => move(i, -1)} disabled={busy || i === 0}
-                  aria-label={`Move ${v.title} up`}
+                  aria-label={t("moveUp", { title: v.title })}
                   className="w-8 h-8 flex items-center justify-center rounded text-dim hover:text-paper hover:bg-slate-2 disabled:opacity-30 no-min"
                 >
                   <ArrowUp size={13} />
                 </button>
                 <button
                   onClick={() => move(i, 1)} disabled={busy || i === lessons.length - 1}
-                  aria-label={`Move ${v.title} down`}
+                  aria-label={t("moveDown", { title: v.title })}
                   className="w-8 h-8 flex items-center justify-center rounded text-dim hover:text-paper hover:bg-slate-2 disabled:opacity-30 no-min"
                 >
                   <ArrowDown size={13} />

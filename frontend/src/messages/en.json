@@ -14,6 +14,27 @@
       "demo": "Product demo",
       "livestream": "Livestream",
       "other": "Other"
+    },
+    "tryAgain": "Try again",
+    "dismiss": "Dismiss",
+    "uploadVideo": "Upload video",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleting": "Deleting",
+    "save": "Save",
+    "saving": "Saving",
+    "underMinute": "Under a minute",
+    "underMinuteLower": "under a minute",
+    "justNow": "Just now",
+    "visibility": {
+      "private": "Private",
+      "unlisted": "Unlisted",
+      "public": "Public"
+    },
+    "visibilityHint": {
+      "private": "Only you, signed in with your wallet.",
+      "unlisted": "Anyone who has the link can watch. It is not listed anywhere.",
+      "public": "Anyone who has the link can watch, and it is listed on your public profile."
     }
   },
   "nav": {
@@ -142,5 +163,324 @@
     "deleteTypeLabel": "Type DELETE to confirm",
     "deleting": "Deleting",
     "deleteButton": "Delete my data"
+  },
+  "card": {
+    "step": {
+      "uploading": "Upload not finished",
+      "processing": "Processing",
+      "transcribing": "Transcribing",
+      "analyzing": "Finding chapters",
+      "error": "Stopped"
+    },
+    "watched": "Watched",
+    "chapters": "{count, plural, one {# chapter} other {# chapters}}",
+    "more": "{count} more",
+    "noChapters": "No chapters yet",
+    "stopped": "Processing stopped",
+    "stoppedHint": "Open it to see which step, and retry.",
+    "deleteNamed": "Delete {title}",
+    "deleteTitle": "Delete this video?",
+    "deleteBody": "It leaves your library. The copy on Shelby stays until its paid period ends."
+  },
+  "library": {
+    "title": "Library",
+    "collection": "Collection",
+    "collectionNotFound": "Collection not found",
+    "videoCount": "{count, plural, one {# video} other {# videos}}",
+    "processingCount": "{count} being processed",
+    "coursesBack": "Courses",
+    "connectTitle": "Connect a wallet to open your library",
+    "connectBody": "Your library belongs to your wallet. The wallet is how VideoMind knows which videos are yours.",
+    "signInTitle": "Sign in to open your library",
+    "signInBody": "Your wallet is connected. One signature proves it is yours, then your videos load. The prompt is at the bottom of the page.",
+    "loadFailed": "The library could not be loaded",
+    "noPageTitle": "This page does not exist",
+    "noPageBody": "There is no library page at this address.",
+    "openLibrary": "Open the library",
+    "missingTitle": "This collection was not found",
+    "missingBody": "It may have been deleted, or it belongs to a different wallet.",
+    "allCourses": "All courses",
+    "firstTitle": "Upload your first video",
+    "firstBody": "A lecture, a seminar, a talk. It comes back transcribed and split into chapters, and every sentence becomes searchable.",
+    "chooseVideo": "Choose a video",
+    "emptyViewBody": "Videos with the category {categories} are listed here. Choose the category when you upload, or with Edit details on a video's page.",
+    "emptyCollectionTitle": "Nothing in this collection yet",
+    "emptyCollectionBody": "Choose this collection when you upload, or with Edit details on a video's page.",
+    "filterLabel": "Filter by title or tag",
+    "categoryLabel": "Category",
+    "allCategories": "All categories",
+    "noCategory": "No category",
+    "sortLabel": "Sort",
+    "sortRecent": "Recently added",
+    "sortTitle": "Title",
+    "sortLongest": "Longest first",
+    "deleteAll": "Delete all",
+    "deleteAllVideos": "Delete all videos",
+    "wipeTitle": "Delete all {count, plural, one {# video} other {# videos}}?",
+    "wipeBody": "They leave your library. Copies stored on Shelby stay there until their paid period ends.",
+    "noMatchTitle": "Nothing matches “{filter}”",
+    "noCategoryVideos": "No videos in this category",
+    "clearFilters": "Clear the filters",
+    "noMatchBody": "This box looks at titles and tags only. To find something that was said in a video, use Search.",
+    "views": {
+      "lectures": {
+        "label": "Lectures",
+        "covers": "Lectures",
+        "empty": "No lectures yet"
+      },
+      "seminars": {
+        "label": "Seminars",
+        "covers": "Seminars and webinars",
+        "empty": "No seminars yet"
+      },
+      "presentations": {
+        "label": "Presentations",
+        "covers": "Presentations and product demos",
+        "empty": "No presentations yet"
+      },
+      "events": {
+        "label": "Events",
+        "covers": "Conferences",
+        "empty": "No events yet"
+      },
+      "live": {
+        "label": "Live recordings",
+        "covers": "Live recordings",
+        "empty": "No live recordings yet"
+      }
+    }
+  },
+  "course": {
+    "orderFailed": "The new order could not be saved. Please try again.",
+    "descriptionFailed": "The description could not be saved.",
+    "aboutLabel": "What the course is about",
+    "aboutPlaceholder": "What the course covers, and who it is for",
+    "editDescription": "Edit the description",
+    "addDescription": "Add a description",
+    "continue": "Continue the course",
+    "start": "Start the course",
+    "allWatched": "All lessons watched",
+    "watchedOf": "{done} of {count, plural, one {# lesson} other {# lessons}} watched",
+    "next": "Next: {title}",
+    "lessons": "Lessons",
+    "watched": "Watched",
+    "lesson": "Lesson {n}",
+    "beingProcessed": "being processed",
+    "watchedLower": "watched",
+    "stoppedAt": "stopped at {time}",
+    "moveUp": "Move {title} up",
+    "moveDown": "Move {title} down"
+  },
+  "courses": {
+    "title": "Courses",
+    "description": "A course is a collection of videos, such as the lectures of one class. Put a video in one when you upload it, or with Edit details on its page.",
+    "renameNamed": "Rename {name}",
+    "deleteNamed": "Delete {name}",
+    "newNameFor": "New name for {name}",
+    "deleteTitle": "Delete “{name}”?",
+    "deleteEmpty": "It has no videos in it.",
+    "deleteKeeps": "{count, plural, one {Its video stays} other {Its # videos stay}} in your library. Only the collection goes.",
+    "createFailed": "The collection could not be created.",
+    "connectTitle": "Connect a wallet to open your courses",
+    "connectBody": "Your library belongs to your wallet. The wallet is how VideoMind knows which collections are yours.",
+    "signInTitle": "Sign in to open your courses",
+    "signInBody": "Your wallet is connected. One signature proves it is yours, then your collections load. The prompt is at the bottom of the page.",
+    "loadFailed": "Your courses could not be loaded",
+    "newLabel": "Name of a new collection",
+    "newPlaceholder": "New collection, for example Blockchain 101",
+    "creating": "Creating",
+    "create": "Create",
+    "emptyTitle": "No collections yet",
+    "emptyBody": "Name one above, or type a new name in the Collection field when you upload a video."
+  },
+  "home": {
+    "greeting": {
+      "welcome": "Welcome back",
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "heroTitle": "A library for long videos",
+    "heroBody": "Upload a lecture, a seminar or a talk. It comes back transcribed and split into chapters, and every sentence in it becomes something you can search for and jump to.",
+    "howItWorks": "How it works",
+    "what": {
+      "transcript": {
+        "term": "Transcript",
+        "text": "Every sentence with its time. Click a sentence and the video jumps to it."
+      },
+      "chapters": {
+        "term": "Chapters",
+        "text": "The recording is split where the topic changes, so a long video can be scanned like a document."
+      },
+      "search": {
+        "term": "Search",
+        "text": "Look for something that was said and land on the moment it was said."
+      },
+      "questions": {
+        "term": "Questions",
+        "text": "Ask about a video and get an answer that points to the moments it came from."
+      },
+      "ownership": {
+        "term": "Ownership",
+        "text": "The file is stored on Shelby and signed by your wallet, with a proof anyone can check."
+      }
+    },
+    "example": {
+      "title": "Introduction to Distributed Systems: Lecture 01",
+      "facts": "8 chapters, 58 min",
+      "c1": "Introduction",
+      "c2": "What is a distributed system?",
+      "c3": "Why distribution is hard",
+      "c4": "Replication",
+      "c5": "Fault tolerance",
+      "c6": "The CAP theorem",
+      "c7": "A real world example",
+      "c8": "Summary and reading",
+      "l1": "So far we have assumed that messages always arrive.",
+      "l2": "The network is not reliable, and that single fact shapes everything we do.",
+      "l3": "A message can be late, it can be lost, and it can arrive twice.",
+      "caption": "An example. The yellow marks follow the video as it plays."
+    },
+    "stoppedAt": "Stopped at {time}",
+    "left": "{time} left",
+    "inLibrary": "{count, plural, one {# video} other {# videos}} in your library",
+    "loadFailed": "Your videos could not be loaded",
+    "searchLabel": "Search your library",
+    "searchPlaceholder": "Search everything that was said in your videos",
+    "continueWatching": "Continue watching",
+    "inProgress": "In progress",
+    "recent": "Recent videos"
+  },
+  "uploadPage": {
+    "title": "Upload a video",
+    "description": "The file goes to your library, is transcribed and split into chapters, and can be stored on Shelby with your wallet.",
+    "next": "What happens next",
+    "steps": {
+      "uploaded": {
+        "n": "Uploaded",
+        "d": "The file goes to your library in parts. A dropped connection continues where it stopped."
+      },
+      "transcribed": {
+        "n": "Transcribed",
+        "d": "Every sentence is written down with the time it was said."
+      },
+      "chaptered": {
+        "n": "Chaptered",
+        "d": "The recording is split where the topic changes, with a summary and key moments."
+      },
+      "stored": {
+        "n": "Stored on Shelby",
+        "d": "Your wallet signs the file and it is written to Shelby. This can also be done later."
+      }
+    },
+    "prepaid": "Storage on Shelby is prepaid when you upload, for a fixed number of 24 hour payment periods. Each video's ownership proof shows the date it is paid until."
+  },
+  "upload": {
+    "wallet": {
+      "declined": "You declined the request in your wallet.",
+      "funds": "Your wallet needs testnet APT (for gas) and ShelbyUSD (for storage). Fund it from the Shelby faucet, then try again.",
+      "submit": "The transaction could not be submitted. This usually means the wallet has no testnet APT or ShelbyUSD yet, or the Shelby network is not answering. Check the Shelby status in the sidebar, fund the wallet from the Shelby faucet if needed, then try again."
+    },
+    "connectToStore": "Connect your wallet to store the file on Shelby.",
+    "storeFailed": "Storing on Shelby failed.",
+    "expired": "This upload expired in storage. Discard it and start again.",
+    "stopped": "The upload stopped.",
+    "signInFirst": "Sign in with your wallet first. The prompt is at the bottom of the page.",
+    "startFailed": "The upload could not be started.",
+    "differentFile": "That is a different file. The video is {video}, this file is {file}.",
+    "tooLarge": "That file is over 10 GB. Use a smaller one.",
+    "badType": "Unsupported format. Use MP4, WebM, MOV, AVI or MKV.",
+    "cannotUse": "That file cannot be used.",
+    "status": {
+      "starting": "Starting",
+      "paused": "Paused at {size}",
+      "waiting": "Connection lost. Continuing from {size} when it is back.",
+      "finishing": "Finishing",
+      "checking": "Checking what has already arrived",
+      "uploading": "Uploading"
+    },
+    "connectToUpload": "Connect a wallet to upload. Your library belongs to your wallet.",
+    "signInToUpload": "Sign in with your wallet to upload. The prompt is at the bottom of the page.",
+    "uploaded": "Uploaded. Processing has started.",
+    "storeTitle": "Store on Shelby",
+    "storeBody": "Your wallet signs the file and it is written to Shelby, which gives the video an ownership proof anyone can check.",
+    "approve": "Approve the request in your wallet. Keep this page open until it finishes.",
+    "stored": "Stored on Shelby.",
+    "held": "This video is private, so it was not sent to Shelby. A file stored on Shelby can be read by anyone who has its address. You can still store it there, now or later from the video page.",
+    "shelbyTooLarge": "This file is {size}. Files over 2 GB cannot be stored on Shelby from the browser yet. The video is safe in your library and plays normally.",
+    "openVideo": "Open the video",
+    "later": "Do this later and open the video",
+    "storeAnyway": "Store on Shelby anyway",
+    "of": "{done} of {total}",
+    "progress": "Upload progress",
+    "resume": "Resume",
+    "pause": "Pause",
+    "cancelUpload": "Cancel upload",
+    "nothingLost": "If the connection drops or this tab closes, nothing is lost. Come back to this page and choose the same file to continue from where it stopped.",
+    "anchorTitle": "Store this video on Shelby",
+    "anchorTitleNamed": "Store “{title}” on Shelby",
+    "anchorBody": "Choose the same file again. Your wallet signs it and it is written to Shelby. Nothing is uploaded to the library twice.",
+    "anchorBodySize": "Choose the same file again ({size}). Your wallet signs it and it is written to Shelby. Nothing is uploaded to the library twice.",
+    "anchorPrivate": "This video is private. A file stored on Shelby can be read by anyone who has its address.",
+    "unfinished": "{count, plural, one {An upload was not finished} other {# uploads were not finished}}",
+    "unfinishedHint": "Choose the same file below to continue from where it stopped.",
+    "uploadedOf": "{done} of {total} uploaded",
+    "discard": "Discard",
+    "remove": "Remove",
+    "dropHere": "Drop it here",
+    "dragHere": "Drag a video here",
+    "orClick": "or click to choose a file",
+    "formats": "MP4, WebM, MOV, AVI or MKV, up to {size}",
+    "chooseFirst": "Choose a video first",
+    "addTitle": "Add a title",
+    "upload": "Upload"
+  },
+  "info": {
+    "removeTag": "Remove tag {tag}",
+    "addAnother": "Add another",
+    "tagsExample": "blockchain, consensus",
+    "tagsFull": "{max} tags is the most a video can have.",
+    "tagsHint": "Press Enter or type a comma after each tag.",
+    "title": "Title",
+    "titlePlaceholder": "What is this recording?",
+    "description": "Description",
+    "optional": "(optional)",
+    "descriptionPlaceholder": "Anything that helps you find it later",
+    "category": "Category",
+    "noCategory": "No category",
+    "collection": "Collection",
+    "none": "None",
+    "currentCollection": "Current collection",
+    "newCollection": "New collection",
+    "newCollectionName": "Name of the new collection",
+    "newCollectionPlaceholder": "Name, for example Blockchain 101",
+    "collectionHint": "A collection groups videos, such as the lectures of one course.",
+    "tags": "Tags",
+    "whoCanWatch": "Who can watch"
+  },
+  "search": {
+    "title": "Search",
+    "description": "Describe what you remember. Each result opens the video at the moment it was said.",
+    "signInFirst": "Sign in with your wallet first. The prompt is at the bottom of the page.",
+    "failed": "Search did not work. Please try again.",
+    "connectTitle": "Connect a wallet to search",
+    "connectBody": "Search looks through your own library, so it needs to know which library is yours.",
+    "label": "Search your library",
+    "placeholder": "Describe what you are looking for",
+    "button": "Search",
+    "kind": "Kind of video",
+    "allKinds": "All kinds of video",
+    "collection": "Collection",
+    "allCollections": "All collections",
+    "idle": "Describe it the way you remember it, in your own words. For example: the part where the trade off between consistency and availability is explained.",
+    "again": "Search again",
+    "nothingFound": "Nothing found",
+    "summary": "{moments, plural, one {# moment} other {# moments}} in {videos, plural, one {# video} other {# videos}}",
+    "clear": "Clear",
+    "notIndexed": "{count, plural, one {1 of your videos is still being prepared for search and was not searched.} other {# of your videos are still being prepared for search and were not searched.}}",
+    "noneFiltered": "Nothing matches that with these filters. Try all kinds of video and all collections, or other words.",
+    "none": "Nothing in your library matches that. Try describing it in different words.",
+    "moments": "{count, plural, one {# moment} other {# moments}}",
+    "openAt": "Open {title} at {time}"
   }
 }

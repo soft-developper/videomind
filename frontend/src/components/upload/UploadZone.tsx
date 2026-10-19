@@ -33,6 +33,9 @@ import { ResumableUpload, StorageBlockedError, UploadStopped, type UploadProgres
 import { shelbyClient, SHELBY_LOCATION } from "@/lib/shelby";
 import { VideoInfoForm, emptyDraft, draftToPatch, type InfoDraft } from "@/components/video/VideoInfoForm";
 import { CATEGORIES } from "@/lib/categories";
+// vm_lang
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/lib/format";
 
 // The category and visibility of the last upload are offered again for
 // the next one. Kept in this browser only; the page works without it.
@@ -56,21 +59,13 @@ const GB = 1024 ** 3;
 const SHELBY_LIMIT = 2 * GB;
 const MAX_BYTES = 10 * GB;
 
-function bytes(n: number) {
-  if (n < 1024 ** 2) return `${Math.max(1, Math.round(n / 1024))} KB`;
-  if (n < GB) return `${(n / 1024 ** 2).toFixed(n < 10 * 1024 ** 2 ? 1 : 0)} MB`;
-  return `${(n / GB).toFixed(2)} GB`;
-}
-
-function readableWallet(raw: string): string {
+/** Which plain explanation fits a wallet error, if any (message keys under "upload.wallet"). */
+function walletReason(raw: string): "declined" | "funds" | "submit" | null {
   const r = raw || "";
-  if (/reject|cancel|denied|declined/i.test(r))
-    return "You declined the request in your wallet.";
-  if (/INSUFFICIENT_BALANCE|insufficient.*(balance|fund|gas)|EINSUFFICIENT/i.test(r))
-    return "Your wallet needs testnet APT (for gas) and ShelbyUSD (for storage). Fund it from the Shelby faucet, then try again.";
-  if (/failed to sign and submit|sign and submit|submit.*transaction|transaction.*(failed|rejected by)|simulation/i.test(r))
-    return "The transaction could not be submitted. This usually means the wallet has no testnet APT or ShelbyUSD yet, or the Shelby network is not answering. Check the Shelby status in the sidebar, fund the wallet from the Shelby faucet if needed, then try again.";
-  return r;
+  if (/reject|cancel|denied|declined/i.test(r)) return "declined";
+  if (/INSUFFICIENT_BALANCE|insufficient.*(balance|fund|gas)|EINSUFFICIENT/i.test(r)) return "funds";
+  if (/failed to sign and submit|sign and submit|submit.*transaction|transaction.*(failed|rejected by)|simulation/i.test(r)) return "submit";
+  return null;
 }
 
 type Step =
@@ -96,6 +91,11 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
   /** vm_live: told the new video's id once the file is uploaded */
   onUploaded?: (videoId: string) => void;
 } = {}) {
+  const tu = useTranslations("upload");
+  const tc = useTranslations("common");
+  const fmt = useFormat();
+  const bytes = fmt.bytes;
+  const readableWallet = (raw: string) => { const k = walletReason(raw); return k ? tu(`wallet.${k}`) : raw; };
   const router = useRouter();
   const params = useSearchParams();
   const anchorId = params.get("anchor");
@@ -165,7 +165,7 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
   // ── Shelby step ───────────────────────────────────────────────────────────
   const storeOnShelby = useCallback(async (f: File, t: Target) => {
     if (!connected || !account || !signAndSubmitTransaction) {
-      setShelby({ at: "failed", why: "Connect your wallet to store the file on Shelby." });
+      setShelby({ at: "failed", why: tu("connectToStore") });
       return;
     }
     if (f.size > SHELBY_LIMIT) { setShelby({ at: "too_large" }); return; }
@@ -193,9 +193,10 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
       router.push(`/video/${t.videoId}`);
     } catch (e: any) {
       console.error("[VideoMind] storing on Shelby failed:", e);
-      setShelby({ at: "failed", why: readableWallet(e?.message ?? "Storing on Shelby failed.") });
+      setShelby({ at: "failed", why: e?.message ? readableWallet(e.message) : tu("storeFailed") });
     }
-  }, [connected, account, signAndSubmitTransaction, blobs, qc, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected, account, signAndSubmitTransaction, blobs, qc, router, tu]);
 
   // ── upload ────────────────────────────────────────────────────────────────
   const run = useCallback(async (f: File, u: UploadInfo) => {
@@ -225,21 +226,21 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
       if (e instanceof UploadStopped) { setStep({ at: "uploading", paused: true }); return; }
       setStep({ at: "uploading", paused: true });
       if (e instanceof StorageBlockedError) setErr(e.message);
-      else if (e instanceof ApiError && e.code === "expired") setErr("This upload expired in storage. Discard it and start again.");
-      else setErr(e?.message ?? "The upload stopped.");
+      else if (e instanceof ApiError && e.code === "expired") setErr(tu("expired"));
+      else setErr(e?.message ?? tu("stopped"));
     }
-  }, [qc, storeOnShelby, onUploaded]);
+  }, [qc, storeOnShelby, onUploaded, tu]);
 
   const begin = async () => {
     if (!file || !title.trim() || starting) return;
-    if (!sessionWallet) { setErr("Sign in with your wallet first. The prompt is at the bottom of the page."); return; }
+    if (!sessionWallet) { setErr(tu("signInFirst")); return; }
     setErr(null); setStarting(true);
     try {
       const u = await createUpload({ filename: file.name, size: file.size, contentType: file.type || "video/mp4", ...draftToPatch(draft) });
       saveDefaults(draft);
       await run(file, u);
     } catch (e: any) {
-      setErr(e?.message ?? "The upload could not be started.");
+      setErr(e?.message ?? tu("startFailed"));
     } finally { setStarting(false); }
   };
 
@@ -270,7 +271,7 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
       const v = anchorVideoQ.data;
       if (!v) return;
       if (f.size !== v.meta.sizeBytes) {
-        setErr(`That is a different file. The video is ${bytes(v.meta.sizeBytes)}, this file is ${bytes(f.size)}.`);
+        setErr(tu("differentFile", { video: bytes(v.meta.sizeBytes), file: bytes(f.size) }));
         return;
       }
       const t: Target = { videoId: v.id, videoBlobName: v.shelby.videoBlobName, title: v.title, size: f.size };
@@ -286,7 +287,8 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
     setFile(f);
     setDraft(emptyDraft({ ...defaults(), title: f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ") }));
     setStep({ at: "details" });
-  }, [anchorId, anchorVideoQ.data, unfinished, run, storeOnShelby]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchorId, anchorVideoQ.data, unfinished, run, storeOnShelby, tu]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -295,29 +297,29 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
     maxSize: MAX_BYTES,
     onDropRejected: (r) => {
       const c = r[0]?.errors[0]?.code;
-      if (c === "file-too-large") setErr("That file is over 10 GB. Use a smaller one.");
-      else if (c === "file-invalid-type") setErr("Unsupported format. Use MP4, WebM, MOV, AVI or MKV.");
-      else setErr(r[0]?.errors[0]?.message ?? "That file cannot be used.");
+      if (c === "file-too-large") setErr(tu("tooLarge"));
+      else if (c === "file-invalid-type") setErr(tu("badType"));
+      else setErr(r[0]?.errors[0]?.message ?? tu("cannotUse"));
     },
   });
 
   const pct = progress && progress.totalBytes ? Math.floor((progress.uploadedBytes / progress.totalBytes) * 100) : 0;
   const paused = step.at === "uploading" && step.paused;
   const statusLine = useMemo(() => {
-    if (!progress) return "Starting";
-    if (paused) return `Paused at ${bytes(progress.uploadedBytes)}`;
-    if (progress.phase === "waiting") return `Connection lost. Continuing from ${bytes(progress.uploadedBytes)} when it is back.`;
-    if (progress.phase === "finishing") return "Finishing";
-    if (progress.phase === "starting") return "Checking what has already arrived";
-    return "Uploading";
-  }, [progress, paused]);
+    if (!progress) return tu("status.starting");
+    if (paused) return tu("status.paused", { size: bytes(progress.uploadedBytes) });
+    if (progress.phase === "waiting") return tu("status.waiting", { size: bytes(progress.uploadedBytes) });
+    if (progress.phase === "finishing") return tu("status.finishing");
+    if (progress.phase === "starting") return tu("status.checking");
+    return tu("status.uploading");
+  }, [progress, paused, tu, bytes]);
 
   const errorBox = err && (
     <div role="alert" className="rounded-md border border-error/50 bg-error/5">
       <div className="flex items-start gap-3 p-3.5">
         <AlertTriangle size={15} className="text-error shrink-0 mt-0.5" />
         <p className="text-[13.5px] font-sans text-error leading-relaxed flex-1">{err}</p>
-        <button onClick={() => setErr(null)} aria-label="Dismiss" className="text-dim hover:text-paper shrink-0 no-min">
+        <button onClick={() => setErr(null)} aria-label={tc("dismiss")} className="text-dim hover:text-paper shrink-0 no-min">
           <X size={13} />
         </button>
       </div>
@@ -342,7 +344,7 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
       <div className="flex items-center gap-3 px-3.5 py-3 rounded-md border border-rule bg-slate">
         <span className="dot dot-off" />
         <p className="text-[13.5px] text-paper-2">
-          {!connected ? "Connect a wallet to upload. Your library belongs to your wallet." : "Sign in with your wallet to upload. The prompt is at the bottom of the page."}
+          {!connected ? tu("connectToUpload") : tu("signInToUpload")}
         </p>
       </div>
     );
@@ -356,37 +358,37 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
           {fileRow}
           {!anchorId && (
             <p className="flex items-center gap-2 mt-4 text-[14px] text-paper">
-              <Check size={15} className="text-marker" /> Uploaded. Processing has started.
+              <Check size={15} className="text-marker" /> {tu("uploaded")}
             </p>
           )}
         </div>
 
         <div className="rounded-lg border border-rule p-5">
-          <h2 className="font-display text-[15px] text-paper">Store on Shelby</h2>
+          <h2 className="font-display text-[15px] text-paper">{tu("storeTitle")}</h2>
           <p className="text-[13.5px] text-dim mt-1 leading-relaxed max-w-[58ch]">
-            Your wallet signs the file and it is written to Shelby, which gives the video an ownership proof anyone can check.
+            {tu("storeBody")}
           </p>
 
           <div className="mt-4" aria-live="polite">
             {shelby.at === "wallet" && (
               <p className="flex items-center gap-2.5 text-[14px] text-paper">
-                <span className="dot dot-work" /> Approve the request in your wallet. Keep this page open until it finishes.
+                <span className="dot dot-work" /> {tu("approve")}
               </p>
             )}
             {shelby.at === "stored" && (
-              <p className="flex items-center gap-2 text-[14px] text-paper"><Check size={15} className="text-marker" /> Stored on Shelby.</p>
+              <p className="flex items-center gap-2 text-[14px] text-paper"><Check size={15} className="text-marker" /> {tu("stored")}</p>
             )}
             {shelby.at === "failed" && (
               <p role="alert" className="text-[13.5px] text-error leading-relaxed max-w-[62ch]">{shelby.why}</p>
             )}
             {shelby.at === "held" && (
               <p className="text-[13.5px] text-paper-2 leading-relaxed max-w-[62ch]">
-                This video is private, so it was not sent to Shelby. A file stored on Shelby can be read by anyone who has its address. You can still store it there, now or later from the video page.
+                {tu("held")}
               </p>
             )}
             {shelby.at === "too_large" && (
               <p className="text-[13.5px] text-paper-2 leading-relaxed max-w-[62ch]">
-                This file is {bytes(target.size)}. Files over 2 GB cannot be stored on Shelby from the browser yet. The video is safe in your library and plays normally.
+                {tu("shelbyTooLarge", { size: bytes(target.size) })}
               </p>
             )}
           </div>
@@ -394,18 +396,18 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
           <div className="flex items-center gap-2.5 mt-5 flex-wrap">
             {(shelby.at === "failed" || shelby.at === "idle") && file && (
               <button onClick={() => void storeOnShelby(file, target)} className="btn btn-signal h-9 px-3.5">
-                {shelby.at === "failed" ? "Try again" : "Store on Shelby"}
+                {shelby.at === "failed" ? tc("tryAgain") : tu("storeTitle")}
               </button>
             )}
             <Link
               href={`/video/${target.videoId}`}
               className={clsx("btn h-9 px-3.5 inline-flex items-center", shelby.at === "wallet" || shelby.at === "failed" || shelby.at === "idle" ? "btn-ghost" : "btn-signal")}
             >
-              {shelby.at === "stored" || shelby.at === "too_large" || shelby.at === "held" ? "Open the video" : "Do this later and open the video"}
+              {shelby.at === "stored" || shelby.at === "too_large" || shelby.at === "held" ? tu("openVideo") : tu("later")}
             </Link>
             {shelby.at === "held" && file && (
               <button onClick={() => void storeOnShelby(file, target)} className="btn btn-ghost h-9 px-3.5">
-                Store on Shelby anyway
+                {tu("storeAnyway")}
               </button>
             )}
           </div>
@@ -424,30 +426,30 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
             <div className="flex items-baseline justify-between gap-4">
               <span className={clsx("text-[13.5px]", progress?.phase === "waiting" && !paused ? "text-warn" : "text-paper-2")} aria-live="polite">{statusLine}</span>
               <span className="tc text-paper-2 shrink-0">
-                {progress ? `${bytes(progress.uploadedBytes)} of ${bytes(progress.totalBytes)}` : ""}
+                {progress ? tu("of", { done: bytes(progress.uploadedBytes), total: bytes(progress.totalBytes) }) : ""}
               </span>
             </div>
             <div
-              role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Upload progress"
+              role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={tu("progress")} dir="ltr"
               className="h-1.5 rounded-full bg-rule overflow-hidden"
             >
               <div className="h-full rounded-full bg-signal transition-[width] duration-300" style={{ width: `${pct}%` }} />
             </div>
-            <p className="tc">{pct}%</p>
+            <p className="tc">{new Intl.NumberFormat(fmt.locale === "ar" ? "ar-u-nu-latn" : fmt.locale, { style: "percent" }).format(pct / 100)}</p>
           </div>
 
           <div className="flex items-center gap-2.5 mt-4">
             {paused
-              ? <button onClick={resume} className="btn btn-signal h-9 px-3.5">Resume</button>
-              : <button onClick={pause} className="btn btn-ghost h-9 px-3.5">Pause</button>}
+              ? <button onClick={resume} className="btn btn-signal h-9 px-3.5">{tu("resume")}</button>
+              : <button onClick={pause} className="btn btn-ghost h-9 px-3.5">{tu("pause")}</button>}
             <button onClick={() => void cancel()} className="h-9 px-2 text-[13px] text-dim hover:text-error transition-colors">
-              Cancel upload
+              {tu("cancelUpload")}
             </button>
           </div>
         </div>
         {errorBox}
         <p className="text-[13px] text-dim leading-relaxed max-w-[62ch]">
-          If the connection drops or this tab closes, nothing is lost. Come back to this page and choose the same file to continue from where it stopped.
+          {tu("nothingLost")}
         </p>
       </div>
     );
@@ -460,14 +462,14 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
       {anchorId && (
         <div className="rounded-md border border-rule bg-slate px-4 py-3.5">
           <p className="text-[14px] font-medium text-paper">
-            Store {anchorTitle ? `"${anchorTitle}"` : "this video"} on Shelby
+            {anchorTitle ? tu("anchorTitleNamed", { title: anchorTitle }) : tu("anchorTitle")}
           </p>
           <p className="text-[13.5px] text-dim mt-1 leading-relaxed">
-            Choose the same file again{anchorVideoQ.data ? ` (${bytes(anchorVideoQ.data.meta.sizeBytes)})` : ""}. Your wallet signs it and it is written to Shelby. Nothing is uploaded to the library twice.
+            {anchorVideoQ.data ? tu("anchorBodySize", { size: bytes(anchorVideoQ.data.meta.sizeBytes) }) : tu("anchorBody")}
           </p>
           {anchorVideoQ.data?.visibility === "private" && (
             <p className="text-[13.5px] text-warn mt-2 leading-relaxed">
-              This video is private. A file stored on Shelby can be read by anyone who has its address.
+              {tu("anchorPrivate")}
             </p>
           )}
         </div>
@@ -476,21 +478,21 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
       {!anchorId && unfinished.length > 0 && step.at === "choose" && (
         <div className="rounded-md border border-rule bg-slate">
           <p className="px-4 pt-3.5 text-[14px] font-medium text-paper">
-            {unfinished.length === 1 ? "An upload was not finished" : `${unfinished.length} uploads were not finished`}
+            {tu("unfinished", { count: unfinished.length })}
           </p>
-          <p className="px-4 mt-1 text-[13.5px] text-dim">Choose the same file below to continue from where it stopped.</p>
+          <p className="px-4 mt-1 text-[13.5px] text-dim">{tu("unfinishedHint")}</p>
           <ul className="mt-3 border-t border-rule divide-y divide-rule">
             {unfinished.map((u) => (
               <li key={u.videoId} className="flex items-center gap-3 px-4 py-2.5">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13.5px] text-paper truncate">{u.filename}</p>
-                  <p className="tc mt-0.5">{bytes(u.uploadedBytes)} of {bytes(u.size)} uploaded</p>
+                  <p dir="auto" className="text-[13.5px] text-paper truncate">{u.filename}</p>
+                  <p className="tc mt-0.5">{tu("uploadedOf", { done: bytes(u.uploadedBytes), total: bytes(u.size) })}</p>
                 </div>
                 <button
                   onClick={async () => { await discardUpload(u.videoId).catch(() => {}); open.refetch(); }}
                   className="text-[13px] text-dim hover:text-error transition-colors shrink-0"
                 >
-                  Discard
+                  {tu("discard")}
                 </button>
               </li>
             ))}
@@ -513,16 +515,16 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
               onClick={(e) => { e.stopPropagation(); reset(); }}
               className="flex items-center gap-1.5 text-[13px] text-dim hover:text-error transition-colors shrink-0 no-min"
             >
-              <X size={13} /> Remove
+              <X size={13} /> {tu("remove")}
             </button>
           </div>
         ) : (
           <div className="px-6 py-14 text-center">
             <p className="font-display text-[18px] text-paper leading-tight">
-              {isDragActive ? "Drop it here" : "Drag a video here"}
+              {isDragActive ? tu("dropHere") : tu("dragHere")}
             </p>
-            <p className="text-[13.5px] text-dim mt-2">or click to choose a file</p>
-            <p className="tc mt-4">MP4, WebM, MOV, AVI or MKV, up to 10 GB</p>
+            <p className="text-[13.5px] text-dim mt-2">{tu("orClick")}</p>
+            <p className="tc mt-4">{tu("formats", { size: bytes(MAX_BYTES) })}</p>
           </div>
         )}
       </div>
@@ -546,7 +548,7 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
               : "bg-transparent border-rule text-dim cursor-not-allowed"
           )}
         >
-          {starting ? "Starting" : !file ? "Choose a video first" : !title.trim() ? "Add a title" : "Upload"}
+          {starting ? tu("status.starting") : !file ? tu("chooseFirst") : !title.trim() ? tu("addTitle") : tu("upload")}
         </button>
       )}
     </div>

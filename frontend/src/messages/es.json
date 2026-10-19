@@ -14,6 +14,27 @@
       "demo": "Demostración de producto",
       "livestream": "Transmisión en vivo",
       "other": "Otro"
+    },
+    "tryAgain": "Intentar de nuevo",
+    "dismiss": "Cerrar",
+    "uploadVideo": "Subir video",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "deleting": "Eliminando",
+    "save": "Guardar",
+    "saving": "Guardando",
+    "underMinute": "Menos de un minuto",
+    "underMinuteLower": "menos de un minuto",
+    "justNow": "Ahora mismo",
+    "visibility": {
+      "private": "Privado",
+      "unlisted": "No listado",
+      "public": "Público"
+    },
+    "visibilityHint": {
+      "private": "Solo tú, con la sesión iniciada con tu billetera.",
+      "unlisted": "Cualquiera que tenga el enlace puede verlo. No aparece en ninguna lista.",
+      "public": "Cualquiera que tenga el enlace puede verlo, y aparece en tu perfil público."
     }
   },
   "nav": {
@@ -142,5 +163,324 @@
     "deleteTypeLabel": "Escribe DELETE para confirmar",
     "deleting": "Eliminando",
     "deleteButton": "Eliminar mis datos"
+  },
+  "card": {
+    "step": {
+      "uploading": "Subida sin terminar",
+      "processing": "Procesando",
+      "transcribing": "Transcribiendo",
+      "analyzing": "Buscando capítulos",
+      "error": "Detenido"
+    },
+    "watched": "Visto",
+    "chapters": "{count, plural, one {# capítulo} many {# de capítulos} other {# capítulos}}",
+    "more": "{count} más",
+    "noChapters": "Aún sin capítulos",
+    "stopped": "El procesamiento se detuvo",
+    "stoppedHint": "Ábrelo para ver en qué paso y volver a intentarlo.",
+    "deleteNamed": "Eliminar {title}",
+    "deleteTitle": "¿Eliminar este video?",
+    "deleteBody": "Sale de tu biblioteca. La copia en Shelby se queda hasta que termine su período pagado."
+  },
+  "library": {
+    "title": "Biblioteca",
+    "collection": "Colección",
+    "collectionNotFound": "Colección no encontrada",
+    "videoCount": "{count, plural, one {# video} many {# de videos} other {# videos}}",
+    "processingCount": "{count} en proceso",
+    "coursesBack": "Cursos",
+    "connectTitle": "Conecta una billetera para abrir tu biblioteca",
+    "connectBody": "Tu biblioteca pertenece a tu billetera. La billetera es la forma en que VideoMind sabe qué videos son tuyos.",
+    "signInTitle": "Inicia sesión para abrir tu biblioteca",
+    "signInBody": "Tu billetera está conectada. Una firma demuestra que es tuya y luego se cargan tus videos. El aviso está al final de la página.",
+    "loadFailed": "No se pudo cargar la biblioteca",
+    "noPageTitle": "Esta página no existe",
+    "noPageBody": "No hay ninguna página de la biblioteca en esta dirección.",
+    "openLibrary": "Abrir la biblioteca",
+    "missingTitle": "No se encontró esta colección",
+    "missingBody": "Puede que se haya eliminado o que pertenezca a otra billetera.",
+    "allCourses": "Todos los cursos",
+    "firstTitle": "Sube tu primer video",
+    "firstBody": "Una clase, un seminario, una charla. Vuelve transcrito y dividido en capítulos, y cada frase se puede buscar.",
+    "chooseVideo": "Elegir un video",
+    "emptyViewBody": "Aquí aparecen los videos con la categoría {categories}. Elige la categoría al subir el video, o con Editar detalles en la página del video.",
+    "emptyCollectionTitle": "Aún no hay nada en esta colección",
+    "emptyCollectionBody": "Elige esta colección al subir un video, o con Editar detalles en la página del video.",
+    "filterLabel": "Filtrar por título o etiqueta",
+    "categoryLabel": "Categoría",
+    "allCategories": "Todas las categorías",
+    "noCategory": "Sin categoría",
+    "sortLabel": "Ordenar",
+    "sortRecent": "Añadidos recientemente",
+    "sortTitle": "Título",
+    "sortLongest": "Más largos primero",
+    "deleteAll": "Eliminar todo",
+    "deleteAllVideos": "Eliminar todos los videos",
+    "wipeTitle": "¿Eliminar {count, plural, one {el video} many {los # de videos} other {los # videos}}?",
+    "wipeBody": "Salen de tu biblioteca. Las copias guardadas en Shelby se quedan allí hasta que termine su período pagado.",
+    "noMatchTitle": "Nada coincide con «{filter}»",
+    "noCategoryVideos": "No hay videos en esta categoría",
+    "clearFilters": "Quitar los filtros",
+    "noMatchBody": "Este cuadro solo mira títulos y etiquetas. Para encontrar algo que se dijo en un video, usa Buscar.",
+    "views": {
+      "lectures": {
+        "label": "Clases",
+        "covers": "Clases",
+        "empty": "Aún no hay clases"
+      },
+      "seminars": {
+        "label": "Seminarios",
+        "covers": "Seminarios y seminarios web",
+        "empty": "Aún no hay seminarios"
+      },
+      "presentations": {
+        "label": "Presentaciones",
+        "covers": "Presentaciones y demostraciones de producto",
+        "empty": "Aún no hay presentaciones"
+      },
+      "events": {
+        "label": "Eventos",
+        "covers": "Conferencias",
+        "empty": "Aún no hay eventos"
+      },
+      "live": {
+        "label": "Grabaciones en vivo",
+        "covers": "Grabaciones en vivo",
+        "empty": "Aún no hay grabaciones en vivo"
+      }
+    }
+  },
+  "course": {
+    "orderFailed": "No se pudo guardar el nuevo orden. Inténtalo de nuevo.",
+    "descriptionFailed": "No se pudo guardar la descripción.",
+    "aboutLabel": "De qué trata el curso",
+    "aboutPlaceholder": "Qué cubre el curso y para quién es",
+    "editDescription": "Editar la descripción",
+    "addDescription": "Añadir una descripción",
+    "continue": "Continuar el curso",
+    "start": "Empezar el curso",
+    "allWatched": "Todas las lecciones vistas",
+    "watchedOf": "{done} de {count, plural, one {# lección vista} many {# de lecciones vistas} other {# lecciones vistas}}",
+    "next": "Siguiente: {title}",
+    "lessons": "Lecciones",
+    "watched": "Vista",
+    "lesson": "Lección {n}",
+    "beingProcessed": "en proceso",
+    "watchedLower": "vista",
+    "stoppedAt": "detenida en {time}",
+    "moveUp": "Subir {title}",
+    "moveDown": "Bajar {title}"
+  },
+  "courses": {
+    "title": "Cursos",
+    "description": "Un curso es una colección de videos, como las clases de una asignatura. Pon un video en uno al subirlo, o con Editar detalles en su página.",
+    "renameNamed": "Cambiar el nombre de {name}",
+    "deleteNamed": "Eliminar {name}",
+    "newNameFor": "Nuevo nombre para {name}",
+    "deleteTitle": "¿Eliminar «{name}»?",
+    "deleteEmpty": "No tiene videos.",
+    "deleteKeeps": "{count, plural, one {Su video se queda} many {Sus # de videos se quedan} other {Sus # videos se quedan}} en tu biblioteca. Solo se elimina la colección.",
+    "createFailed": "No se pudo crear la colección.",
+    "connectTitle": "Conecta una billetera para abrir tus cursos",
+    "connectBody": "Tu biblioteca pertenece a tu billetera. La billetera es la forma en que VideoMind sabe qué colecciones son tuyas.",
+    "signInTitle": "Inicia sesión para abrir tus cursos",
+    "signInBody": "Tu billetera está conectada. Una firma demuestra que es tuya y luego se cargan tus colecciones. El aviso está al final de la página.",
+    "loadFailed": "No se pudieron cargar tus cursos",
+    "newLabel": "Nombre de una nueva colección",
+    "newPlaceholder": "Nueva colección, por ejemplo Blockchain 101",
+    "creating": "Creando",
+    "create": "Crear",
+    "emptyTitle": "Aún no hay colecciones",
+    "emptyBody": "Ponle nombre a una arriba, o escribe un nombre nuevo en el campo Colección al subir un video."
+  },
+  "home": {
+    "greeting": {
+      "welcome": "Hola de nuevo",
+      "morning": "Buenos días",
+      "afternoon": "Buenas tardes",
+      "evening": "Buenas noches"
+    },
+    "heroTitle": "Una biblioteca para videos largos",
+    "heroBody": "Sube una clase, un seminario o una charla. Vuelve transcrito y dividido en capítulos, y cada frase se convierte en algo que puedes buscar y a lo que puedes saltar.",
+    "howItWorks": "Cómo funciona",
+    "what": {
+      "transcript": {
+        "term": "Transcripción",
+        "text": "Cada frase con su momento. Haz clic en una frase y el video salta a ella."
+      },
+      "chapters": {
+        "term": "Capítulos",
+        "text": "La grabación se divide donde cambia el tema, así un video largo se puede recorrer como un documento."
+      },
+      "search": {
+        "term": "Búsqueda",
+        "text": "Busca algo que se dijo y llega al momento en que se dijo."
+      },
+      "questions": {
+        "term": "Preguntas",
+        "text": "Pregunta sobre un video y obtén una respuesta que señala los momentos de los que salió."
+      },
+      "ownership": {
+        "term": "Propiedad",
+        "text": "El archivo se guarda en Shelby firmado por tu billetera, con una prueba que cualquiera puede comprobar."
+      }
+    },
+    "example": {
+      "title": "Introducción a los sistemas distribuidos: clase 01",
+      "facts": "8 capítulos, 58 min",
+      "c1": "Introducción",
+      "c2": "¿Qué es un sistema distribuido?",
+      "c3": "Por qué distribuir es difícil",
+      "c4": "Replicación",
+      "c5": "Tolerancia a fallos",
+      "c6": "El teorema CAP",
+      "c7": "Un ejemplo real",
+      "c8": "Resumen y lecturas",
+      "l1": "Hasta ahora hemos supuesto que los mensajes siempre llegan.",
+      "l2": "La red no es fiable, y ese solo hecho determina todo lo que hacemos.",
+      "l3": "Un mensaje puede llegar tarde, perderse o llegar dos veces.",
+      "caption": "Un ejemplo. Las marcas amarillas siguen al video mientras se reproduce."
+    },
+    "stoppedAt": "Detenido en {time}",
+    "left": "quedan {time}",
+    "inLibrary": "{count, plural, one {# video} many {# de videos} other {# videos}} en tu biblioteca",
+    "loadFailed": "No se pudieron cargar tus videos",
+    "searchLabel": "Buscar en tu biblioteca",
+    "searchPlaceholder": "Busca todo lo que se dijo en tus videos",
+    "continueWatching": "Seguir viendo",
+    "inProgress": "En proceso",
+    "recent": "Videos recientes"
+  },
+  "uploadPage": {
+    "title": "Subir un video",
+    "description": "El archivo va a tu biblioteca, se transcribe y se divide en capítulos, y se puede guardar en Shelby con tu billetera.",
+    "next": "Qué pasa después",
+    "steps": {
+      "uploaded": {
+        "n": "Subido",
+        "d": "El archivo llega a tu biblioteca por partes. Si se corta la conexión, continúa donde se detuvo."
+      },
+      "transcribed": {
+        "n": "Transcrito",
+        "d": "Cada frase se escribe con el momento en que se dijo."
+      },
+      "chaptered": {
+        "n": "Con capítulos",
+        "d": "La grabación se divide donde cambia el tema, con un resumen y momentos clave."
+      },
+      "stored": {
+        "n": "Guardado en Shelby",
+        "d": "Tu billetera firma el archivo y se escribe en Shelby. También se puede hacer más tarde."
+      }
+    },
+    "prepaid": "El almacenamiento en Shelby se paga por adelantado al subir, por un número fijo de períodos de pago de 24 horas. La prueba de propiedad de cada video muestra la fecha hasta la que está pagado."
+  },
+  "upload": {
+    "wallet": {
+      "declined": "Rechazaste la solicitud en tu billetera.",
+      "funds": "Tu billetera necesita APT de testnet (para las comisiones) y ShelbyUSD (para el almacenamiento). Añade fondos desde el faucet de Shelby y vuelve a intentarlo.",
+      "submit": "No se pudo enviar la transacción. Normalmente significa que la billetera aún no tiene APT de testnet o ShelbyUSD, o que la red de Shelby no responde. Revisa el estado de Shelby en la barra lateral, añade fondos desde el faucet de Shelby si hace falta y vuelve a intentarlo."
+    },
+    "connectToStore": "Conecta tu billetera para guardar el archivo en Shelby.",
+    "storeFailed": "No se pudo guardar en Shelby.",
+    "expired": "Esta subida caducó en el almacenamiento. Descártala y empieza de nuevo.",
+    "stopped": "La subida se detuvo.",
+    "signInFirst": "Primero inicia sesión con tu billetera. El aviso está al final de la página.",
+    "startFailed": "No se pudo iniciar la subida.",
+    "differentFile": "Ese es otro archivo. El video ocupa {video} y este archivo ocupa {file}.",
+    "tooLarge": "Ese archivo supera los 10 GB. Usa uno más pequeño.",
+    "badType": "Formato no compatible. Usa MP4, WebM, MOV, AVI o MKV.",
+    "cannotUse": "Ese archivo no se puede usar.",
+    "status": {
+      "starting": "Iniciando",
+      "paused": "En pausa en {size}",
+      "waiting": "Se perdió la conexión. Continuará desde {size} cuando vuelva.",
+      "finishing": "Terminando",
+      "checking": "Comprobando lo que ya llegó",
+      "uploading": "Subiendo"
+    },
+    "connectToUpload": "Conecta una billetera para subir. Tu biblioteca pertenece a tu billetera.",
+    "signInToUpload": "Inicia sesión con tu billetera para subir. El aviso está al final de la página.",
+    "uploaded": "Subido. El procesamiento ya empezó.",
+    "storeTitle": "Guardar en Shelby",
+    "storeBody": "Tu billetera firma el archivo y se escribe en Shelby, lo que da al video una prueba de propiedad que cualquiera puede comprobar.",
+    "approve": "Aprueba la solicitud en tu billetera. Mantén esta página abierta hasta que termine.",
+    "stored": "Guardado en Shelby.",
+    "held": "Este video es privado, así que no se envió a Shelby. Cualquiera que tenga la dirección de un archivo guardado en Shelby puede leerlo. Aun así puedes guardarlo allí, ahora o más tarde desde la página del video.",
+    "shelbyTooLarge": "Este archivo ocupa {size}. Los archivos de más de 2 GB todavía no se pueden guardar en Shelby desde el navegador. El video está a salvo en tu biblioteca y se reproduce con normalidad.",
+    "openVideo": "Abrir el video",
+    "later": "Hacerlo más tarde y abrir el video",
+    "storeAnyway": "Guardar en Shelby de todos modos",
+    "of": "{done} de {total}",
+    "progress": "Progreso de la subida",
+    "resume": "Reanudar",
+    "pause": "Pausar",
+    "cancelUpload": "Cancelar la subida",
+    "nothingLost": "Si se corta la conexión o se cierra esta pestaña, no se pierde nada. Vuelve a esta página y elige el mismo archivo para continuar donde se detuvo.",
+    "anchorTitle": "Guardar este video en Shelby",
+    "anchorTitleNamed": "Guardar «{title}» en Shelby",
+    "anchorBody": "Elige otra vez el mismo archivo. Tu billetera lo firma y se escribe en Shelby. No se sube nada dos veces a la biblioteca.",
+    "anchorBodySize": "Elige otra vez el mismo archivo ({size}). Tu billetera lo firma y se escribe en Shelby. No se sube nada dos veces a la biblioteca.",
+    "anchorPrivate": "Este video es privado. Cualquiera que tenga la dirección de un archivo guardado en Shelby puede leerlo.",
+    "unfinished": "{count, plural, one {Una subida no terminó} many {# de subidas no terminaron} other {# subidas no terminaron}}",
+    "unfinishedHint": "Elige abajo el mismo archivo para continuar donde se detuvo.",
+    "uploadedOf": "{done} de {total} subidos",
+    "discard": "Descartar",
+    "remove": "Quitar",
+    "dropHere": "Suéltalo aquí",
+    "dragHere": "Arrastra un video aquí",
+    "orClick": "o haz clic para elegir un archivo",
+    "formats": "MP4, WebM, MOV, AVI o MKV, hasta {size}",
+    "chooseFirst": "Primero elige un video",
+    "addTitle": "Añade un título",
+    "upload": "Subir"
+  },
+  "info": {
+    "removeTag": "Quitar la etiqueta {tag}",
+    "addAnother": "Añadir otra",
+    "tagsExample": "blockchain, consenso",
+    "tagsFull": "{max} etiquetas es lo máximo que puede tener un video.",
+    "tagsHint": "Pulsa Intro o escribe una coma después de cada etiqueta.",
+    "title": "Título",
+    "titlePlaceholder": "¿Qué es esta grabación?",
+    "description": "Descripción",
+    "optional": "(opcional)",
+    "descriptionPlaceholder": "Lo que te ayude a encontrarlo después",
+    "category": "Categoría",
+    "noCategory": "Sin categoría",
+    "collection": "Colección",
+    "none": "Ninguna",
+    "currentCollection": "Colección actual",
+    "newCollection": "Nueva colección",
+    "newCollectionName": "Nombre de la nueva colección",
+    "newCollectionPlaceholder": "Nombre, por ejemplo Blockchain 101",
+    "collectionHint": "Una colección agrupa videos, como las clases de un curso.",
+    "tags": "Etiquetas",
+    "whoCanWatch": "Quién puede verlo"
+  },
+  "search": {
+    "title": "Buscar",
+    "description": "Describe lo que recuerdas. Cada resultado abre el video en el momento en que se dijo.",
+    "signInFirst": "Primero inicia sesión con tu billetera. El aviso está al final de la página.",
+    "failed": "La búsqueda no funcionó. Inténtalo de nuevo.",
+    "connectTitle": "Conecta una billetera para buscar",
+    "connectBody": "La búsqueda recorre tu propia biblioteca, así que necesita saber cuál es la tuya.",
+    "label": "Buscar en tu biblioteca",
+    "placeholder": "Describe lo que buscas",
+    "button": "Buscar",
+    "kind": "Tipo de video",
+    "allKinds": "Todos los tipos de video",
+    "collection": "Colección",
+    "allCollections": "Todas las colecciones",
+    "idle": "Descríbelo como lo recuerdas, con tus propias palabras. Por ejemplo: la parte donde se explica el equilibrio entre consistencia y disponibilidad.",
+    "again": "Buscar de nuevo",
+    "nothingFound": "No se encontró nada",
+    "summary": "{moments, plural, one {# momento} many {# de momentos} other {# momentos}} en {videos, plural, one {# video} many {# de videos} other {# videos}}",
+    "clear": "Borrar",
+    "notIndexed": "{count, plural, one {1 de tus videos aún se está preparando para la búsqueda y no se buscó en él.} many {# de tus videos aún se están preparando para la búsqueda y no se buscó en ellos.} other {# de tus videos aún se están preparando para la búsqueda y no se buscó en ellos.}}",
+    "noneFiltered": "Nada coincide con estos filtros. Prueba con todos los tipos de video y todas las colecciones, o con otras palabras.",
+    "none": "Nada en tu biblioteca coincide. Prueba a describirlo con otras palabras.",
+    "moments": "{count, plural, one {# momento} many {# de momentos} other {# momentos}}",
+    "openAt": "Abrir {title} en {time}"
   }
 }

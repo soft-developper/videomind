@@ -3,6 +3,29 @@
 // pages. The server holds the same category and visibility values in
 // backend/src/lib/videoInfo.ts and refuses anything else.
 import type { Visibility } from "./api";
+// vm_lang: labels in the reader's language. The English lists below stay as
+// the source of ids and order; pages show the translated names.
+import { useMemo } from "react";
+import { useTranslations, type Messages } from "next-intl";
+
+type CategoryId = keyof Messages["common"]["category"];
+type ViewKey = keyof Messages["library"]["views"];
+
+/** Translated category, visibility and library page names. */
+export function useLabels() {
+  const t = useTranslations("common");
+  const tl = useTranslations("library");
+  return useMemo(() => ({
+    category: (id?: string | null): string | null =>
+      id && CATEGORIES.some((c) => c.id === id) ? t(`category.${id as CategoryId}`) : null,
+    visibility: (v?: Visibility | null): string => t(`visibility.${v ?? "unlisted"}`),
+    visibilityHint: (v: Visibility): string => t(`visibilityHint.${v}`),
+    view: (key: string) => (key in LIBRARY_VIEWS ? {
+      label: tl(`views.${key as ViewKey}.label`),
+      covers: LIBRARY_VIEWS[key].covers ? tl(`views.${key as ViewKey}.covers`) : undefined,
+    } : null),
+  }), [t, tl]);
+}
 
 export const CATEGORIES: ReadonlyArray<{ id: string; label: string }> = [
   { id: "lecture", label: "Lecture" },

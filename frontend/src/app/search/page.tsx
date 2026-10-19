@@ -1,13 +1,16 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SearchInterface } from "@/components/search/SearchInterface";
+// vm_lang
+import { getTranslations } from "next-intl/server";
 
-export default function SearchPage() {
+export default async function SearchPage() {
+  const t = await getTranslations("search");
   return (
     <AppShell>
       <PageHeader
-        title="Search"
-        description="Describe what you remember. Each result opens the video at the moment it was said."
+        title={t("title")}
+        description={t("description")}
       />
       <div className="section pb-16">
         <div className="max-w-[860px]">

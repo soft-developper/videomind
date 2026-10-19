@@ -7,7 +7,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { api } from "@/lib/api";
 import type { VideoRecord } from "@/lib/api";
-import { categoryLabel } from "@/lib/categories";
+import { useLabels } from "@/lib/categories";
+// vm_lang
+import { useTranslations, type Messages } from "next-intl";
+import { useFormat } from "@/lib/format";
 
 // vm_shell: under every card is a ruler cut at the chapter boundaries.
 // vm_media: the tile shows the video's thumbnail. Pointing at it (or
@@ -18,12 +21,11 @@ import { categoryLabel } from "@/lib/categories";
 /** The grid every list of video cards uses. */
 export const VIDEO_GRID = "grid gap-x-5 gap-y-9 grid-cols-[repeat(auto-fill,minmax(248px,1fr))]";
 
-const WORKING: Record<string, string> = {
-  uploading:    "Upload not finished",
-  processing:   "Processing",
-  transcribing: "Transcribing",
-  analyzing:    "Finding chapters",
-};
+// vm_lang: the steps a video goes through, as message keys under "card.step".
+type StepKey = keyof Messages["card"]["step"];
+const WORKING = ["uploading", "processing", "transcribing", "analyzing"] as const;
+export const stepKey = (status: string): StepKey =>
+  (WORKING as readonly string[]).includes(status) ? (status as StepKey) : status === "error" ? "error" : "processing";
 
 export function clock(sec?: number | null): string | null {
   if (sec == null || !isFinite(sec) || sec < 0) return null;
@@ -34,15 +36,7 @@ export function clock(sec?: number | null): string | null {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-function length(sec?: number): string | null {
-  if (!sec || !isFinite(sec)) return null;
-  const min = Math.round(sec / 60);
-  if (min < 1) return "Under a minute";
-  if (min < 60) return `${min} min`;
-  const h = Math.floor(min / 60), m = min % 60;
-  return m ? `${h} h ${m} min` : `${h} h`;
-}
-
+/** English only. Pages translated in Part 15 use useFormat().ago instead. */
 export function when(ms: number): string {
   const d = Date.now() - ms;
   const min = Math.floor(d / 60000);
@@ -83,6 +77,10 @@ export function VideoCard({ video, watched }: {
   /** vm_progress: how far this viewer got */
   watched?: { positionSeconds: number; durationSeconds: number | null; finished: boolean };
 }) {
+  const t = useTranslations("card");
+  const tc = useTranslations("common");
+  const labels = useLabels();
+  const fmt = useFormat();
   const failed = video.status === "error";
   const working = !failed && video.status !== "ready";
   const chapters = video.ai?.chapters ?? [];
@@ -120,10 +118,10 @@ export function VideoCard({ video, watched }: {
     ? []
     : [
         // vm_info: the category leads, since it says what kind of recording this is
-        categoryLabel(video.category),
-        watched?.finished ? "Watched" : null,
-        chapters.length ? `${chapters.length} chapter${chapters.length === 1 ? "" : "s"}` : null,
-        length(duration),
+        labels.category(video.category),
+        watched?.finished ? t("watched") : null,
+        chapters.length ? t("chapters", { count: chapters.length }) : null,
+        fmt.length(duration),
       ].filter(Boolean) as string[];
 
   return (
@@ -154,33 +152,33 @@ export function VideoCard({ video, watched }: {
             {/* Table of contents. Over a picture it waits for the pointer or the keyboard. */}
             {!working && !failed && (!picture || chapters.length > 0) && (
               <ol className={clsx(
-                "absolute inset-0 p-3.5 pr-10 flex flex-col gap-[5px] text-[12.5px] leading-snug",
+                "absolute inset-0 p-3.5 pe-10 flex flex-col gap-[5px] text-[12.5px] leading-snug",
                 picture && "bg-screen/90 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity [@media(pointer:coarse)]:hidden"
               )}>
                 {chapters.slice(0, 4).map((c, i) => (
                   <li key={i} className="flex gap-2.5 min-w-0">
                     <span className="tc w-[38px] shrink-0 text-dim-2 group-hover:text-dim transition-colors">{clock(c.startSeconds)}</span>
-                    <span className="truncate text-dim group-hover:text-paper-2 transition-colors">{c.title}</span>
+                    <span dir="auto" className="truncate text-dim group-hover:text-paper-2 transition-colors">{c.title}</span>
                   </li>
                 ))}
                 {chapters.length > 4 && (
-                  <li className="pl-[48px] text-dim-2">{chapters.length - 4} more</li>
+                  <li className="ps-[48px] text-dim-2">{t("more", { count: chapters.length - 4 })}</li>
                 )}
-                {chapters.length === 0 && <li className="text-dim-2">No chapters yet</li>}
+                {chapters.length === 0 && <li className="text-dim-2">{t("noChapters")}</li>}
               </ol>
             )}
 
             {working && (
               <div className="absolute inset-0 p-3.5 flex items-start gap-2">
                 <span className="dot dot-work mt-[7px]" />
-                <span className="text-[13px] text-paper-2">{WORKING[video.status] ?? "Processing"}</span>
+                <span className="text-[13px] text-paper-2">{t(`step.${stepKey(video.status)}`)}</span>
               </div>
             )}
 
             {failed && (
               <div className="absolute inset-0 p-3.5">
-                <p className="text-[13px] text-error">Processing stopped</p>
-                <p className="text-[12.5px] text-dim mt-0.5">Open it to see which step, and retry.</p>
+                <p className="text-[13px] text-error">{t("stopped")}</p>
+                <p className="text-[12.5px] text-dim mt-0.5">{t("stoppedHint")}</p>
               </div>
             )}
 
@@ -192,7 +190,7 @@ export function VideoCard({ video, watched }: {
             ) : null}
 
             {runtime && !working && !failed && (
-              <span className="absolute bottom-2 right-2 tc text-[12px] text-paper px-1.5 py-px rounded-xs bg-screen/85 border border-rule">
+              <span dir="ltr" className="absolute bottom-2 end-2 tc text-[12px] text-paper px-1.5 py-px rounded-xs bg-screen/85 border border-rule">
                 {runtime}
               </span>
             )}
@@ -201,7 +199,7 @@ export function VideoCard({ video, watched }: {
           <ChapterRuler starts={chapters.map((c) => c.startSeconds)} duration={working || failed ? undefined : duration} />
 
           <div className="pt-2.5">
-            <h3 className={clsx(
+            <h3 dir="auto" className={clsx(
               "text-[14px] font-medium leading-snug line-clamp-2 transition-colors",
               failed ? "text-paper-2" : "text-paper"
             )}>
@@ -209,10 +207,10 @@ export function VideoCard({ video, watched }: {
             </h3>
             <p className="tc mt-1 flex flex-wrap items-center gap-x-3">
               {video.visibility === "private" && (
-                <span className="inline-flex items-center gap-1"><Lock size={10} strokeWidth={2} aria-hidden /> Private</span>
+                <span className="inline-flex items-center gap-1"><Lock size={10} strokeWidth={2} aria-hidden /> {labels.visibility("private")}</span>
               )}
               {meta.map((m) => <span key={m}>{m}</span>)}
-              <span>{when(video.createdAt)}</span>
+              <span>{fmt.ago(video.createdAt)}</span>
             </p>
           </div>
         </article>
@@ -222,8 +220,8 @@ export function VideoCard({ video, watched }: {
       {!confirm && (
         <button
           onClick={del}
-          aria-label={`Delete ${video.title}`}
-          className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-sm bg-screen/85 border border-rule text-dim hover:text-error hover:border-error/50 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(pointer:coarse)]:opacity-100 transition no-min"
+          aria-label={t("deleteNamed", { title: video.title })}
+          className="absolute top-2 end-2 w-7 h-7 flex items-center justify-center rounded-sm bg-screen/85 border border-rule text-dim hover:text-error hover:border-error/50 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(pointer:coarse)]:opacity-100 transition no-min"
         >
           <Trash2 size={13} />
         </button>
@@ -235,9 +233,9 @@ export function VideoCard({ video, watched }: {
           onClick={(e) => e.preventDefault()}
         >
           <div>
-            <p className="text-[13.5px] font-medium text-paper">Delete this video?</p>
+            <p className="text-[13.5px] font-medium text-paper">{t("deleteTitle")}</p>
             <p className="text-[12.5px] text-dim mt-0.5 leading-snug">
-              It leaves your library. The copy on Shelby stays until its paid period ends.
+              {t("deleteBody")}
             </p>
           </div>
           <div className="flex gap-2">
@@ -246,13 +244,13 @@ export function VideoCard({ video, watched }: {
               disabled={deleting}
               className="h-8 px-3 rounded text-[13px] font-medium bg-error/15 border border-error/50 text-error hover:bg-error/25 transition-colors disabled:opacity-50 no-min"
             >
-              {deleting ? "Deleting" : "Delete"}
+              {deleting ? tc("deleting") : tc("delete")}
             </button>
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirm(false); }}
               className="h-8 px-3 btn-ghost text-[13px] no-min"
             >
-              Cancel
+              {tc("cancel")}
             </button>
           </div>
         </div>
