@@ -9,6 +9,7 @@ import { shelbyClient } from "@/lib/shelby";
 import { AuthProvider } from "./AuthProvider";
 // vm_lang
 import { LanguageSync } from "./LanguagePicker";
+import { ErrorTextBridge } from "@/lib/errorText";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -17,6 +18,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ErrorTextBridge />
       <AptosWalletAdapterProvider
         autoConnect
         dappConfig={{

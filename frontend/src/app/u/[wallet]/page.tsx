@@ -9,29 +9,17 @@ import { Copy, Check, ExternalLink } from "lucide-react";
 import { getPublicProfile, ApiError, type ProfileCard } from "@/lib/api";
 import { clock } from "@/components/video/VideoCard";
 import { explorer } from "@/lib/explorer";
-import { categoryLabel } from "@/lib/categories";
+import { useLabels } from "@/lib/categories";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
-import { LegalFooter } from "@/components/legal/LegalPage";
+import { LegalFooter, PublicBar as Bar } from "@/components/legal/LegalPage";
+// vm_lang
+import { useTranslations } from "next-intl";
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
-function Bar() {
-  return (
-    <nav className="fixed top-0 inset-x-0 z-50 h-14 bg-side border-b border-rule">
-      <div className="section h-full flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5">
-          <svg width="13" height="15" viewBox="0 0 14 16" fill="none" aria-hidden>
-            <path d="M7 15.2 0.6 1.6A1 1 0 0 1 1.5 0.2h11a1 1 0 0 1 0.9 1.4L7 15.2z" className="fill-signal" />
-          </svg>
-          <span className="text-[15px] font-semibold tracking-tight leading-none text-paper">VideoMind</span>
-        </Link>
-        <Link href="/" className="btn btn-ghost h-9 px-3.5 flex items-center">Open VideoMind</Link>
-      </div>
-    </nav>
-  );
-}
-
 function Tile({ v }: { v: ProfileCard }) {
+  const t = useTranslations("publicProfile");
+  const labels = useLabels();
   const length = clock(v.durationSeconds);
   return (
     <article className="min-w-0">
@@ -41,18 +29,20 @@ function Tile({ v }: { v: ProfileCard }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={v.thumbUrl} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
           )}
-          {length && <span className="absolute right-1.5 bottom-1.5 tc bg-void/80 px-1.5 rounded-sm">{length}</span>}
+          {length && <span className="absolute end-1.5 bottom-1.5 tc bg-void/80 px-1.5 rounded-sm">{length}</span>}
         </span>
-        <h3 className="mt-2 text-[14px] font-medium text-paper leading-snug group-hover:underline line-clamp-2">{v.title}</h3>
+        <h3 className="mt-2 text-[14px] font-medium text-paper leading-snug group-hover:underline line-clamp-2" dir="auto">{v.title}</h3>
       </Link>
       <p className="tc mt-0.5">
-        {[categoryLabel(v.category), v.chapters ? `${v.chapters} chapter${v.chapters === 1 ? "" : "s"}` : null].filter(Boolean).join(", ")}
+        {[labels.category(v.category), v.chapters ? t("chapters", { count: v.chapters }) : null].filter(Boolean).join(t("listSep"))}
       </p>
     </article>
   );
 }
 
 export default function PublicProfilePage({ params }: { params: { wallet: string } }) {
+  const t = useTranslations("publicProfile");
+  const tc = useTranslations("common");
   const me = useSessionWallet();
   const [copied, setCopied] = useState(false);
   const { data, isLoading, error } = useQuery({
@@ -62,13 +52,13 @@ export default function PublicProfilePage({ params }: { params: { wallet: string
   });
 
   const body = () => {
-    if (isLoading) return <p className="text-[14px] text-dim py-10">Loading</p>;
+    if (isLoading) return <p className="text-[14px] text-dim py-10">{tc("loading")}</p>;
     if (!data) {
       const bad = error instanceof ApiError && error.status === 400;
       return (
         <div className="py-14 max-w-[46ch]">
-          <h1 className="font-display text-[20px] text-paper">{bad ? "That is not a wallet address" : "This page could not be loaded"}</h1>
-          <p className="text-[14px] text-dim mt-1.5">{bad ? "Check the link. A wallet address starts with 0x." : "Try again in a minute."}</p>
+          <h1 className="font-display text-[20px] text-paper">{bad ? t("badAddress") : t("loadFailed")}</h1>
+          <p className="text-[14px] text-dim mt-1.5">{bad ? t("badAddressBody") : t("tryLater")}</p>
         </div>
       );
     }
@@ -76,32 +66,31 @@ export default function PublicProfilePage({ params }: { params: { wallet: string
     return (
       <>
         <header className="py-8 border-b border-rule">
-          <h1 className="font-display text-[24px] sm:text-[28px] leading-tight text-paper break-words">{data.name ?? short(data.wallet)}</h1>
+          <h1 className="font-display text-[24px] sm:text-[28px] leading-tight text-paper break-words" dir="auto">{data.name ?? short(data.wallet)}</h1>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className="tc break-all">{data.wallet}</span>
+            <span className="tc break-all" dir="ltr">{data.wallet}</span>
             <button
               onClick={() => { navigator.clipboard.writeText(data.wallet).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 1600); }}
-              aria-label="Copy the wallet address"
+              aria-label={t("copyAddress")}
               className="inline-flex items-center justify-center w-8 h-8 -my-2 rounded text-dim hover:text-paper hover:bg-slate-2 no-min"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
             </button>
-            <a href={explorer.account(data.wallet)} target="_blank" rel="noopener noreferrer" aria-label="Open the wallet on the Aptos Explorer" className="inline-flex items-center justify-center w-8 h-8 -my-2 rounded text-dim hover:text-paper hover:bg-slate-2 no-min">
+            <a href={explorer.account(data.wallet)} target="_blank" rel="noopener noreferrer" aria-label={t("explorer")} className="inline-flex items-center justify-center w-8 h-8 -my-2 rounded text-dim hover:text-paper hover:bg-slate-2 no-min">
               <ExternalLink size={12} />
             </a>
           </div>
-          {data.bio && <p className="text-[14.5px] text-paper-2 leading-relaxed mt-4 max-w-[65ch] whitespace-pre-line">{data.bio}</p>}
+          {data.bio && <p className="text-[14.5px] text-paper-2 leading-relaxed mt-4 max-w-[65ch] whitespace-pre-line" dir="auto">{data.bio}</p>}
           {own && (
             <p className="text-[13px] text-dim mt-4">
-              This is your public page. <Link href="/profile" className="underline underline-offset-2 hover:text-paper">Edit your name and bio</Link>.
-              {" "}Only videos you made public are listed.
+              {t.rich("own", { edit: (c) => <Link href="/profile" className="underline underline-offset-2 hover:text-paper">{c}</Link> })}
             </p>
           )}
         </header>
 
         {data.courses.length > 0 && (
           <section className="py-8 border-b border-rule" aria-labelledby="courses-h">
-            <h2 id="courses-h" className="text-[15px] font-semibold text-paper mb-4">Courses</h2>
+            <h2 id="courses-h" className="text-[15px] font-semibold text-paper mb-4">{t("courses")}</h2>
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {data.courses.map((c) => (
                 <li key={c.id}>
@@ -113,9 +102,9 @@ export default function PublicProfilePage({ params }: { params: { wallet: string
                       )}
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-[14px] font-medium text-paper group-hover:underline">{c.name}</span>
-                      <span className="tc block mt-0.5">{c.lessons} lesson{c.lessons === 1 ? "" : "s"}</span>
-                      {c.description && <span className="block text-[13px] text-dim mt-1 line-clamp-2">{c.description}</span>}
+                      <span className="block text-[14px] font-medium text-paper group-hover:underline" dir="auto">{c.name}</span>
+                      <span className="tc block mt-0.5">{t("lessons", { count: c.lessons })}</span>
+                      {c.description && <span className="block text-[13px] text-dim mt-1 line-clamp-2" dir="auto">{c.description}</span>}
                     </span>
                   </Link>
                 </li>
@@ -125,9 +114,9 @@ export default function PublicProfilePage({ params }: { params: { wallet: string
         )}
 
         <section className="py-8" aria-labelledby="videos-h">
-          <h2 id="videos-h" className="text-[15px] font-semibold text-paper mb-4">Videos</h2>
+          <h2 id="videos-h" className="text-[15px] font-semibold text-paper mb-4">{t("videos")}</h2>
           {data.videos.length === 0 ? (
-            <p className="text-[14px] text-dim">No public videos yet.</p>
+            <p className="text-[14px] text-dim">{t("noVideos")}</p>
           ) : (
             <div className="grid gap-x-4 gap-y-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {data.videos.map((v) => <Tile key={v.id} v={v} />)}

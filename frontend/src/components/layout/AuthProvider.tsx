@@ -12,6 +12,8 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { api } from "@/lib/api";
 import { getSession, setSession, subscribe, sameWallet } from "@/lib/session";
 import { performSignIn } from "@/lib/signin";
+// vm_lang
+import { localize } from "@/lib/errorText";
 
 interface AuthState {
   /** wallet connected AND signed in as that wallet */
@@ -32,8 +34,8 @@ const Ctx = createContext<AuthState | null>(null);
 
 function readable(e: any): string {
   const m = String(e?.message ?? e ?? "");
-  if (/reject|denied|cancel/i.test(m)) return "Sign in was cancelled in the wallet.";
-  return m || "Sign in failed. Please try again.";
+  if (/reject|denied|cancel/i.test(m)) return localize("Sign in was cancelled in the wallet.");
+  return localize(m || "Sign in failed. Please try again.");
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

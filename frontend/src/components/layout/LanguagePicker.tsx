@@ -15,7 +15,7 @@ import {
 import { getMySettings, saveMySettings } from "@/lib/api";
 import { useSessionWallet } from "./AuthProvider";
 
-export function LanguagePicker({ variant = "field", id }: { variant?: "sidebar" | "field"; id?: string }) {
+export function LanguagePicker({ variant = "field", id }: { variant?: "sidebar" | "field" | "bar"; id?: string }) {
   const t = useTranslations("language");
   const locale = useLocale() as Locale;
   const router = useRouter();
@@ -46,12 +46,14 @@ export function LanguagePicker({ variant = "field", id }: { variant?: "sidebar" 
       value={locale}
       disabled={pending}
       onChange={(e) => void pick(e.target.value)}
-      aria-label={variant === "sidebar" ? t("label") : undefined}
+      aria-label={variant !== "field" ? t("label") : undefined}
       data-language-picker={variant}
       className={clsx(
         variant === "sidebar"
           ? "h-7 px-1 -me-1 text-[12.5px] bg-transparent border-0 text-paper-2 hover:text-paper cursor-pointer no-min"
-          : "h-9 px-2.5 text-[13.5px] w-full max-w-[320px]"
+          : variant === "bar"
+            ? "h-9 ps-1 pe-1 text-[13px] bg-transparent border-0 text-paper-2 hover:text-paper cursor-pointer no-min"
+            : "h-9 px-2.5 text-[13.5px] w-full max-w-[320px]"
       )}
     >
       {LOCALES.map((l) => (
@@ -60,6 +62,15 @@ export function LanguagePicker({ variant = "field", id }: { variant?: "sidebar" 
     </select>
   );
 
+  if (variant === "bar") {
+    // On public pages, in the top bar: the icon names it, the select shows the language.
+    return (
+      <span className="flex items-center gap-1 text-dim">
+        <Languages size={14} aria-hidden />
+        {select}
+      </span>
+    );
+  }
   if (variant === "sidebar") {
     // A row like Storage and Shelby above it: label, then the value.
     return (

@@ -11,6 +11,8 @@ import { Send, RefreshCw } from "lucide-react";
 import { readableTime } from "@/lib/exports";
 import Link from "next/link";
 import { clsx } from "clsx";
+// vm_lang
+import { useTranslations } from "next-intl";
 
 interface Msg {
   role: "you" | "ai";
@@ -19,14 +21,11 @@ interface Msg {
   failed?: boolean;
 }
 
-const PROMPTS = [
-  "What runs through everything I've uploaded?",
-  "Summarise what I've learned",
-  "Where do my videos disagree with each other?",
-  "What comes up most often?",
-];
+// Asked in the reader's language, so the answer comes back in it.
+const PROMPTS = ["themes", "learned", "disagree", "often"] as const;
 
 export default function AssistantPage() {
+  const t = useTranslations("assistant");
   const { connected } = useWallet();
   // vm_signin: questions are sent only once the wallet has signed in
   const wallet = useSessionWallet();
@@ -49,7 +48,7 @@ export default function AssistantPage() {
     if (!question || busy) return;
     if (!wallet) {
       // vm_signin: say why nothing was sent, instead of ignoring the question
-      setMsgs((m) => [...m, { role: "ai", text: "Sign in with your wallet first. The prompt is at the bottom of the page.", failed: true }]);
+      setMsgs((m) => [...m, { role: "ai", text: t("signInFirst"), failed: true }]);
       return;
     }
     setQ(""); setLast(question);
@@ -59,36 +58,36 @@ export default function AssistantPage() {
       const r = await askLibrary(question, wallet);
       setMsgs((m) => [...m, { role: "ai", text: r.answer, cites: r.citations }]);
     } catch (e: any) {
-      setMsgs((m) => [...m, { role: "ai", text: e.message ?? "Failed.", failed: true }]);
+      setMsgs((m) => [...m, { role: "ai", text: e?.message || t("failed"), failed: true }]);
     } finally { setBusy(false); }
   };
 
   return (
     <AppShell>
       <PageHeader
-        title="Ask your library"
-        description="One question across every video. The answer points to the moments it came from."
+        title={t("title")}
+        description={t("description")}
       />
       <div className="section pb-16">
         <div className="max-w-[820px]">
           {!connected ? (
-            <EmptyState title="Connect a wallet to ask your library" action={<WalletButton />}>
-              Questions are answered from your own videos, and only yours.
+            <EmptyState title={t("connect")} action={<WalletButton />}>
+              {t("connectBody")}
             </EmptyState>
           ) : (
             <div className="panel flex flex-col h-[62vh] min-h-[440px]">
               <div className="flex-1 overflow-y-auto p-4 space-y-5 min-h-0">
                 {msgs.length === 0 && (
                   <div className="space-y-3 pt-6">
-                    <p className="text-[13px] text-dim">Try one of these</p>
+                    <p className="text-[13px] text-dim">{t("try")}</p>
                     <div className="space-y-2">
                       {PROMPTS.map((p) => (
                         <button
                           key={p}
-                          onClick={() => ask(p)}
-                          className="w-full text-left px-3.5 py-2.5 rounded-md border border-rule text-[13.5px] font-sans text-paper-2 hover:text-paper hover:border-rule-lit hover:bg-slate-2 transition-colors no-min"
+                          onClick={() => ask(t(`prompts.${p}`))}
+                          className="w-full text-start px-3.5 py-2.5 rounded-md border border-rule text-[13.5px] font-sans text-paper-2 hover:text-paper hover:border-rule-lit hover:bg-slate-2 transition-colors no-min"
                         >
-                          {p}
+                          {t(`prompts.${p}`)}
                         </button>
                       ))}
                     </div>
@@ -99,11 +98,11 @@ export default function AssistantPage() {
                   <div key={i} className="space-y-2.5">
                     <div className={clsx(
                       "px-3.5 py-3",
-                      m.failed  ? "border-l-2 border-error bg-error/5"
+                      m.failed  ? "border-s-2 border-error bg-error/5"
                       : m.role === "you" ? "bubble-you"
                       : "bubble-ai"
                     )}>
-                      <p className={clsx(
+                      <p dir="auto" className={clsx(
                         "text-[14px] font-sans leading-[1.65]",
                         m.failed ? "text-error" : m.role === "you" ? "text-paper" : "text-paper-2"
                       )}>
@@ -116,14 +115,14 @@ export default function AssistantPage() {
                         onClick={() => { setMsgs((x) => x.slice(0, -1)); ask(last); }}
                         className="flex items-center gap-1.5 tc hover:text-paper transition-colors no-min"
                       >
-                        <RefreshCw size={9} /> Retry
+                        <RefreshCw size={9} /> {t("retry")}
                       </button>
                     )}
 
                     {m.cites && m.cites.length > 0 && (
                       <div className="space-y-2">
                         <p className="text-[13px] text-dim">
-                          {m.cites.length} source{m.cites.length !== 1 ? "s" : ""}
+                          {t("sources", { count: m.cites.length })}
                         </p>
                         {m.cites.map((c, j) => (
                           <Link
@@ -132,14 +131,14 @@ export default function AssistantPage() {
                             className="block px-3.5 py-2.5 rounded-md border border-rule hover:border-rule-lit hover:bg-slate-2 transition-colors group"
                           >
                             <div className="flex items-baseline justify-between gap-3 mb-1">
-                              <span className="text-[13px] font-sans font-medium text-paper truncate">
+                              <span className="text-[13px] font-sans font-medium text-paper truncate" dir="auto">
                                 {c.videoTitle}
                               </span>
                               <span className="tc tc-signal tabular-nums shrink-0">
                                 {readableTime(c.time)}
                               </span>
                             </div>
-                            <p className="text-[12px] font-sans text-dim leading-relaxed line-clamp-2">
+                            <p className="text-[12px] font-sans text-dim leading-relaxed line-clamp-2" dir="auto">
                               “{c.quote}”
                             </p>
                           </Link>
@@ -152,7 +151,7 @@ export default function AssistantPage() {
                 {busy && (
                   <div className="flex items-center gap-2.5 px-3.5 py-3 bubble-ai">
                     <span className="dot dot-work" />
-                    <span className="tc">Reading the relevant transcripts</span>
+                    <span className="tc">{t("reading")}</span>
                   </div>
                 )}
 
@@ -165,13 +164,15 @@ export default function AssistantPage() {
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && ask(q)}
-                    placeholder="Ask a question about your videos"
+                    placeholder={t("placeholder")}
+                    dir="auto"
                     disabled={busy}
                     className="flex-1 h-10 px-3 text-[14px] font-sans disabled:opacity-50"
                   />
                   <button
                     onClick={() => ask(q)}
                     disabled={!q.trim() || busy}
+                    aria-label={t("send")}
                     className={clsx(
                       "w-10 h-10 rounded flex items-center justify-center transition-colors shrink-0 no-min",
                       q.trim() && !busy
@@ -179,7 +180,7 @@ export default function AssistantPage() {
                         : "border border-rule text-dim-2 cursor-not-allowed"
                     )}
                   >
-                    <Send size={14} />
+                    <Send size={14} className="rtl:-scale-x-100" />
                   </button>
                 </div>
               </div>

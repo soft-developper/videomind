@@ -1,5 +1,7 @@
 // vm_live: what a link to a live event shows before it is opened.
 import type { Metadata } from "next";
+// vm_lang
+import { getTranslations } from "next-intl/server";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -11,8 +13,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     const res = await fetch(`${API}/api/live/${params.id}`, { signal: stop.signal, next: { revalidate: 30 } });
     if (!res.ok) return { title: "VideoMind", robots: { index: false, follow: false } };
     const { event } = (await res.json()) as { event: { title: string; status: string; hostName: string | null } };
-    const state = event.status === "live" ? "Live now" : event.status === "ended" ? "Ended" : "Live soon";
-    const description = `${state} on VideoMind${event.hostName ? `, with ${event.hostName}` : ""}.`;
+    const t = await getTranslations("meta");
+    const key = event.status === "live" ? "live" : event.status === "ended" ? "ended" : "soon";
+    const state = t(`liveState.${key}`);
+    const description = event.hostName ? t(`liveWith.${key}`, { name: event.hostName }) : t(`liveOn.${key}`);
     return {
       title: `${event.title} | ${state}`,
       description,

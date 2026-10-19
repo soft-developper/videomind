@@ -16,6 +16,7 @@ import { downloadFile } from "@/lib/exports";
 // vm_lang
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/lib/format";
+import { localize } from "@/lib/errorText";
 
 const clock = (sec: number) => {
   const s = Math.max(0, Math.floor(sec)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
@@ -207,7 +208,7 @@ export function ClipsPanel({ videoId, currentTime, duration, chapters, onSeek }:
                       {c.status === "queued" && tc("queued")}
                       {c.status === "making" && (c.kind === "social" ? tc("makingSocial") : tc("making"))}
                       {c.status === "ready" && tc("ready")}
-                      {c.status === "failed" && `${tc("notMade")} ${c.error ?? ""}`}
+                      {c.status === "failed" && `${tc("notMade")} ${localize(c.error) ?? ""}`}
                     </p>
                     {c.note && <p className="text-[12.5px] text-dim mt-1">{c.note}</p>}
                     {rowErr[c.id] && <p className="text-[12.5px] text-error mt-1" role="alert">{rowErr[c.id]}</p>}

@@ -20,6 +20,8 @@ import { getVideo, getCaptions, momentFromUrl, ApiError } from "@/lib/api";
 import { QrCode } from "@/components/share/QrCode";
 import { sharedLink } from "@/lib/qr";
 import { useViewCounter } from "@/lib/useViewCounter";
+// vm_lang
+import { useTranslations } from "next-intl";
 
 interface Cue { start: number; end: number; text: string }
 
@@ -50,20 +52,13 @@ const clock = (sec: number) => {
 /** The code points at the moment on screen, in steps of 10 seconds so it does not change all the time. */
 const QR_STEP = 10;
 
-const KEYS: Array<[string, string]> = [
-  ["Space or K", "Play or pause"],
-  ["Left or J", "Back 10 seconds"],
-  ["Right or L", "Forward 10 seconds"],
-  ["Page Down, Down or N", "Next chapter"],
-  ["Page Up, Up or P", "Start of this chapter, or the one before"],
-  ["Q", "Show or hide the code"],
-  ["C", "Captions on or off"],
-  ["F", "Full screen"],
-  ["M", "Sound on or off"],
-  ["?", "This list"],
-];
+/** The keys, named in the reader's language, and what each does. */
+const KEYS = ["play", "back", "forward", "next", "prev", "code", "captions", "full", "sound", "list"] as const;
 
 export default function Present({ params }: { params: { id: string } }) {
+  const t_ = useTranslations("present");
+  const tv = useTranslations("videoPage");
+  const tpub = useTranslations("public");
   const { data: video, isLoading, error } = useQuery({
     queryKey: ["present-video", params.id],
     queryFn: () => getVideo(params.id),
@@ -168,7 +163,7 @@ export default function Present({ params }: { params: { id: string } }) {
   useEffect(() => { if (v.current) v.current.muted = muted; }, [muted]);
 
   if (isLoading) {
-    return <div className="fixed inset-0 bg-black flex items-center justify-center text-dim text-[15px]">Loading the video</div>;
+    return <div className="fixed inset-0 bg-black flex items-center justify-center text-dim text-[15px]">{t_("loading")}</div>;
   }
   const isPrivateErr = !video && error instanceof ApiError && error.code === "private";
   if (!video || video.status !== "ready") {
@@ -176,12 +171,12 @@ export default function Present({ params }: { params: { id: string } }) {
       <div className="fixed inset-0 bg-black flex items-center justify-center px-6">
         <div className="text-center space-y-3 max-w-sm">
           <p className="font-display text-[22px] text-paper">
-            {isPrivateErr ? "This video is private" : !video ? "This video was not found" : "This video is still being processed"}
+            {isPrivateErr ? tv("privateTitle") : !video ? tv("notFoundTitle") : t_("processingTitle")}
           </p>
           <p className="text-[14px] text-dim leading-relaxed">
-            {isPrivateErr ? "Only its owner can present it. Sign in with the owner's wallet first." : !video ? "It may have been deleted, or the link is wrong." : "Present it once it is ready."}
+            {isPrivateErr ? t_("privateBody") : !video ? t_("notFoundBody") : t_("processingBody")}
           </p>
-          <Link href="/" className="btn btn-ghost h-9 px-3.5 inline-flex items-center mt-2">Open VideoMind</Link>
+          <Link href="/" className="btn btn-ghost h-9 px-3.5 inline-flex items-center mt-2">{tpub("open")}</Link>
         </div>
       </div>
     );
@@ -202,19 +197,19 @@ export default function Present({ params }: { params: { id: string } }) {
     >
       {/* Top bar */}
       <div className={clsx("h-12 shrink-0 flex items-center gap-3 px-4 transition-opacity duration-300", chrome ? "opacity-100" : "opacity-0")}>
-        <Link href={video.isOwner ? `/video/${params.id}` : `/v/${params.id}`} className="flex items-center gap-1.5 text-[13px] text-dim hover:text-paper no-min" aria-label="Leave Presentation Mode">
-          <ArrowLeft size={14} /> Exit
+        <Link href={video.isOwner ? `/video/${params.id}` : `/v/${params.id}`} className="flex items-center gap-1.5 text-[13px] text-dim hover:text-paper no-min" aria-label={t_("leave")}>
+          <ArrowLeft size={14} className="rtl:rotate-180" /> {t_("exit")}
         </Link>
-        <p className="flex-1 min-w-0 truncate text-[14px] text-paper-2">{video.title}</p>
+        <p className="flex-1 min-w-0 truncate text-[14px] text-paper-2" dir="auto">{video.title}</p>
         <div className="flex items-center gap-1">
           {[
-            { on: showQr, act: () => setShowQr((x) => !x), label: showQr ? "Hide the code (Q)" : "Show the code (Q)", icon: <QrIcon size={15} /> },
-            { on: cc, act: () => setCc((x) => !x), label: cc ? "Captions off (C)" : "Captions on (C)", icon: cc ? <Captions size={15} /> : <CaptionsOff size={15} /> },
-            { on: full, act: fullscreen, label: full ? "Leave full screen (F)" : "Full screen (F)", icon: full ? <Minimize size={15} /> : <Maximize size={15} /> },
-            { on: help, act: () => setHelp((x) => !x), label: "Keys (?)", icon: <Keyboard size={15} /> },
+            { id: "qr", on: showQr, act: () => setShowQr((x) => !x), label: showQr ? t_("hideCode") : t_("showCode"), icon: <QrIcon size={15} /> },
+            { id: "cc", on: cc, act: () => setCc((x) => !x), label: cc ? t_("captionsOff") : t_("captionsOn"), icon: cc ? <Captions size={15} /> : <CaptionsOff size={15} /> },
+            { id: "full", on: full, act: fullscreen, label: full ? t_("leaveFull") : t_("full"), icon: full ? <Minimize size={15} /> : <Maximize size={15} /> },
+            { id: "keys", on: help, act: () => setHelp((x) => !x), label: t_("keysButton"), icon: <Keyboard size={15} /> },
           ].map((b) => (
             <button
-              key={b.label}
+              key={b.id}
               onClick={b.act}
               aria-label={b.label}
               title={b.label}
@@ -252,13 +247,13 @@ export default function Present({ params }: { params: { id: string } }) {
             />
             {failed && (
               <p className="absolute inset-0 flex items-center justify-center text-center px-6 text-[16px] text-dim">
-                This browser cannot play the file. Try another browser, or present it from the computer it was made on.
+                {t_("cannotPlay")}
               </p>
             )}
             {!playing && !failed && (
               <button
                 onClick={toggle}
-                aria-label="Play"
+                aria-label={t_("play")}
                 className="absolute inset-0 m-auto w-20 h-20 rounded-full bg-black/60 border border-white/20 flex items-center justify-center hover:bg-black/80 no-min"
               >
                 <Play size={30} className="ml-1" />
@@ -270,6 +265,7 @@ export default function Present({ params }: { params: { id: string } }) {
             <p
               aria-live="off"
               data-present-caption
+              dir="auto"
               className="shrink-0 min-h-[2.5em] pt-3 text-center font-medium leading-[1.2] whitespace-pre-line text-[clamp(18px,2.4vw,42px)] text-paper"
             >
               {cue?.text ?? ""}
@@ -279,24 +275,24 @@ export default function Present({ params }: { params: { id: string } }) {
 
         {showQr && (
           <aside
-            aria-label="Follow along"
+            aria-label={t_("follow")}
             className="shrink-0 flex flex-col items-center justify-center gap-3 landscape:w-[clamp(170px,22vw,380px)] pb-2"
           >
             {shareable ? (
               <>
-                <QrCode text={link} label="QR code that opens this video at this moment" className="w-[min(60vw,38vh)] landscape:w-full rounded-md" />
-                <p className="text-[clamp(15px,1.5vw,24px)] font-semibold text-paper text-center">Scan to follow along</p>
-                <p className="tc text-center break-all">{shortLink}</p>
+                <QrCode text={link} label={t_("qrLabel")} className="w-[min(60vw,38vh)] landscape:w-full rounded-md" />
+                <p className="text-[clamp(15px,1.5vw,24px)] font-semibold text-paper text-center">{t_("scan")}</p>
+                <p className="tc text-center break-all" dir="ltr">{shortLink}</p>
               </>
             ) : (
               <p className="text-[clamp(14px,1.3vw,20px)] text-dim text-center leading-snug max-w-[28ch]">
-                This video is private, so there is no code to scan. Make it unlisted or public to let the room follow along.
+                {t_("privateNoCode")}
               </p>
             )}
             {ch >= 0 && (
               <div className="text-center mt-2 max-w-full">
-                <p className="tc">Chapter {ch + 1} of {marks.length}</p>
-                <p className="text-[clamp(14px,1.3vw,20px)] text-paper-2 leading-snug">{marks[ch].title}</p>
+                <p className="tc">{t_("chapterOf", { n: ch + 1, total: marks.length })}</p>
+                <p className="text-[clamp(14px,1.3vw,20px)] text-paper-2 leading-snug" dir="auto">{marks[ch].title}</p>
               </div>
             )}
           </aside>
@@ -304,8 +300,9 @@ export default function Present({ params }: { params: { id: string } }) {
       </div>
 
       {/* Bottom: play, time, chapters along the bar */}
-      <div className={clsx("shrink-0 h-12 flex items-center gap-3 px-5 transition-opacity duration-300", chrome ? "opacity-100" : "opacity-0")}>
-        <button onClick={toggle} aria-label={playing ? "Pause" : "Play"} className="w-9 h-9 flex items-center justify-center rounded hover:bg-white/10 no-min">
+      {/* The timeline runs left to right in every language, like the player's. */}
+      <div dir="ltr" className={clsx("shrink-0 h-12 flex items-center gap-3 px-5 transition-opacity duration-300", chrome ? "opacity-100" : "opacity-0")}>
+        <button onClick={toggle} aria-label={playing ? t_("pause") : t_("play")} className="w-9 h-9 flex items-center justify-center rounded hover:bg-white/10 no-min">
           {playing ? <Pause size={16} /> : <Play size={16} />}
         </button>
         <span className="tc w-[5.5em]">{clock(t)}</span>
@@ -327,17 +324,17 @@ export default function Present({ params }: { params: { id: string } }) {
 
       {help && (
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center p-6" onClick={() => setHelp(false)}>
-          <div role="dialog" aria-label="Keys" className="popover p-5 w-[min(460px,100%)]" onClick={(e) => e.stopPropagation()}>
-            <p className="text-[15px] font-semibold mb-3">Keys</p>
+          <div role="dialog" aria-label={t_("keys")} className="popover p-5 w-[min(460px,100%)]" onClick={(e) => e.stopPropagation()}>
+            <p className="text-[15px] font-semibold mb-3">{t_("keys")}</p>
             <dl className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-1.5 text-[13.5px]">
-              {KEYS.map(([k, what]) => (
+              {KEYS.map((k) => (
                 <div key={k} className="contents">
-                  <dt className="tc text-paper">{k}</dt>
-                  <dd className="text-paper-2">{what}</dd>
+                  <dt className="tc text-paper">{t_(`key.${k}`)}</dt>
+                  <dd className="text-paper-2">{t_(`does.${k}`)}</dd>
                 </div>
               ))}
             </dl>
-            <p className="text-[12.5px] text-dim mt-3">A presentation clicker moves between chapters.</p>
+            <p className="text-[12.5px] text-dim mt-3">{t_("clicker")}</p>
           </div>
         </div>
       )}

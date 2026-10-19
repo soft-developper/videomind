@@ -8,6 +8,10 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Monitor, Camera, Mic, MicOff, Pause, Play, Square } from "lucide-react";
 import { clsx } from "clsx";
+// vm_lang
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/lib/format";
+import { intlLocale } from "@/i18n/config";
 import { UploadZone } from "@/components/upload/UploadZone";
 import {
   canRecord, openInputs, pickType, fixWebmDuration, recordingTitle,
@@ -18,7 +22,6 @@ const clock = (sec: number) => {
   const s = Math.max(0, Math.floor(sec)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
   return h ? `${h}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}` : `${m}:${String(r).padStart(2, "0")}`;
 };
-const size = (n: number) => (n < 1024 ** 3 ? `${(n / 1024 ** 2).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`);
 
 type Phase =
   | { at: "setup" }
@@ -27,17 +30,17 @@ type Phase =
   | { at: "upload"; file: File; title: string };
 
 /** Why the browser said no, in words a person can act on. */
-function reason(err: any, source: Source): string {
+function reason(err: any, source: Source, t: ReturnType<typeof useTranslations<"record">>): string {
   const name = String(err?.name ?? "");
-  if (name === "NotAllowedError") return source === "screen"
-    ? "Sharing was cancelled, or the browser is not allowed to record the screen. Try again and choose what to share."
-    : "The browser was not allowed to use the camera or microphone. Allow it in the address bar, then try again.";
-  if (name === "NotFoundError") return source === "camera" ? "No camera or microphone was found." : "No microphone was found. Turn the microphone off, or connect one.";
-  if (name === "NotReadableError") return "The camera or microphone is being used by another app. Close it and try again.";
-  return `Recording could not start: ${err?.message ?? "unknown error"}.`;
+  if (name === "NotAllowedError") return source === "screen" ? t("why.screenDenied") : t("why.cameraDenied");
+  if (name === "NotFoundError") return source === "camera" ? t("why.noCamera") : t("why.noMic");
+  if (name === "NotReadableError") return t("why.busy");
+  return t("why.other", { reason: err?.message ?? t("why.unknown") });
 }
 
 export function RecordStudio() {
+  const t = useTranslations("record");
+  const f = useFormat();
   const [support, setSupport] = useState<ReturnType<typeof canRecord> | null>(null);
   const [source, setSource] = useState<Source>("screen");
   const [mic, setMic] = useState(true);
@@ -100,34 +103,34 @@ export function RecordStudio() {
     parts.current = [];
     const secs = banked.current;
     if (type.startsWith("video/webm")) blob = await fixWebmDuration(blob, Math.round(secs * 1000));
-    const title = recordingTitle();
+    const title = t("fileTitle", { when: recordingTitle(new Date(), intlLocale(f.locale)) });
     const ext = type.startsWith("video/mp4") ? ".mp4" : ".webm";
     const file = new File([blob], `${title.replace(/[^\w]+/g, "-").replace(/^-|-$/g, "").toLowerCase()}${ext}`, { type: type.split(";")[0] });
     setPhase({ at: "done", file, url: URL.createObjectURL(file), seconds: secs, title });
-  }, []);
+  }, [t, f.locale]);
 
   // A clock for the screen, and the stop at the longest recording allowed.
   useEffect(() => {
     if (phase.at !== "recording") return;
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       const s = seconds(); setElapsed(s);
       if (s >= MAX_SECONDS) void finish();
     }, 250);
-    return () => clearInterval(t);
+    return () => clearInterval(timer);
   }, [phase, finish]);
 
   const start = async () => {
     setErr(null);
     const type = pickType();
-    if (!type) { setErr("This browser cannot record video."); return; }
+    if (!type) { setErr(t("noRecorder")); return; }
     let ins: Inputs;
     try { ins = await openInputs(source, { mic, systemAudio: source === "screen" && systemAudio }); }
-    catch (e) { setErr(reason(e, source)); return; }
+    catch (e) { setErr(reason(e, source, t)); return; }
     inputs.current = ins;
     parts.current = []; banked.current = 0; setBytes(0); setElapsed(0);
     const r = new MediaRecorder(ins.stream, { mimeType: type, videoBitsPerSecond: VIDEO_BITS, audioBitsPerSecond: AUDIO_BITS });
     r.ondataavailable = (e) => { if (e.data.size) { parts.current.push(e.data); setBytes((b) => b + e.data.size); } };
-    r.onerror = () => { setErr("The browser stopped recording. What was recorded so far is kept."); void finish(); };
+    r.onerror = () => { setErr(t("stoppedByBrowser")); void finish(); };
     rec.current = r;
     // Ending the share from the browser's own bar ends the recording.
     ins.onEnded(() => { void finish(); });
@@ -152,7 +155,7 @@ export function RecordStudio() {
 
   const discard = () => {
     if (phase.at === "done") {
-      if (!window.confirm("Throw this recording away? It has not been uploaded.")) return;
+      if (!window.confirm(t("confirmDiscard"))) return;
       URL.revokeObjectURL(phase.url);
     }
     setPhase({ at: "setup" }); setElapsed(0); setBytes(0);
@@ -169,7 +172,7 @@ export function RecordStudio() {
 
   if (!support) return null;
   if (!support.recorder || (!support.screen && !support.camera)) {
-    return <p className="text-[14px] text-dim max-w-[60ch]">This browser cannot record video. Use a recent Chrome, Edge, Firefox or Safari on a computer, or record with another app and upload the file.</p>;
+    return <p className="text-[14px] text-dim max-w-[60ch]">{t("unsupported")}</p>;
   }
 
   if (phase.at === "upload") {
@@ -183,16 +186,16 @@ export function RecordStudio() {
   if (phase.at === "done") {
     return (
       <div className="space-y-4 max-w-[860px]">
-        <video src={phase.url} controls playsInline className="w-full aspect-video rounded-md bg-black" aria-label="Your recording" />
+        <video src={phase.url} controls playsInline className="w-full aspect-video rounded-md bg-black" aria-label={t("yourRecording")} />
         <p className="tc" data-recording-done>
-          {clock(phase.seconds)}, {size(phase.file.size)}, {phase.file.type === "video/mp4" ? "MP4" : "WebM"}
+          {t("doneLine", { time: clock(phase.seconds), size: f.bytes(phase.file.size), type: phase.file.type === "video/mp4" ? "MP4" : "WebM" })}
         </p>
         <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={() => setPhase({ at: "upload", file: phase.file, title: phase.title })} className="btn btn-signal h-9 px-4">Upload this recording</button>
-          <a href={phase.url} download={phase.file.name} className="btn btn-ghost h-9 px-3.5 inline-flex items-center">Download a copy</a>
-          <button onClick={discard} className="btn btn-ghost h-9 px-3.5">Record again</button>
+          <button onClick={() => setPhase({ at: "upload", file: phase.file, title: phase.title })} className="btn btn-signal h-9 px-4">{t("upload")}</button>
+          <a href={phase.url} download={phase.file.name} className="btn btn-ghost h-9 px-3.5 inline-flex items-center">{t("download")}</a>
+          <button onClick={discard} className="btn btn-ghost h-9 px-3.5">{t("again")}</button>
         </div>
-        <p className="text-[13px] text-dim">The recording is only in this browser until it is uploaded.</p>
+        <p className="text-[13px] text-dim">{t("onlyHere")}</p>
       </div>
     );
   }
@@ -201,26 +204,26 @@ export function RecordStudio() {
     return (
       <div className="space-y-4 max-w-[860px]">
         <div className="relative">
-          <video ref={preview} muted playsInline className="w-full aspect-video rounded-md bg-black object-contain" aria-label="What is being recorded" />
-          <span className="absolute left-3 top-3 flex items-center gap-2 bg-black/70 rounded px-2.5 h-7">
+          <video ref={preview} muted playsInline className="w-full aspect-video rounded-md bg-black object-contain" aria-label={t("beingRecorded")} />
+          <span className="absolute start-3 top-3 flex items-center gap-2 bg-black/70 rounded px-2.5 h-7">
             <span className={clsx("w-2.5 h-2.5 rounded-full", phase.paused ? "bg-dim" : "bg-error animate-pulse")} />
-            <span className="tc text-paper" data-recording-clock>{phase.paused ? "Paused" : "Recording"} {clock(elapsed)}</span>
+            <span className="tc text-paper" data-recording-clock>{t(phase.paused ? "pausedAt" : "recordingAt", { time: clock(elapsed) })}</span>
           </span>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <button onClick={pause} className="btn btn-ghost h-9 px-3.5 inline-flex items-center gap-1.5">
-            {phase.paused ? <><Play size={13} /> Resume</> : <><Pause size={13} /> Pause</>}
+            {phase.paused ? <><Play size={13} /> {t("resume")}</> : <><Pause size={13} /> {t("pause")}</>}
           </button>
-          <button onClick={() => void finish()} className="btn btn-signal h-9 px-4 inline-flex items-center gap-1.5"><Square size={12} /> Stop</button>
-          <span className="tc">{size(bytes)}</span>
+          <button onClick={() => void finish()} className="btn btn-signal h-9 px-4 inline-flex items-center gap-1.5"><Square size={12} /> {t("stop")}</button>
+          <span className="tc">{f.bytes(bytes)}</span>
           {mic && (
-            <span className="flex items-center gap-2" aria-label="Sound level">
+            <span className="flex items-center gap-2" aria-label={t("soundLevel")}>
               <Mic size={13} className="text-dim" />
               <span className="w-24 h-1.5 rounded-full bg-rule overflow-hidden"><span className="block h-full bg-marker" style={{ width: `${Math.round(level * 100)}%` }} /></span>
             </span>
           )}
         </div>
-        <p className="text-[13px] text-dim">Recording stops by itself at {clock(MAX_SECONDS)}. {source === "screen" ? "Ending the share from the browser's bar stops it too." : ""}</p>
+        <p className="text-[13px] text-dim">{t("stopsAt", { time: clock(MAX_SECONDS) })}{source === "screen" ? ` ${t("shareEnds")}` : ""}</p>
       </div>
     );
   }
@@ -228,18 +231,18 @@ export function RecordStudio() {
   return (
     <div className="space-y-6 max-w-[640px]">
       <fieldset>
-        <legend className="text-[13px] font-medium text-paper mb-2">Record</legend>
+        <legend className="text-[13px] font-medium text-paper mb-2">{t("title")}</legend>
         <div className="grid sm:grid-cols-2 gap-3">
           {([
-            ["screen", "Screen", "A window, a browser tab or the whole screen. Slides and demos.", Monitor, support.screen],
-            ["camera", "Camera", "You, talking to the camera.", Camera, support.camera],
+            ["screen", t("screen"), t("screenNote"), Monitor, support.screen],
+            ["camera", t("camera"), t("cameraNote"), Camera, support.camera],
           ] as const).map(([id, label, note, Icon, ok]) => (
             <label key={id} className={clsx("flex gap-3 p-3.5 rounded-md border cursor-pointer", source === id ? "border-paper bg-slate-2" : "border-rule hover:border-rule-lit", !ok && "opacity-40 cursor-not-allowed")}>
               <input type="radio" name="record-source" className="sr-only" checked={source === id} disabled={!ok} onChange={() => setSource(id)} />
               <Icon size={18} className="text-paper-2 shrink-0 mt-0.5" />
               <span>
                 <span className="block text-[14px] text-paper">{label}</span>
-                <span className="block text-[12.5px] text-dim mt-0.5">{ok ? note : "This browser cannot do this."}</span>
+                <span className="block text-[12.5px] text-dim mt-0.5">{ok ? note : t("cannotDo")}</span>
               </span>
             </label>
           ))}
@@ -249,20 +252,20 @@ export function RecordStudio() {
       <div className="space-y-2.5">
         <label className="flex items-center gap-2.5 text-[13.5px] text-paper-2 cursor-pointer">
           <input type="checkbox" checked={mic} onChange={(e) => setMic(e.target.checked)} />
-          {mic ? <Mic size={13} /> : <MicOff size={13} />} Record my microphone
+          {mic ? <Mic size={13} /> : <MicOff size={13} />} {t("mic")}
         </label>
         {source === "screen" && (
           <label className="flex items-center gap-2.5 text-[13.5px] text-paper-2 cursor-pointer">
             <input type="checkbox" checked={systemAudio} onChange={(e) => setSystemAudio(e.target.checked)} />
-            Include the sound of what I share, when the browser offers it
+            {t("systemAudio")}
           </label>
         )}
       </div>
 
       <div className="space-y-2">
-        <button onClick={() => void start()} className="btn btn-signal h-10 px-5">Start recording</button>
+        <button onClick={() => void start()} className="btn btn-signal h-10 px-5">{t("start")}</button>
         {err && <p className="text-[13.5px] text-error" role="alert">{err}</p>}
-        <p className="text-[13px] text-dim">The browser asks what to share and for the microphone. Nothing is sent until you choose to upload.</p>
+        <p className="text-[13px] text-dim">{t("browserAsks")}</p>
       </div>
     </div>
   );

@@ -24,15 +24,17 @@ import {
 } from "@/lib/api";
 import { startCaptionFeed } from "@/lib/liveaudio";
 import { LiveChat } from "./LiveChat";
+// vm_lang
+import { useTranslations } from "next-intl";
+import { localize } from "@/lib/errorText";
 
-const CHAT_CHOICES: Array<[ChatMode, string, string]> = [
-  ["anyone", "Anyone with a name", "No wallet needed. You can delete messages and block people."],
-  ["wallets", "Signed in wallets only", "Viewers without a wallet can read but not write."],
-  ["off", "Chat off", "Only you can write."],
-];
+type T = ReturnType<typeof useTranslations<"live">>;
+const CHAT_CHOICES: ChatMode[] = ["anyone", "wallets", "off"];
 
 /** Who may chat and whether captions are made. Saved at once; works before and during the event. */
 function LiveSettings({ event, onSaved }: { event: LiveEventInfo; onSaved: () => void }) {
+  const t = useTranslations("live");
+  const tc = useTranslations("common");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   // Shown at once; put back if the server refuses.
@@ -46,30 +48,30 @@ function LiveSettings({ event, onSaved }: { event: LiveEventInfo; onSaved: () =>
     try { await updateLiveSettings(event.id, s); onSaved(); }
     catch (x) {
       setMode(event.chatMode); setCaptions(event.captions);
-      setErr(x instanceof ApiError ? x.message : "That did not save. Try again.");
+      setErr(x instanceof ApiError ? x.message : t("notSaved"));
     }
     finally { setBusy(false); }
   };
   return (
-    <div className="space-y-4" aria-label="Chat and captions">
+    <div className="space-y-4" aria-label={t("settingsLabel")}>
       <fieldset className="space-y-1.5" disabled={busy}>
-        <legend className="text-[13px] font-medium text-paper mb-1">Who can write in the chat</legend>
-        {CHAT_CHOICES.map(([v, label, hint]) => (
+        <legend className="text-[13px] font-medium text-paper mb-1">{t("whoWrites")}</legend>
+        {CHAT_CHOICES.map((v) => (
           <label key={v} className="flex items-start gap-2.5 cursor-pointer">
             <input type="radio" name="chat-mode" checked={mode === v} onChange={() => void change({ chatMode: v })} className="mt-1" />
-            <span><span className="block text-[13.5px] text-paper">{label}</span><span className="block text-[12.5px] text-dim">{hint}</span></span>
+            <span><span className="block text-[13.5px] text-paper">{t(`chatMode.${v}`)}</span><span className="block text-[12.5px] text-dim">{t(`chatModeHint.${v}`)}</span></span>
           </label>
         ))}
       </fieldset>
       <div>
         <label className={clsx("flex items-center gap-2.5 text-[13.5px] cursor-pointer", event.captionsAvailable ? "text-paper" : "text-dim")}>
           <input type="checkbox" checked={event.captionsAvailable ? captions : false} disabled={busy || !event.captionsAvailable} onChange={(e) => void change({ captions: e.target.checked })} />
-          Live captions
+          {t("captions")}
         </label>
-        <p className="text-[12.5px] text-dim mt-1 pl-6">
+        <p className="text-[12.5px] text-dim mt-1 ps-6">
           {event.captionsAvailable
-            ? `What you say appears as text for viewers, in English or the language you speak. Uses OpenAI, about $1 for each hour you speak; up to ${event.captionLimitMinutes ?? 180} minutes per event.`
-            : "Live captions are not set up on this server."}
+            ? t("captionsHint", { minutes: event.captionLimitMinutes ?? 180 })
+            : t("captionsOff")}
         </p>
       </div>
       {err && <p className="text-[12.5px] text-error" role="alert">{err}</p>}
@@ -92,18 +94,18 @@ type Phase =
   | { at: "upload"; file: File }
   | { at: "uploaded"; videoId: string };
 
-function reason(err: any, source: Source): string {
+function reason(err: any, source: Source, t: T): string {
   const name = String(err?.name ?? "");
-  if (name === "NotAllowedError") return source === "screen"
-    ? "Sharing was cancelled, or the browser is not allowed to share the screen."
-    : "The browser was not allowed to use the camera or microphone. Allow it in the address bar, then try again.";
-  if (name === "NotFoundError") return "No camera or microphone was found.";
-  if (name === "NotReadableError") return "The camera or microphone is being used by another app.";
+  if (name === "NotAllowedError") return source === "screen" ? t("why.screenDenied") : t("why.cameraDenied");
+  if (name === "NotFoundError") return t("why.notFound");
+  if (name === "NotReadableError") return t("why.busy");
   if (err instanceof ApiError) return err.message;
-  return `Going live did not work: ${err?.message ?? "unknown error"}.`;
+  return t("why.other", { reason: localize(err?.message) ?? t("why.unknown") });
 }
 
 export function LiveStudio({ id }: { id: string }) {
+  const t = useTranslations("live");
+  const tc = useTranslations("common");
   const { data, refetch } = useQuery({ queryKey: ["live", id], queryFn: () => getLiveEvent(id) });
   const event: LiveEventInfo | undefined = data?.event;
 
@@ -192,7 +194,7 @@ export function LiveStudio({ id }: { id: string }) {
     if (!wantCaptions) { if (feed.current) { stopFeed(); setCapState((c) => ({ ...c, on: false })); } return; }
     if (feed.current) return;
     const track = inputs.current?.stream.getAudioTracks()[0];
-    if (!track) { setCapState({ on: false, text: "", note: "Captions need sound: the microphone is off and nothing else is heard." }); return; }
+    if (!track) { setCapState({ on: false, text: "", note: t("capNeedSound") }); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -201,28 +203,28 @@ export function LiveStudio({ id }: { id: string }) {
         const stop = await startCaptionFeed(track, url, (m) => {
           if (m.type === "ready") setCapState({ on: true, text: "", note: null });
           else if (m.type === "partial" || m.type === "final") setCapState((c) => ({ ...c, on: true, text: m.text }));
-          else if (m.type === "warning") setCapState((c) => ({ ...c, note: m.message ?? null }));
-          else if (m.type === "stopped") { feed.current = null; setCapState({ on: false, text: "", note: m.reason === "off" || m.reason === "ended" ? null : m.message ?? "Captions stopped." }); }
-          else if (m.type === "closed") { feed.current = null; setCapState((c) => ({ on: false, text: "", note: c.note ?? "The captions connection closed." })); }
+          else if (m.type === "warning") setCapState((c) => ({ ...c, note: localize(m.message) ?? null }));
+          else if (m.type === "stopped") { feed.current = null; setCapState({ on: false, text: "", note: m.reason === "off" || m.reason === "ended" ? null : localize(m.message) ?? t("capStopped") }); }
+          else if (m.type === "closed") { feed.current = null; setCapState((c) => ({ on: false, text: "", note: c.note ?? t("capClosed") })); }
         });
         if (cancelled) stop(); else feed.current = stop;
       } catch (e) {
-        if (!cancelled) setCapState({ on: false, text: "", note: e instanceof ApiError ? e.message : "Captions could not start." });
+        if (!cancelled) setCapState({ on: false, text: "", note: e instanceof ApiError ? e.message : localize((e as Error)?.message) || t("capCouldNot") });
       }
     })();
     return () => { cancelled = true; };
-  }, [wantCaptions, id, capTry]);
+  }, [wantCaptions, id, capTry, t]);
 
   // A live event stops by itself at the longest recording allowed.
-  useEffect(() => { if (phase.at === "live" && elapsed >= MAX_SECONDS) void end("The live event reached its longest length and was ended."); }, [elapsed, phase, end]);
+  useEffect(() => { if (phase.at === "live" && elapsed >= MAX_SECONDS) void end(t("reachedLongest")); }, [elapsed, phase, end, t]);
 
   const goLive = async () => {
     setErr(null); setNote(null);
     const type = pickType();
-    if (!type) { setErr("This browser cannot record video, which a live event also does."); return; }
+    if (!type) { setErr(t("noRecorder")); return; }
     let ins: Inputs;
     try { ins = await openInputs(source, { mic, systemAudio: source === "screen" }); }
-    catch (e) { setErr(reason(e, source)); return; }
+    catch (e) { setErr(reason(e, source, t)); return; }
     inputs.current = ins;
     setPhase({ at: "starting" });
     try {
@@ -245,7 +247,7 @@ export function LiveStudio({ id }: { id: string }) {
         try { started = await startLive(id, urls); }
         catch (e) { if (e instanceof ApiError && e.code === "not_publishing" && i < 7) await sleep(1000); else throw e; }
       }
-      if (started?.restreamError) setNote(started.restreamError);
+      if (started?.restreamError) setNote(localize(started.restreamError));
       // Record what is sent, from the same tracks.
       parts.current = [];
       const mr = new MediaRecorder(ins.stream, { mimeType: type, videoBitsPerSecond: VIDEO_BITS, audioBitsPerSecond: AUDIO_BITS });
@@ -253,13 +255,13 @@ export function LiveStudio({ id }: { id: string }) {
       mr.start(1000);
       rec.current = mr;
       since.current = performance.now();
-      ins.onEnded(() => { void end("Sharing was stopped from the browser, so the live event ended."); });
+      ins.onEnded(() => { void end(t("sharingStopped")); });
       setElapsed(0);
       setPhase({ at: "live" });
       await refetch();
     } catch (e) {
       void cleanup();
-      setErr(reason(e, source));
+      setErr(reason(e, source, t));
       setPhase({ at: "setup" });
     }
   };
@@ -269,19 +271,19 @@ export function LiveStudio({ id }: { id: string }) {
     setPhase({ at: "uploaded", videoId });
   }, [id, refetch]);
 
-  if (!event) return <p className="text-[14px] text-dim">Loading</p>;
+  if (!event) return <p className="text-[14px] text-dim">{tc("loading")}</p>;
 
   const shareBox = (
     <div className="flex items-start gap-4 flex-wrap">
-      <QrCode text={watchUrl} label="QR code for the live page" className="w-[120px] h-[120px] rounded-sm shrink-0" />
+      <QrCode text={watchUrl} label={t("qrLabel")} className="w-[120px] h-[120px] rounded-sm shrink-0" />
       <div className="space-y-2 min-w-0">
-        <p className="text-[13px] text-dim">Viewers watch here, no wallet needed:</p>
-        <p className="tc text-paper-2 break-all">{watchUrl}</p>
+        <p className="text-[13px] text-dim">{t("watchHere")}</p>
+        <p className="tc text-paper-2 break-all" dir="ltr">{watchUrl}</p>
         <button
           onClick={() => { navigator.clipboard.writeText(watchUrl).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 1600); }}
           className="btn btn-ghost h-8 px-3 text-[13px] inline-flex items-center gap-1.5"
         >
-          {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : "Copy link"}
+          {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? t("copied") : t("copyLink")}
         </button>
       </div>
     </div>
@@ -297,9 +299,9 @@ export function LiveStudio({ id }: { id: string }) {
   if (phase.at === "uploaded") {
     return (
       <div className="space-y-2 max-w-[640px]">
-        <p className="text-[15px] text-paper">The recording is in your library and is being processed.</p>
-        <p className="text-[13.5px] text-dim">The live page now points viewers to it.</p>
-        <a href={`/video/${phase.videoId}`} className="btn btn-ghost h-9 px-3.5 inline-flex items-center mt-2">Open the video</a>
+        <p className="text-[15px] text-paper">{t("inLibrary")}</p>
+        <p className="text-[13.5px] text-dim">{t("pointsToIt")}</p>
+        <a href={`/video/${phase.videoId}`} className="btn btn-ghost h-9 px-3.5 inline-flex items-center mt-2">{t("openVideo")}</a>
       </div>
     );
   }
@@ -307,21 +309,21 @@ export function LiveStudio({ id }: { id: string }) {
     const d = phase.at === "done" ? phase : null;
     return (
       <div className="space-y-4 max-w-[860px]">
-        <p className="text-[15px] text-paper" data-live-ended>This live event has ended{d ? ` after ${clock(d.seconds)}` : ""}.</p>
+        <p className="text-[15px] text-paper" data-live-ended>{d ? t("endedAfter", { time: clock(d.seconds) }) : t("ended")}</p>
         {note && <p className="text-[13.5px] text-dim">{note}</p>}
         {d?.file && d.url ? (
           <>
-            <video src={d.url} controls playsInline className="w-full aspect-video rounded-md bg-black" aria-label="The recording" />
+            <video src={d.url} controls playsInline className="w-full aspect-video rounded-md bg-black" aria-label={t("theRecording")} />
             <div className="flex items-center gap-2 flex-wrap">
-              <button onClick={() => setPhase({ at: "upload", file: d.file! })} className="btn btn-signal h-9 px-4">Upload the recording</button>
-              <a href={d.url} download={d.file.name} className="btn btn-ghost h-9 px-3.5 inline-flex items-center">Download a copy</a>
+              <button onClick={() => setPhase({ at: "upload", file: d.file! })} className="btn btn-signal h-9 px-4">{t("uploadRecording")}</button>
+              <a href={d.url} download={d.file.name} className="btn btn-ghost h-9 px-3.5 inline-flex items-center">{t("download")}</a>
             </div>
-            <p className="text-[13px] text-dim">The recording is only in this browser until it is uploaded.</p>
+            <p className="text-[13px] text-dim">{t("onlyHere")}</p>
           </>
         ) : event.videoId ? (
-          <a href={`/video/${event.videoId}`} className="btn btn-ghost h-9 px-3.5 inline-flex items-center">Open the recording</a>
+          <a href={`/video/${event.videoId}`} className="btn btn-ghost h-9 px-3.5 inline-flex items-center">{t("openRecording")}</a>
         ) : (
-          <p className="text-[13.5px] text-dim">There is no recording in this browser.</p>
+          <p className="text-[13.5px] text-dim">{t("noRecording")}</p>
         )}
       </div>
     );
@@ -332,33 +334,33 @@ export function LiveStudio({ id }: { id: string }) {
       <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
         <div className="space-y-4 min-w-0">
           <div className="relative">
-            <video ref={preview} muted playsInline className="w-full aspect-video rounded-md bg-black object-contain" aria-label="What viewers see" />
-            <span className="absolute left-3 top-3 flex items-center gap-2 bg-black/70 rounded px-2.5 h-7" data-live-badge>
+            <video ref={preview} muted playsInline className="w-full aspect-video rounded-md bg-black object-contain" aria-label={t("whatViewersSee")} />
+            <span className="absolute start-3 top-3 flex items-center gap-2 bg-black/70 rounded px-2.5 h-7" data-live-badge>
               <span className={clsx("w-2.5 h-2.5 rounded-full", phase.at === "live" ? "bg-error animate-pulse" : "bg-dim")} />
-              <span className="tc text-paper">{phase.at === "starting" ? "Connecting" : phase.at === "ending" ? "Ending" : `Live ${clock(elapsed)}`}</span>
+              <span className="tc text-paper">{phase.at === "starting" ? t("connecting") : phase.at === "ending" ? t("ending") : t("liveAt", { time: clock(elapsed) })}</span>
             </span>
           </div>
           <div className="flex items-center gap-4 flex-wrap">
             <button
-              onClick={() => { if (window.confirm("End the live event for everyone?")) void end(); }}
+              onClick={() => { if (window.confirm(t("confirmEnd"))) void end(); }}
               disabled={phase.at !== "live"}
               className="btn btn-signal h-9 px-4"
             >
-              End live
+              {t("endLive")}
             </button>
-            <span className="tc" data-viewers>{viewers} watching</span>
-            {event.restreaming && <span className="tc">Restreaming</span>}
+            <span className="tc" data-viewers>{t("watching", { count: viewers })}</span>
+            {event.restreaming && <span className="tc">{t("restreaming")}</span>}
           </div>
           {note && <p className="text-[13px] text-warn" role="status">{note}</p>}
           {event.captions && event.captionsAvailable && (
             <p className="text-[13px] text-paper-2" data-captions-state>
-              {capState.on ? <>Captions on{capState.text ? <span className="text-dim">: {capState.text.slice(-120)}</span> : <span className="text-dim">, listening</span>}</> : capState.note ?? "Captions starting"}
+              {capState.on ? <>{t("capOn")}{capState.text ? <span className="text-dim">: <span dir="auto">{capState.text.slice(-120)}</span></span> : <span className="text-dim">{t("capListening")}</span>}</> : capState.note ?? t("capStarting")}
               {!capState.on && capState.note && !feed.current && (
-                <button onClick={() => { setCapState({ on: false, text: "", note: null }); setCapTry((n) => n + 1); }} className="ml-2 text-paper-2 underline underline-offset-2 hover:text-paper no-min">Try again</button>
+                <button onClick={() => { setCapState({ on: false, text: "", note: null }); setCapTry((n) => n + 1); }} className="ms-2 text-paper-2 underline underline-offset-2 hover:text-paper no-min">{tc("tryAgain")}</button>
               )}
             </p>
           )}
-          <p className="text-[13px] text-dim">This browser is also recording. Keep this tab open until you end the live event.</p>
+          <p className="text-[13px] text-dim">{t("alsoRecording")}</p>
           <div className="panel p-4"><LiveSettings event={event} onSaved={() => void refetch()} /></div>
         </div>
         <aside className="space-y-4">
@@ -371,11 +373,11 @@ export function LiveStudio({ id }: { id: string }) {
 
   return (
     <div className="space-y-6 max-w-[640px]">
-      {support && !support.recorder && <p className="text-[13.5px] text-error">This browser cannot record video, which a live event also does. Use a recent Chrome, Edge, Firefox or Safari on a computer.</p>}
+      {support && !support.recorder && <p className="text-[13.5px] text-error">{t("unsupported")}</p>}
       <fieldset>
-        <legend className="text-[13px] font-medium text-paper mb-2">Show</legend>
+        <legend className="text-[13px] font-medium text-paper mb-2">{t("show")}</legend>
         <div className="grid sm:grid-cols-2 gap-3">
-          {([["camera", "Camera", Camera], ["screen", "Screen", Monitor]] as const).map(([v, label, Icon]) => (
+          {([["camera", t("camera"), Camera], ["screen", t("screen"), Monitor]] as const).map(([v, label, Icon]) => (
             <label key={v} className={clsx("flex items-center gap-3 p-3.5 rounded-md border cursor-pointer", source === v ? "border-paper bg-slate-2" : "border-rule hover:border-rule-lit")}>
               <input type="radio" name="live-source" className="sr-only" checked={source === v} onChange={() => setSource(v)} />
               <Icon size={18} className="text-paper-2" /> <span className="text-[14px] text-paper">{label}</span>
@@ -384,32 +386,33 @@ export function LiveStudio({ id }: { id: string }) {
         </div>
       </fieldset>
       <label className="flex items-center gap-2.5 text-[13.5px] text-paper-2 cursor-pointer">
-        <input type="checkbox" checked={mic} onChange={(e) => setMic(e.target.checked)} /> Use my microphone
+        <input type="checkbox" checked={mic} onChange={(e) => setMic(e.target.checked)} /> {t("mic")}
       </label>
 
       <LiveSettings event={event} onSaved={() => void refetch()} />
 
       <fieldset className="space-y-2">
-        <legend className="text-[13px] font-medium text-paper">Also stream to (optional)</legend>
-        <p className="text-[12.5px] text-dim">An RTMP address with its stream key, from YouTube Live, Twitch or another site. It is used for this event only and never stored. Restreaming uses LiveKit transcoding minutes.</p>
+        <legend className="text-[13px] font-medium text-paper">{t("alsoStream")}</legend>
+        <p className="text-[12.5px] text-dim">{t("alsoStreamHint")}</p>
         {restream.map((u, i) => (
           <input
             key={i} value={u} type="password" autoComplete="off" spellCheck={false}
             onChange={(e) => setRestream((r) => r.map((x, j) => (j === i ? e.target.value : x)))}
             placeholder="rtmp://a.rtmp.youtube.com/live2/your-stream-key"
-            aria-label={`Restream address ${i + 1}`}
+            aria-label={t("restreamLabel", { n: i + 1 })}
+            dir="ltr"
             className="w-full h-9 px-2.5 text-[13px] tc"
           />
         ))}
         {restream.length < 3 && (
-          <button onClick={() => setRestream((r) => [...r, ""])} className="text-[13px] text-paper-2 underline underline-offset-2 hover:text-paper no-min">Add another</button>
+          <button onClick={() => setRestream((r) => [...r, ""])} className="text-[13px] text-paper-2 underline underline-offset-2 hover:text-paper no-min">{t("addAnother")}</button>
         )}
       </fieldset>
 
       {shareBox}
 
       <div className="space-y-2">
-        <button onClick={() => void goLive()} disabled={!support?.recorder} className="btn btn-signal h-10 px-5">Go live</button>
+        <button onClick={() => void goLive()} disabled={!support?.recorder} className="btn btn-signal h-10 px-5">{t("goLive")}</button>
         {err && <p className="text-[13.5px] text-error" role="alert">{err}</p>}
       </div>
     </div>

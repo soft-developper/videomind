@@ -1,8 +1,8 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { getVideo, getCaptions, getTranscriptWords, momentFromUrl, ApiError } from "@/lib/api";
-import { categoryLabel } from "@/lib/categories";
-import { formatLabel } from "@/lib/media";
+import { useLabels } from "@/lib/categories";
+import { useMediaText } from "@/lib/media";
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
 import { IntelligenceStrip } from "@/components/video/IntelligenceStrip";
 import { InsightsPanel } from "@/components/video/InsightsPanel";
@@ -20,12 +20,19 @@ import { ShareButton } from "@/components/video/ShareButton";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { LegalFooter } from "@/components/legal/LegalPage";
+import { LegalFooter, PublicBar as Bar } from "@/components/legal/LegalPage";
+// vm_lang
+import { useTranslations } from "next-intl";
 import { useWatchProgress } from "@/lib/useWatchProgress";
 import { useRef, useState, useCallback } from "react";
 import { clsx } from "clsx";
 
 export default function PublicVideo({ params }: { params: { id: string } }) {
+  const tv = useTranslations("videoPage");
+  const ts = useTranslations("sharedVideo");
+  const tpub = useTranslations("public");
+  const labels = useLabels();
+  const formatLabel = useMediaText().format;
   const player = useRef<VideoPlayerHandle>(null);
   const [t, setT] = useState(0);
   const [dur, setDur] = useState(0);
@@ -80,19 +87,19 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
         <div className="flex items-center justify-center min-h-[70vh] px-4">
           <div className="text-center space-y-3 max-w-sm">
             <p className="font-display text-[20px] text-paper">
-              {isRemoved ? "This video was removed" : isPrivate ? "This video is private" : !video ? "This video was not found" : "This video is still being processed"}
+              {isRemoved ? tv("removedTitle") : isPrivate ? tv("privateTitle") : !video ? tv("notFoundTitle") : ts("processingTitle")}
             </p>
             <p className="text-[13px] font-sans text-dim leading-relaxed">
               {isRemoved
-                ? "VideoMind removed it because it broke the Terms of Service."
+                ? tv.rich("removedBody", { terms: (c) => <Link href="/legal/terms" className="underline underline-offset-2 hover:text-paper">{c}</Link> })
                 : isPrivate
-                ? "Its owner has not shared it. If it is yours, open it from your library."
+                ? ts("privateBody")
                 : !video
-                ? "This video may have been deleted, or the link is wrong."
-                : "Check back in a few minutes."}
+                ? ts("notFoundBody")
+                : ts("processingBody")}
             </p>
             <Link href="/" className="btn btn-ghost h-9 px-3.5 inline-flex items-center mt-2">
-              Open VideoMind
+              {tpub("open")}
             </Link>
           </div>
         </div>
@@ -111,25 +118,25 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
           <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
             <div className="flex items-start justify-between gap-6 flex-wrap">
               <div className="min-w-0 flex-1">
-                <h1 className="font-display text-[22px] sm:text-[26px] leading-[1.2] text-paper">
+                <h1 className="font-display text-[22px] sm:text-[26px] leading-[1.2] text-paper" dir="auto">
                   {video.title}
                 </h1>
                 {/* vm_profile: who made it, linking to their public page */}
                 {video.ownerWallet && (
                   <Link href={`/u/${video.ownerWallet}`} className="inline-block text-[13.5px] text-paper-2 hover:text-paper hover:underline underline-offset-2 mt-1.5">
-                    By {video.ownerName ?? `${video.ownerWallet.slice(0, 6)}…${video.ownerWallet.slice(-4)}`}
+                    {ts("by", { name: video.ownerName ?? `${video.ownerWallet.slice(0, 6)}…${video.ownerWallet.slice(-4)}` })}
                   </Link>
                 )}
                 {video.description && (
-                  <p className="text-[13px] font-sans text-dim mt-2 max-w-2xl leading-relaxed whitespace-pre-line">
+                  <p className="text-[13px] font-sans text-dim mt-2 max-w-2xl leading-relaxed whitespace-pre-line" dir="auto">
                     {video.description}
                   </p>
                 )}
                 {(video.category || video.collection || (video.tags?.length ?? 0) > 0) && (
-                  <ul className="flex items-center gap-2 flex-wrap mt-3" aria-label="Details">
-                    {categoryLabel(video.category) && <li className="badge">{categoryLabel(video.category)}</li>}
-                    {video.collection && <li className="badge">{video.collection.name}</li>}
-                    {(video.tags ?? []).map((t) => <li key={t.toLowerCase()} className="text-[12.5px] text-dim">#{t}</li>)}
+                  <ul className="flex items-center gap-2 flex-wrap mt-3" aria-label={ts("details")}>
+                    {labels.category(video.category) && <li className="badge">{labels.category(video.category)}</li>}
+                    {video.collection && <li className="badge" dir="auto">{video.collection.name}</li>}
+                    {(video.tags ?? []).map((tag) => <li key={tag.toLowerCase()} className="text-[12.5px] text-dim" dir="auto">#{tag}</li>)}
                   </ul>
                 )}
                 {/* vm_courses: its place in its course */}
@@ -141,7 +148,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 href={`/present/${params.id}${t >= 1 ? `?t=${Math.floor(t)}` : ""}`}
                 className="flex items-center gap-1.5 h-8 px-3 btn-ghost text-[12px] no-min"
               >
-                <Presentation size={11} /> Present
+                <Presentation size={11} /> {tv("present")}
               </Link>
               <ExportMenu
                 videoId={params.id}
@@ -164,7 +171,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 className="inline-flex items-center gap-2 mt-4 group"
               >
                 <span className="tc group-hover:text-paper transition-colors">
-                  Stored on Shelby, owner {video.shelby.accountAddress.slice(0, 6)}…{video.shelby.accountAddress.slice(-4)}
+                  {ts("storedOwner", { address: `${video.shelby.accountAddress.slice(0, 6)}…${video.shelby.accountAddress.slice(-4)}` })}
                 </span>
                 <ExternalLink size={11} className="text-dim" />
               </a>
@@ -235,13 +242,13 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
           {/* CTA */}
           <div className="mt-16 py-10 border-t border-rule">
             <p className="font-display text-[18px] text-paper leading-tight">
-              Made with VideoMind
+              {ts("madeWith")}
             </p>
             <p className="text-[14px] font-sans text-dim mt-1.5 max-w-[52ch] leading-relaxed">
-              Upload a lecture, a seminar or a talk and it comes back transcribed, chaptered and searchable like this one.
+              {ts("madeWithBody")}
             </p>
             <Link href="/" className="btn btn-ghost h-9 px-3.5 inline-flex items-center mt-5">
-              Open VideoMind
+              {tpub("open")}
             </Link>
           </div>
         </div>
@@ -251,9 +258,9 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
       {/* Mobile chat */}
       <button
         onClick={() => setChat(true)}
-        className="lg:hidden fixed bottom-5 right-4 z-30 flex items-center gap-2 h-11 px-4 btn btn-signal"
+        className="lg:hidden fixed bottom-5 end-4 z-30 flex items-center gap-2 h-11 px-4 btn btn-signal"
       >
-        <MessageSquare size={14} /> Ask
+        <MessageSquare size={14} /> {tv("ask")}
       </button>
 
       <div className={clsx("lg:hidden fixed inset-0 z-40", chat ? "pointer-events-auto" : "pointer-events-none")}>
@@ -266,8 +273,8 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
           chat ? "translate-y-0" : "translate-y-full"
         )}>
           <div className="flex items-center justify-between px-4 h-12 border-b border-rule shrink-0">
-            <span className="text-[14px] font-medium text-paper">Ask about this video</span>
-            <button onClick={() => setChat(false)} className="text-dim hover:text-paper no-min">
+            <span className="text-[14px] font-medium text-paper">{tv("askTitle")}</span>
+            <button onClick={() => setChat(false)} aria-label={tv("close")} className="text-dim hover:text-paper no-min">
               <X size={15} />
             </button>
           </div>
@@ -280,21 +287,3 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
   );
 }
 
-function Bar() {
-  return (
-    <nav className="fixed top-0 inset-x-0 z-50 h-14 bg-side border-b border-rule">
-      <div className="section h-full flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <svg width="13" height="15" viewBox="0 0 14 16" fill="none" aria-hidden>
-            <path d="M7 15.2 0.6 1.6A1 1 0 0 1 1.5 0.2h11a1 1 0 0 1 0.9 1.4L7 15.2z" className="fill-signal" />
-          </svg>
-          <span className="text-[15px] font-semibold tracking-tight leading-none text-paper">VideoMind</span>
-        </Link>
-
-        <Link href="/" className="btn btn-ghost h-9 px-3.5 flex items-center">
-          Open VideoMind
-        </Link>
-      </div>
-    </nav>
-  );
-}

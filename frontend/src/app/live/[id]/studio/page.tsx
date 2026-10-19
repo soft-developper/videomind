@@ -9,24 +9,28 @@ import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import { LiveStudio } from "@/components/live/LiveStudio";
 import { getLiveEvent } from "@/lib/api";
+// vm_lang
+import { useTranslations } from "next-intl";
 
 export default function StudioPage({ params }: { params: { id: string } }) {
+  const t = useTranslations("live");
+  const tc = useTranslations("common");
   const { connected } = useWallet();
   const wallet = useSessionWallet();
   const { data } = useQuery({ queryKey: ["live", params.id], queryFn: () => getLiveEvent(params.id), enabled: !!wallet });
   const mine = !!data && !!wallet && data.event.wallet.toLowerCase() === wallet.toLowerCase();
   return (
     <AppShell>
-      <PageHeader title={data?.event.title ?? "Live studio"} back={{ href: "/live", label: "Go live" }} />
+      <PageHeader title={data?.event.title ?? t("studio")} back={{ href: "/live", label: t("title") }} />
       <div className="section pb-16">
         {!connected ? (
-          <EmptyState title="Connect a wallet to open the studio" action={<WalletButton />} />
+          <EmptyState title={t("connectStudio")} action={<WalletButton />} />
         ) : !wallet ? (
-          <EmptyState title="Sign in to open the studio">One signature proves the wallet is yours. The prompt is at the bottom of the page.</EmptyState>
+          <EmptyState title={t("signInStudio")}>{t("signInStudioBody")}</EmptyState>
         ) : !data ? (
-          <p className="text-[14px] text-dim">Loading</p>
+          <p className="text-[14px] text-dim">{tc("loading")}</p>
         ) : !mine ? (
-          <EmptyState title="This live event belongs to a different wallet" />
+          <EmptyState title={t("notYours")} />
         ) : (
           <LiveStudio id={params.id} />
         )}

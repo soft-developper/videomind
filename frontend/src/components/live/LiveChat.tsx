@@ -14,9 +14,11 @@ import {
   type ChatMessageInfo, type ChatMode, type ChatPassInfo, type LiveStatus,
 } from "@/lib/api";
 import { getSession } from "@/lib/session";
+// vm_lang
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/lib/format";
 
 const MAX = 300;
-const time = (at: number) => new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 const passKey = (id: string) => `vm.livechat.${id}`;
 function readPass(id: string): ChatPassInfo | null {
   try { const v = sessionStorage.getItem(passKey(id)); return v ? JSON.parse(v) : null; } catch { return null; }
@@ -34,6 +36,10 @@ export function LiveChat({ eventId, status, chatMode, owner, bus, className }: {
   bus: EventTarget;
   className?: string;
 }) {
+  const t = useTranslations("liveChat");
+  const tc = useTranslations("common");
+  const f = useFormat();
+  const time = (at: number) => f.date(at, { hour: "2-digit", minute: "2-digit" });
   const [messages, setMessages] = useState<ChatMessageInfo[]>([]);
   const [pass, setPass] = useState<ChatPassInfo | null>(null);
   const [name, setName] = useState("");
@@ -90,7 +96,7 @@ export function LiveChat({ eventId, status, chatMode, owner, bus, className }: {
 
   const fail = (x: unknown) => {
     if (x instanceof ApiError && ["join_needed", "wallet_needed", "blocked"].includes(x.code ?? "")) { keepPass(eventId, null); setPass(null); }
-    setErr(x instanceof ApiError ? x.message : "That did not work. Try again.");
+    setErr(x instanceof ApiError ? x.message : tc("didNotWork"));
   };
 
   const join = async (ev: React.FormEvent) => {
@@ -108,7 +114,7 @@ export function LiveChat({ eventId, status, chatMode, owner, bus, className }: {
     finally { setBusy(false); }
   };
   const remove = async (m: ChatMessageInfo, block: boolean) => {
-    if (block && !window.confirm(`Block ${m.name} from this chat? Everything they wrote is removed.`)) return;
+    if (block && !window.confirm(t("confirmBlock", { name: m.name }))) return;
     setErr(null);
     try {
       if (block) { await blockLiveChat(eventId, m.id); await reload(); }
@@ -118,68 +124,68 @@ export function LiveChat({ eventId, status, chatMode, owner, bus, className }: {
 
   const canWrite = status === "live" && !!pass && (pass.host || chatMode === "anyone" || (chatMode === "wallets" && signedIn));
   let note: string | null = null;
-  if (status === "scheduled") note = "The chat opens when the event starts.";
-  else if (status === "ended") note = messages.length ? "The chat is closed." : null;
-  else if (!owner && chatMode === "off") note = "The host has turned the chat off.";
-  else if (!owner && chatMode === "wallets" && !signedIn) note = "Only signed in wallets can write here. Sign in on VideoMind with a wallet, then come back to this page.";
+  if (status === "scheduled") note = t("opensAtStart");
+  else if (status === "ended") note = messages.length ? t("closed") : null;
+  else if (!owner && chatMode === "off") note = t("off");
+  else if (!owner && chatMode === "wallets" && !signedIn) note = t("walletsOnly");
 
   return (
-    <section className={clsx("panel flex flex-col min-h-0", className)} aria-label="Live chat">
+    <section className={clsx("panel flex flex-col min-h-0", className)} aria-label={t("label")}>
       <header className="flex items-center justify-between gap-2 px-4 h-11 border-b border-rule shrink-0">
-        <span className="text-[14px] font-semibold text-paper">Chat</span>
-        {pass && status === "live" && <span className="tc truncate" data-chat-as>as {pass.name}</span>}
+        <span className="text-[14px] font-semibold text-paper">{t("title")}</span>
+        {pass && status === "live" && <span className="tc truncate" data-chat-as>{t("as", { name: pass.name })}</span>}
       </header>
 
       <div className="px-4 py-3 border-b border-rule space-y-2 shrink-0">
         {note && <p className="text-[13px] text-dim" data-chat-note>{note}</p>}
         {status === "live" && !pass && !note && (
-          <form onSubmit={join} className="flex gap-2" aria-label="Join the chat">
+          <form onSubmit={join} className="flex gap-2" aria-label={t("joinLabel")}>
             <input
-              value={name} onChange={(e) => setName(e.target.value)} maxLength={30}
-              placeholder={signedIn ? "Name (optional)" : "Your name"} aria-label="Your name in the chat"
+              value={name} onChange={(e) => setName(e.target.value)} maxLength={30} dir="auto"
+              placeholder={signedIn ? t("nameOptional") : t("yourName")} aria-label={t("nameLabel")}
               className="flex-1 min-w-0 h-9 px-2.5 text-[13.5px]"
             />
-            <button type="submit" disabled={busy || (!signedIn && !name.trim())} className="btn btn-ghost h-9 px-3 shrink-0">Join chat</button>
+            <button type="submit" disabled={busy || (!signedIn && !name.trim())} className="btn btn-ghost h-9 px-3 shrink-0">{t("join")}</button>
           </form>
         )}
         {status === "live" && !pass && !note && (
-          <p className="text-[12px] text-dim">By joining, you agree to the <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-paper">Terms of Service</a>.</p>
+          <p className="text-[12px] text-dim">{t.rich("agree", { terms: (c) => <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-paper">{c}</a> })}</p>
         )}
         {canWrite && (
-          <form onSubmit={send} className="space-y-1.5" aria-label="Write a message">
+          <form onSubmit={send} className="space-y-1.5" aria-label={t("writeLabel")}>
             <div className="flex gap-2">
               <input
-                value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX}
-                placeholder="Say something" aria-label="Message"
+                value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX} dir="auto"
+                placeholder={t("saySomething")} aria-label={t("message")}
                 className="flex-1 min-w-0 h-9 px-2.5 text-[13.5px]"
               />
-              <button type="submit" disabled={busy || !text.trim()} className="btn btn-signal h-9 px-3.5 shrink-0">Send</button>
+              <button type="submit" disabled={busy || !text.trim()} className="btn btn-signal h-9 px-3.5 shrink-0">{t("send")}</button>
             </div>
-            {text.length > MAX - 50 && <p className="tc">{MAX - text.length} characters left</p>}
+            {text.length > MAX - 50 && <p className="tc">{t("left", { count: MAX - text.length })}</p>}
           </form>
         )}
         {err && <p className="text-[12.5px] text-error" role="alert">{err}</p>}
       </div>
 
-      <ul className="flex-1 min-h-[160px] overflow-y-auto px-4 py-2 space-y-2.5" aria-label="Chat messages">
+      <ul className="flex-1 min-h-[160px] overflow-y-auto px-4 py-2 space-y-2.5" aria-label={t("messages")}>
         {messages.map((m) => (
           <li key={m.id} className="group text-[13.5px] leading-snug" data-chat-message>
             <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className={clsx("font-medium", m.host ? "text-signal" : "text-paper")}>{m.name}</span>
-              {m.host && m.name.trim().toLowerCase() !== "host" && <span className="text-[11px] uppercase tracking-wide text-signal">Host</span>}
-              {m.wallet && !m.host && <BadgeCheck size={12} className="text-dim" aria-label="Signed in with a wallet" />}
+              <span className={clsx("font-medium", m.host ? "text-signal" : "text-paper")} dir="auto">{m.name}</span>
+              {m.host && m.name.trim().toLowerCase() !== "host" && <span className="text-[11px] uppercase tracking-wide text-signal">{t("host")}</span>}
+              {m.wallet && !m.host && <BadgeCheck size={12} className="text-dim" aria-label={t("withWallet")} />}
               <span className="tc">{time(m.at)}</span>
               {owner && !m.host && status === "live" && (
-                <span className="ml-auto flex gap-1">
-                  <button onClick={() => void remove(m, false)} aria-label={`Delete the message from ${m.name}`} className="w-7 h-7 flex items-center justify-center rounded text-dim hover:text-error hover:bg-slate-2 no-min"><Trash2 size={12} /></button>
-                  <button onClick={() => void remove(m, true)} aria-label={`Block ${m.name}`} className="w-7 h-7 flex items-center justify-center rounded text-dim hover:text-error hover:bg-slate-2 no-min"><Ban size={12} /></button>
+                <span className="ms-auto flex gap-1">
+                  <button onClick={() => void remove(m, false)} aria-label={t("deleteFrom", { name: m.name })} className="w-7 h-7 flex items-center justify-center rounded text-dim hover:text-error hover:bg-slate-2 no-min"><Trash2 size={12} /></button>
+                  <button onClick={() => void remove(m, true)} aria-label={t("block", { name: m.name })} className="w-7 h-7 flex items-center justify-center rounded text-dim hover:text-error hover:bg-slate-2 no-min"><Ban size={12} /></button>
                 </span>
               )}
             </div>
-            <p className="text-paper-2 whitespace-pre-wrap break-words">{m.text}</p>
+            <p className="text-paper-2 whitespace-pre-wrap break-words" dir="auto">{m.text}</p>
           </li>
         ))}
-        {!messages.length && status !== "scheduled" && <li className="text-[13px] text-dim">No messages yet.</li>}
+        {!messages.length && status !== "scheduled" && <li className="text-[13px] text-dim">{t("none")}</li>}
       </ul>
     </section>
   );

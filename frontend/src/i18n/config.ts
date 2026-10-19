@@ -20,11 +20,11 @@ export const LOCALE_COOKIE = "vm_lang";
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 /**
- * Languages are switched on with NEXT_PUBLIC_LANGUAGES=on. While it is off
- * (production, until every page is translated) the site is English for
- * everyone, reads no cookie and shows no picker.
+ * Languages are on everywhere. NEXT_PUBLIC_LANGUAGES=off is a switch to turn
+ * them off again without a new release: then the site is English for
+ * everyone, reads no cookie, shows no picker, and pages can stay static.
  */
-export const LANGUAGES_ON = process.env.NEXT_PUBLIC_LANGUAGES === "on";
+export const LANGUAGES_ON = process.env.NEXT_PUBLIC_LANGUAGES !== "off";
 
 export const isLocale = (v: unknown): v is Locale =>
   typeof v === "string" && (LOCALES as readonly string[]).includes(v);

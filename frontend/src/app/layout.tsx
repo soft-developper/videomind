@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, Noto_Sans_Arabic } from "next/font/google";
 // vm_lang
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { dirOf, type Locale } from "@/i18n/config";
 import "./globals.css";
 import { AppProviders } from "@/components/layout/AppProviders";
@@ -30,32 +30,34 @@ const arabic = Noto_Sans_Arabic({
   adjustFontFallback: false,
 });
 
-export const metadata: Metadata = {
-  title: "VideoMind",
-  description:
-    "A library for long videos. Every lecture, seminar and talk becomes searchable, chaptered and transcribed. Stored on Shelby, owned by your wallet.",
-  keywords: [
-    "Shelby Protocol", "AI video", "video intelligence", "Aptos",
-    "decentralized storage", "transcript", "video search",
-  ],
-  openGraph: {
+// vm_lang: the site's description in the reader's language.
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+  return {
     title: "VideoMind",
-    description:
-      "A library for long videos. Every lecture, seminar and talk becomes searchable, chaptered and transcribed.",
-    type: "website",
-    siteName: "VideoMind",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "VideoMind",
-    description: "A library for long videos. Searchable, chaptered and transcribed.",
-  },
-  icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/apple-icon.svg" }],
-  },
-  manifest: "/manifest.json",
-};
+    description: t("description"),
+    keywords: [
+      "Shelby Protocol", "AI video", "video intelligence", "Aptos",
+      "decentralized storage", "transcript", "video search",
+    ],
+    openGraph: {
+      title: "VideoMind",
+      description: t("ogDescription"),
+      type: "website",
+      siteName: "VideoMind",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "VideoMind",
+      description: t("twitterDescription"),
+    },
+    icons: {
+      icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+      apple: [{ url: "/apple-icon.svg" }],
+    },
+    manifest: "/manifest.json",
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#171A18",

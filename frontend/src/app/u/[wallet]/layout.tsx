@@ -1,6 +1,8 @@
 // vm_profile: what a link to a public page shows before anyone opens it.
 // Runs on the server, like the shared video page (see app/v/[id]/layout.tsx).
 import type { Metadata } from "next";
+// vm_lang
+import { getTranslations } from "next-intl/server";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const WAIT_MS = 5000;
@@ -25,7 +27,8 @@ export async function generateMetadata({ params }: { params: { wallet: string } 
   const p = await profile(params.wallet);
   if (!p) return { title: "VideoMind", robots: { index: false, follow: false } };
   const who = p.name ?? `${p.wallet.slice(0, 6)}…${p.wallet.slice(-4)}`;
-  const description = (p.bio ?? `Videos by ${who} on VideoMind.`).replace(/\s+/g, " ").slice(0, 200);
+  const t = await getTranslations("meta");
+  const description = (p.bio ?? t("profileFallback", { name: who })).replace(/\s+/g, " ").slice(0, 200);
   return {
     title: `${who} | VideoMind`,
     description,

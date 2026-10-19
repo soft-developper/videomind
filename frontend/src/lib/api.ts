@@ -1,6 +1,8 @@
 import axios, { type AxiosError } from "axios";
 // vm_signin: every request carries the session token once signed in
 import { getSession, setSession } from "./session";
+// vm_lang: errors are shown in the reader's language (see errorText.ts)
+import { localize } from "./errorText";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -31,7 +33,7 @@ api.interceptors.response.use(
     else if (statusCode === 500) message = "Server error. Check the backend logs for details.";
     else message = err.message ?? "An unexpected error occurred.";
     // vm_info: keep the status and the server's code, so a page can tell "private" from "not found"
-    return Promise.reject(new ApiError(message, statusCode ?? 0, err.response?.data?.code, err.response?.data));
+    return Promise.reject(new ApiError(localize(message), statusCode ?? 0, err.response?.data?.code, err.response?.data));
   }
 );
 
@@ -62,7 +64,7 @@ async function call<T>(fn: () => Promise<{ data: T }>): Promise<T> {
   try { return (await fn()).data; }
   catch (e: any) {
     const r = e?.response;
-    throw new ApiError(r?.data?.error ?? e?.message ?? "Request failed.", r?.status ?? 0, r?.data?.code, r?.data);
+    throw new ApiError(localize(r?.data?.error ?? e?.message ?? "Request failed."), r?.status ?? 0, r?.data?.code, r?.data);
   }
 }
 // Upload calls bypass the shared error wrapper so the uploader can tell

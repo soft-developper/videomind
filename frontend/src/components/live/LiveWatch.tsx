@@ -12,6 +12,8 @@ import { Volume2, Captions } from "lucide-react";
 import { clsx } from "clsx";
 import { getLiveEvent, liveViewerToken, getLiveCaptions, ApiError } from "@/lib/api";
 import { LiveChat } from "./LiveChat";
+// vm_lang
+import { useTranslations } from "next-intl";
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 const clock = (sec: number) => {
@@ -20,6 +22,8 @@ const clock = (sec: number) => {
 };
 
 export function LiveWatch({ id }: { id: string }) {
+  const t = useTranslations("liveWatch");
+  const tc = useTranslations("common");
   const { data, error, refetch } = useQuery({
     queryKey: ["live-watch", id],
     queryFn: () => getLiveEvent(id),
@@ -50,7 +54,7 @@ export function LiveWatch({ id }: { id: string }) {
       const el = track.attach();
       if (track.kind === Track.Kind.Video) {
         el.className = "absolute inset-0 w-full h-full object-contain";
-        el.setAttribute("aria-label", "The live picture");
+        el.setAttribute("aria-label", t("picture"));
         stage.current.querySelectorAll("video").forEach((v) => v.remove());
         stage.current.appendChild(el);
         setHasVideo(true);
@@ -82,7 +86,7 @@ export function LiveWatch({ id }: { id: string }) {
         setConnected(true);
         setNeedsSound(!r.canPlaybackAudio);
       } catch (e: any) {
-        if (!stopped) { setErr(e instanceof ApiError ? e.message : "The live picture could not be loaded. Reload the page to try again."); void refetch(); }
+        if (!stopped) { setErr(e instanceof ApiError ? e.message : t("couldNotLoad")); void refetch(); }
       }
     })();
     return () => {
@@ -91,7 +95,7 @@ export function LiveWatch({ id }: { id: string }) {
       document.querySelectorAll("[data-live-audio]").forEach((el) => el.remove());
       room.current = null;
     };
-  }, [event?.status, id, refetch]);
+  }, [event?.status, id, refetch, t]);
 
   useEffect(() => {
     if (event?.status !== "live") return;
@@ -112,8 +116,8 @@ export function LiveWatch({ id }: { id: string }) {
     const missing = error instanceof ApiError && error.status === 404;
     return (
       <div className="py-16 max-w-[46ch]">
-        <h1 className="font-display text-[20px] text-paper">{missing ? "This live event was not found" : "Loading"}</h1>
-        {missing && <p className="text-[14px] text-dim mt-1.5">The link may be wrong.</p>}
+        <h1 className="font-display text-[20px] text-paper">{missing ? t("notFound") : tc("loading")}</h1>
+        {missing && <p className="text-[14px] text-dim mt-1.5">{t("wrongLink")}</p>}
       </div>
     );
   }
@@ -123,59 +127,59 @@ export function LiveWatch({ id }: { id: string }) {
     <div className="pt-6 grid lg:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
     <div className="space-y-4 min-w-0">
       <div>
-        <h1 className="font-display text-[22px] sm:text-[26px] leading-tight text-paper">{event.title}</h1>
-        <Link href={`/u/${event.wallet}`} className="text-[13.5px] text-paper-2 hover:text-paper hover:underline underline-offset-2">By {who}</Link>
+        <h1 className="font-display text-[22px] sm:text-[26px] leading-tight text-paper" dir="auto">{event.title}</h1>
+        <Link href={`/u/${event.wallet}`} className="text-[13.5px] text-paper-2 hover:text-paper hover:underline underline-offset-2">{t("by", { name: who })}</Link>
       </div>
 
       <div ref={stage} className="relative w-full aspect-video rounded-md bg-black overflow-hidden" data-live-stage>
         {event.status === "live" && (
-          <span className="absolute left-3 top-3 z-10 flex items-center gap-2 bg-black/70 rounded px-2.5 h-7">
+          <span className="absolute start-3 top-3 z-10 flex items-center gap-2 bg-black/70 rounded px-2.5 h-7">
             <span className="w-2.5 h-2.5 rounded-full bg-error animate-pulse" />
-            <span className="tc text-paper" data-live-state>Live{event.startedAt ? ` ${clock((now - event.startedAt) / 1000)}` : ""}</span>
+            <span className="tc text-paper" data-live-state>{event.startedAt ? t("liveAt", { time: clock((now - event.startedAt) / 1000) }) : t("live")}</span>
           </span>
         )}
         {event.status === "live" && !hasVideo && (
-          <p className="absolute inset-0 flex items-center justify-center text-[14px] text-dim">{err ?? (connected ? "Waiting for the picture" : "Connecting")}</p>
+          <p className="absolute inset-0 flex items-center justify-center text-[14px] text-dim">{err ?? (connected ? t("waiting") : t("connecting"))}</p>
         )}
         {event.status === "scheduled" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6" data-live-state>
-            <p className="text-[16px] text-paper">This live event has not started yet</p>
-            <p className="text-[13.5px] text-dim mt-1">Keep this page open. It starts playing by itself.</p>
+            <p className="text-[16px] text-paper">{t("notStarted")}</p>
+            <p className="text-[13.5px] text-dim mt-1">{t("keepOpen")}</p>
           </div>
         )}
         {event.status === "ended" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 gap-3" data-live-state>
-            <p className="text-[16px] text-paper">This live event has ended</p>
+            <p className="text-[16px] text-paper">{t("ended")}</p>
             {event.videoId
-              ? <Link href={`/v/${event.videoId}`} className="btn btn-signal h-9 px-4 inline-flex items-center">Watch the recording</Link>
-              : <p className="text-[13.5px] text-dim">The recording appears here once the host uploads it.</p>}
+              ? <Link href={`/v/${event.videoId}`} className="btn btn-signal h-9 px-4 inline-flex items-center">{t("watchRecording")}</Link>
+              : <p className="text-[13.5px] text-dim">{t("recordingSoon")}</p>}
           </div>
         )}
         {event.status === "live" && cc && shownCaption && (
-          <p className="absolute inset-x-0 bottom-14 z-10 mx-auto w-fit max-w-[90%] text-center bg-black/80 text-white text-[15px] sm:text-[18px] leading-snug rounded px-3 py-1.5" data-live-caption aria-live="off">
+          <p className="absolute inset-x-0 bottom-14 z-10 mx-auto w-fit max-w-[90%] text-center bg-black/80 text-white text-[15px] sm:text-[18px] leading-snug rounded px-3 py-1.5" data-live-caption aria-live="off" dir="auto">
             {shownCaption}
           </p>
         )}
         {event.status === "live" && event.captions && (
           <button
-            onClick={() => setCc((v) => !v)} aria-pressed={cc} aria-label="Captions"
-            className={clsx("absolute left-3 bottom-3 z-10 h-9 px-3 rounded inline-flex items-center gap-1.5 text-[13px] bg-black/70", cc ? "text-paper" : "text-dim")}
+            onClick={() => setCc((v) => !v)} aria-pressed={cc} aria-label={t("captions")}
+            className={clsx("absolute start-3 bottom-3 z-10 h-9 px-3 rounded inline-flex items-center gap-1.5 text-[13px] bg-black/70", cc ? "text-paper" : "text-dim")}
           >
-            <Captions size={15} /> {cc ? "Captions on" : "Captions off"}
+            <Captions size={15} /> {cc ? t("captionsOn") : t("captionsOff")}
           </button>
         )}
         {needsSound && event.status === "live" && (
-          <button onClick={() => { room.current?.startAudio().then(() => setNeedsSound(false)).catch(() => {}); }} className="absolute right-3 bottom-3 z-10 btn btn-signal h-9 px-3.5 inline-flex items-center gap-1.5">
-            <Volume2 size={14} /> Turn sound on
+          <button onClick={() => { room.current?.startAudio().then(() => setNeedsSound(false)).catch(() => {}); }} className="absolute end-3 bottom-3 z-10 btn btn-signal h-9 px-3.5 inline-flex items-center gap-1.5">
+            <Volume2 size={14} /> {t("soundOn")}
           </button>
         )}
       </div>
 
       {event.status === "ended" && !!lines?.length && (
         <details className="panel px-5 py-3" data-live-transcript>
-          <summary className="cursor-pointer text-[14px] text-paper">What was said ({lines.length} lines, from the live captions)</summary>
+          <summary className="cursor-pointer text-[14px] text-paper">{t("whatWasSaid", { count: lines.length })}</summary>
           <ol className="mt-3 space-y-1.5 text-[13.5px] text-paper-2">
-            {lines.map((l, i) => <li key={i}><span className="tc mr-2">{clock(l.at / 1000)}</span>{l.text}</li>)}
+            {lines.map((l, i) => <li key={i}><span className="tc me-2">{clock(l.at / 1000)}</span><span dir="auto">{l.text}</span></li>)}
           </ol>
         </details>
       )}

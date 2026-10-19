@@ -2,14 +2,14 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RecordStudio } from "@/components/record/RecordStudio";
+// vm_lang
+import { getTranslations } from "next-intl/server";
 
-export default function RecordPage() {
+export default async function RecordPage() {
+  const t = await getTranslations("record");
   return (
     <AppShell>
-      <PageHeader
-        title="Record"
-        description="Record your screen or your camera with your voice. When you stop, it goes into your library like an upload: transcribed and split into chapters."
-      />
+      <PageHeader title={t("title")} description={t("description")} />
       <div className="section pb-16">
         <RecordStudio />
       </div>

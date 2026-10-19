@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 // vm_lang
 import { useTranslations } from "next-intl";
+import { localize } from "@/lib/errorText";
 
 const clock = (sec: number) => {
   const s = Math.max(0, Math.floor(sec)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
@@ -205,7 +206,7 @@ export function PublishPanel({ videoId, duration }: { videoId: string; duration:
                   {p.status === "queued" && tp("queued")}
                   {p.status === "uploading" && tp("uploading", { pct: pct(p) })}
                   {p.status === "done" && tp("done")}
-                  {p.status === "failed" && `${tp("notUploaded")} ${p.error ?? ""}`}
+                  {p.status === "failed" && `${tp("notUploaded")} ${localize(p.error) ?? ""}`}
                 </p>
                 {p.status === "uploading" && (
                   <div className="h-1 bg-slate-2 rounded mt-2 overflow-hidden" role="progressbar" aria-valuenow={pct(p)} aria-valuemin={0} aria-valuemax={100} aria-label={tp("uploadingNamed", { title: p.title })}>

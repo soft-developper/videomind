@@ -1,38 +1,26 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import Link from "next/link";
+// vm_lang
+import { getTranslations } from "next-intl/server";
 
-const SHELBY = [
-  {
-    t: "Your wallet signs the blob",
-    d: "The video goes to Shelby from the browser, signed by Petra. The backend never touches the bytes and holds no key that could delete your content.",
-  },
-  {
-    t: "Blobs are namespaced to you",
-    d: "Every video lives at videomind/videos/{id}/raw.mp4 under your own account address, retrievable straight from the Shelby gateway.",
-  },
-  {
-    t: "Prepaid storage, shown on chain",
-    d: "Storage is paid at upload for a fixed number of 24-hour payment epochs. Every video page reads its record live from the Shelby contract and shows the date it is paid until.",
-  },
-  {
-    t: "Built on the React SDK",
-    d: "ShelbyClientProvider and useUploadBlobs. Chunked upload and transaction submission run through the wallet adapter, not a server.",
-  },
+const SHELBY = ["signs", "namespaced", "prepaid", "sdk"] as const;
+const STEPS = ["store", "read", "map", "ask"] as const;
+
+const NOTES = ["react", "sdk", "wallet", "claude", "whisper", "turso", "next", "express"] as const;
+const STACK: Array<[string, (typeof NOTES)[number]]> = [
+  ["@shelby-protocol/react",   "react"],
+  ["@shelby-protocol/sdk",     "sdk"],
+  ["@aptos-labs/wallet-adapter-react", "wallet"],
+  ["Anthropic Claude",         "claude"],
+  ["OpenAI Whisper",           "whisper"],
+  ["Turso / libSQL",           "turso"],
+  ["Next.js 14",               "next"],
+  ["Express",                  "express"],
 ];
 
-const STACK = [
-  ["@shelby-protocol/react",   "ShelbyClientProvider, useUploadBlobs"],
-  ["@shelby-protocol/sdk",     "server-side Shelby operations"],
-  ["@aptos-labs/wallet-adapter-react", "wallet connect and signing"],
-  ["Anthropic Claude",         "cuts, highlights, chat, search, curriculum"],
-  ["OpenAI Whisper",           "transcription with timecodes"],
-  ["Turso / libSQL",           "every AI output, persisted"],
-  ["Next.js 14",               "frontend"],
-  ["Express",                  "API"],
-];
-
-export default function AboutPage() {
+export default async function AboutPage() {
+  const t = await getTranslations("about");
   return (
     <AppShell>
       <div>
@@ -40,41 +28,38 @@ export default function AboutPage() {
         {/* Hero */}
         <section className="border-b border-rule">
           <div className="section [&>*]:max-w-[760px] py-16 sm:py-20">
-            <p className="eyebrow mb-6">Built on Shelby Protocol</p>
+            <p className="eyebrow mb-6">{t("eyebrow")}</p>
             <h1 className="font-display text-[38px] sm:text-[50px] leading-[1.02] text-paper">
-              A video is a timeline.
+              {t("headline1")}
               <br />
-              VideoMind gives it a map.
+              {t("headline2")}
             </h1>
             <p className="text-[15px] font-sans text-paper-2/80 mt-6 max-w-xl leading-[1.65]">
-              VideoMind reads a recording end to end, marks where the topic turns,
-              flags what's worth knowing, and answers questions with the timecode
-              attached. The video itself is stored on Shelby Protocol and signed by
-              your wallet - nobody else can take it down.
+              {t("intro")}
             </p>
             <div className="flex gap-3 mt-8 flex-wrap">
               <Link href="/upload" className="btn btn-signal h-10 px-5 flex items-center gap-2">
-                Upload a video <ArrowRight size={13} />
+                {t("upload")} <ArrowRight size={13} className="rtl:rotate-180" />
               </Link>
               <Link href="/library" className="btn btn-ghost h-10 px-5 flex items-center">
-                See the library
+                {t("library")}
               </Link>
             </div>
           </div>
         </section>
 
-        {/* Shelby integration - not numbered. this isn't a sequence. */}
+        {/* Shelby integration: not numbered, this is not a sequence. */}
         <section className="border-b border-rule">
           <div className="section [&>*]:max-w-[760px] py-12">
-            <p className="eyebrow mb-8">Shelby integration</p>
+            <p className="eyebrow mb-8">{t("shelbyTitle")}</p>
             <div className="space-y-0">
-              {SHELBY.map((s) => (
-                <div key={s.t} className="py-5 border-t border-rule last:border-b">
+              {SHELBY.map((k) => (
+                <div key={k} className="py-5 border-t border-rule last:border-b">
                   <h2 className="font-display text-[20px] text-paper leading-tight">
-                    {s.t}
+                    {t(`shelby.${k}.t`)}
                   </h2>
                   <p className="text-[13px] font-sans text-dim mt-2 leading-relaxed max-w-xl">
-                    {s.d}
+                    {t(`shelby.${k}.d`)}
                   </p>
                 </div>
               ))}
@@ -82,24 +67,19 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Pipeline - THIS is a sequence, so it's numbered. */}
+        {/* Pipeline: this is a sequence, so it is numbered. */}
         <section className="border-b border-rule">
           <div className="section [&>*]:max-w-[760px] py-12">
-            <p className="eyebrow mb-8">What happens to a video</p>
+            <p className="eyebrow mb-8">{t("stepsTitle")}</p>
             <div className="space-y-0">
-              {[
-                ["Store",  "Your wallet signs. The blob lands on Shelby."],
-                ["Read",   "Whisper transcribes every word, with a timecode."],
-                ["Map",    "Claude finds the cuts, flags the moments, writes the summary."],
-                ["Ask",    "Question it in plain language. Answers cite the timecode."],
-              ].map(([n, d], i) => (
-                <div key={n} className="flex gap-5 py-4 border-t border-rule last:border-b">
+              {STEPS.map((k, i) => (
+                <div key={k} className="flex gap-5 py-4 border-t border-rule last:border-b">
                   <span className="tc tabular-nums shrink-0 pt-1">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <div>
-                    <p className="font-display text-[18px] text-paper leading-none">{n}</p>
-                    <p className="text-[13px] font-sans text-dim mt-1.5">{d}</p>
+                    <p className="font-display text-[18px] text-paper leading-none">{t(`steps.${k}.t`)}</p>
+                    <p className="text-[13px] font-sans text-dim mt-1.5">{t(`steps.${k}.d`)}</p>
                   </div>
                 </div>
               ))}
@@ -110,15 +90,15 @@ export default function AboutPage() {
         {/* Stack */}
         <section className="border-b border-rule">
           <div className="section [&>*]:max-w-[760px] py-12">
-            <p className="eyebrow mb-8">Stack</p>
+            <p className="eyebrow mb-8">{t("stackTitle")}</p>
             <div>
               {STACK.map(([lib, note]) => (
                 <div
                   key={lib}
                   className="flex items-baseline justify-between gap-6 py-2.5 border-t border-rule last:border-b"
                 >
-                  <span className="tc text-paper-2">{lib}</span>
-                  <span className="text-[12px] font-sans text-dim text-right">{note}</span>
+                  <span className="tc text-paper-2" dir="ltr">{lib}</span>
+                  <span className="text-[12px] font-sans text-dim text-end">{t(`stack.${note}`)}</span>
                 </div>
               ))}
             </div>
@@ -128,7 +108,7 @@ export default function AboutPage() {
         {/* Footer */}
         <section className="section [&>*]:max-w-[760px] py-16">
           <p className="font-display text-[26px] text-paper mb-6">
-            Open source. Testnet. Yours.
+            {t("closing")}
           </p>
           <div className="flex gap-3 flex-wrap">
             <a

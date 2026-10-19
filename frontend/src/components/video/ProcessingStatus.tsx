@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 // vm_lang
 import { useTranslations } from "next-intl";
+import { localize } from "@/lib/errorText";
 
 // vm_lang: names and lines are message keys under "processing.steps".
 const STEPS = [{ k: "uploading" }, { k: "transcribing" }, { k: "analyzing" }, { k: "ready" }] as const;
@@ -76,7 +77,7 @@ export function ProcessingStatus({
           {failed ? stage(failed, "failed") : tp("failed")}
         </p>
         <p className="text-[14px] font-sans text-paper-2 leading-relaxed">
-          {failed?.error
+          {localize(failed?.error)
             ?? (failed
               ? tp("stepCouldNot")
               : tp("couldNot"))}

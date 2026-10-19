@@ -196,7 +196,8 @@ export async function fixWebmDuration(blob: Blob, durationMs: number): Promise<B
   }
 }
 
-/** "Recording 8 Oct 2026, 14:30" */
-export function recordingTitle(d = new Date()): string {
-  return `Recording ${d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}, ${d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`;
+/** "8 Oct 2026, 14:30" */
+export function recordingTitle(d = new Date(), locale?: string): string {
+  // vm_lang: only the date and time; the page puts the word "Recording" around it in the reader's language.
+  return `${d.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })}, ${d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}`;
 }

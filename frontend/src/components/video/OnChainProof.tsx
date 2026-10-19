@@ -19,6 +19,7 @@ import { getAnchors, checkAnchorsNow, ApiError, type AnchorInfo, type AnchorStat
 // vm_lang
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/lib/format";
+import { localize } from "@/lib/errorText";
 
 function shorten(v: string, head = 10, tail = 8) {
   if (!v) return "";
@@ -171,7 +172,7 @@ export function OnChainProof({ videoId, isOwner, storeHref }: {
         )}
         {cur.state === "unverified" && (
           <p className="text-[13.5px] text-paper-2 leading-relaxed max-w-[62ch]">
-            {tp("unverified")}{isOwner && cur.error ? ` ${cur.error}` : ""}
+            {tp("unverified")}{isOwner && cur.error ? ` ${localize(cur.error)}` : ""}
           </p>
         )}
 
@@ -197,7 +198,7 @@ export function OnChainProof({ videoId, isOwner, storeHref }: {
               mono={false}
               value={live.isLoading ? tp("browser.reading") : live.isError ? tp("browser.unreachable") : live.data ? tp("browser.found") : tp("browser.notFound")}
             />
-            {isOwner && cur.error && <p className="text-[12.5px] text-warn mt-2">{cur.error}</p>}
+            {isOwner && cur.error && <p className="text-[12.5px] text-warn mt-2">{localize(cur.error)}</p>}
           </div>
         )}
 

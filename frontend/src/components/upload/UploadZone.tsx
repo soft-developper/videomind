@@ -29,6 +29,7 @@ import {
   getMySettings,
 } from "@/lib/api";
 import { ResumableUpload, StorageBlockedError, UploadStopped, type UploadProgress } from "@/lib/uploader";
+import { localize } from "@/lib/errorText";
 // vm_shelby09: expiration removed from blob registration (sdk >= 0.8.0)
 import { shelbyClient, SHELBY_LOCATION } from "@/lib/shelby";
 import { VideoInfoForm, emptyDraft, draftToPatch, type InfoDraft } from "@/components/video/VideoInfoForm";
@@ -225,9 +226,9 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
       if (runNo.current !== mine) return;
       if (e instanceof UploadStopped) { setStep({ at: "uploading", paused: true }); return; }
       setStep({ at: "uploading", paused: true });
-      if (e instanceof StorageBlockedError) setErr(e.message);
+      if (e instanceof StorageBlockedError) setErr(localize(e.message));
       else if (e instanceof ApiError && e.code === "expired") setErr(tu("expired"));
-      else setErr(e?.message ?? tu("stopped"));
+      else setErr(localize(e?.message) ?? tu("stopped"));
     }
   }, [qc, storeOnShelby, onUploaded, tu]);
 
@@ -240,7 +241,7 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
       saveDefaults(draft);
       await run(file, u);
     } catch (e: any) {
-      setErr(e?.message ?? tu("startFailed"));
+      setErr(localize(e?.message) ?? tu("startFailed"));
     } finally { setStarting(false); }
   };
 

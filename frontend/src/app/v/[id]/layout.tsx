@@ -10,6 +10,9 @@
 // them. A private video, a missing one, or a backend that does not answer
 // in time gets the plain VideoMind preview, never anything about the video.
 import type { Metadata } from "next";
+// vm_lang: the preview text VideoMind writes is in the reader's language;
+// the title and summary stay as their owner wrote them.
+import { getTranslations } from "next-intl/server";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const WAIT_MS = 5000;
@@ -65,9 +68,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   if (!v || !v.title || v.visibility === "private") return PLAIN;
 
   const title = `${v.title} | VideoMind`;
-  const description = previewText(
-    v.ai?.summary || v.description || "Watch it with its transcript and chapters, and ask questions about it on VideoMind.",
-  );
+  const t = await getTranslations("meta");
+  const description = previewText(v.ai?.summary || v.description || t("videoFallback"));
   const cover = `${API}/api/videos/${encodeURIComponent(params.id)}/cover`;
   const listed = v.visibility === "public";
 
