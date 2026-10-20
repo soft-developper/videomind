@@ -88,7 +88,18 @@ export async function getCreditSettings(): Promise<CreditSettings> {
   return { charging: m.get("charging") === "on", welcomeMicros: Math.max(0, Math.floor(n(m.get("welcome_micros")))) };
 }
 
-/** Change the welcome amount. Charging cannot be turned on here: Part 16c does that, with the actions wired. */
+/** vm_charge: turn charging on or off. Holds already open are settled or released as usual either way. */
+export async function setCharging(body: unknown): Promise<CreditSettings> {
+  const on = (body as any)?.on;
+  if (typeof on !== "boolean") throw new CreditsError(400, "bad_value", "Send on: true or on: false.");
+  await getDb().execute({
+    sql: "INSERT INTO credit_settings (id, value) VALUES ('charging', ?) ON CONFLICT(id) DO UPDATE SET value = excluded.value",
+    args: [on ? "on" : "off"],
+  });
+  return getCreditSettings();
+}
+
+/** Change the welcome amount. */
 export async function setWelcome(body: unknown): Promise<CreditSettings> {
   const b = (body ?? {}) as Record<string, unknown>;
   const micros = dollarsToMicros(b.welcomeUsd, "The welcome amount", 100);

@@ -240,6 +240,7 @@ export function getCreditLedger(o: { wallet?: string; kind?: CreditKind | ""; be
 }
 export const getWalletCredits = (wallet: string) => call<WalletCredits>("GET", `/credits/wallets/${encodeURIComponent(wallet)}`);
 export const setCreditPrice = (id: string, usd: string) => call<ActionPrice>("POST", `/credits/prices/${encodeURIComponent(id)}`, { usd });
+export const setCharging = (on: boolean) => call<{ charging: boolean; welcomeMicros: number }>("POST", "/credits/charging", { on });
 export const setWelcome = (welcomeUsd: string) => call<{ charging: boolean; welcomeMicros: number }>("POST", "/credits/welcome", { welcomeUsd });
 export const grantCredits = (wallet: string, usd: string, note: string) => call<CreditEntry>("POST", "/credits/grant", { wallet, usd, note });
 export const removeCredits = (wallet: string, usd: string, note: string) => call<CreditEntry>("POST", "/credits/remove", { wallet, usd, note });

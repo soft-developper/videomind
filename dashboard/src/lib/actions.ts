@@ -10,6 +10,7 @@ export const ACTIONS: Record<string, string> = {
   price_changed: "Changed a price", fixed_cost_added: "Added a fixed cost", fixed_cost_removed: "Removed a fixed cost",
   credit_price_changed: "Changed a credit price", credit_welcome_changed: "Changed the welcome credits", credits_granted: "Gave credits",
   credits_removed: "Removed credits", credit_refunded: "Refunded a charge",
+  charging_turned_on: "Turned charging on", charging_turned_off: "Turned charging off",
   admin_invited: "Invited an admin", invite_cancelled: "Cancelled an invitation", invite_accepted: "Accepted an invitation", admin_removed: "Removed an admin",
   password_changed: "Changed the password", authenticator_changed: "Changed the authenticator", recovery_codes_renewed: "Made new recovery codes",
 };

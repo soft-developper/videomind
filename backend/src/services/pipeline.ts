@@ -21,6 +21,9 @@ import { transcribeLong, clearPieces, type TranscribeDeps } from "./transcribe.j
 import { extractSound, cutSound } from "../lib/media.js";
 import { withUsage, ownerOf } from "../lib/usage.js";
 import type { TranscriptSegment, VideoAIData } from "../types/video.js";
+// vm_charge: processing is paid by the video's owner, per minute of sound
+import { holdProcessing, settleProcessing, releaseProcessing } from "../lib/charge.js";
+import { CreditsError } from "../lib/credits.js";
 // vm_media: thumbnails and video facts, a job of its own next to these stages
 import { INSPECT, makeInspectHandler } from "./inspect.js";
 import { EMBED, embedHandler, queueEmbed } from "./search.js";
@@ -77,9 +80,16 @@ export function makeHandlers(deps: PipelineDeps) {
       try {
         transcript = await withUsage(
           { feature: "transcribe", ownerWallet: ownerOf(video), videoId: job.videoId, jobId: job.id },
-          () => transcribeLong({ videoId: job.videoId, original, diskPath, ownerWallet: ownerOf(video), deps }));
+          () => transcribeLong({
+            videoId: job.videoId, original, diskPath, ownerWallet: ownerOf(video), deps,
+            beforePieces: async (seconds) => { await holdProcessing({ videoId: job.videoId, wallet: ownerOf(video), seconds, jobId: job.id }); },
+          }));
       } catch (err) {
         if (err instanceof PermanentJobError) throw err;
+        // vm_charge: no credits is not retried by the queue; the owner adds credits and presses Try again.
+        if (err instanceof CreditsError && err.code === "not_enough_credits") {
+          throw new PermanentJobError("no_credits", "Not enough credits to process this video. Add credits on the Wallet page, then try again.");
+        }
         classify(err, "Transcription");
       }
       await store.update(job.videoId, { ai: { transcript: transcript! } });
@@ -89,6 +99,7 @@ export function makeHandlers(deps: PipelineDeps) {
     // vm_transcribe: nothing was said, so there is nothing to analyze. The video is ready as it is.
     if (!(await store.get(job.videoId))?.ai?.transcript?.length) {
       await store.update(job.videoId, { status: "ready" });
+      await settleProcessing(job.videoId);
       return;
     }
 
@@ -126,6 +137,7 @@ export function makeHandlers(deps: PipelineDeps) {
     }
 
     await store.update(job.videoId, { status: "ready" });
+    await settleProcessing(job.videoId);
 
     // The original is kept: it is the copy the video plays from and the
     // one later steps (playback files, clips, storing on Shelby) are made from.
@@ -165,6 +177,8 @@ export function registerPipeline(deps: PipelineDeps = { extractSound, cutSound, 
     // vm_youtube: a publication that failed is not a failed video.
     if (job.kind === YOUTUBE_JOB) { await youtubeGaveUp(job, f).catch(() => {}); return; }
     await store.update(job.videoId, { status: "error" }).catch(() => {});
+    // vm_charge: processing that failed for good is not charged.
+    await releaseProcessing(job.videoId).catch(() => {});
   });
 }
 

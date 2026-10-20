@@ -1943,7 +1943,10 @@
     "creditsLoadFailed": "Vos crédits n’ont pas pu être chargés. Réessayez.",
     "topupLoadFailed": "L’ajout de crédits n’a pas pu être chargé. Réessayez.",
     "pricesLoadFailed": "Les prix n’ont pas pu être chargés. Réessayez.",
-    "notEnoughCredits": "Vous n’avez pas assez de crédits pour cela. Ajoutez des crédits dans la page Portefeuille et réessayez."
+    "notEnoughCredits": "Vous n’avez pas assez de crédits pour cela. Ajoutez des crédits dans la page Portefeuille et réessayez.",
+    "ownerOutOfCredits": "Le propriétaire de cette vidéo n’a plus de crédits : elle ne peut pas répondre aux questions pour l’instant.",
+    "processNoCredits": "Pas assez de crédits pour traiter cette vidéo. Ajoutez des crédits dans la page Portefeuille, puis réessayez.",
+    "captionsNoCredits": "Sous-titres arrêtés : pas assez de crédits. Ajoutez des crédits dans la page Portefeuille, puis réactivez les sous-titres."
   },
   "notFound": {
     "title": "Cette page est introuvable",

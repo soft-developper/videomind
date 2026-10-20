@@ -212,6 +212,8 @@ export function spokenLength(seconds: number): string {
  */
 export async function transcribeLong(args: {
   videoId: string; original: MediaAsset | null; diskPath?: string; ownerWallet: string | null; deps: TranscribeDeps;
+  /** vm_charge: called with the length of the sound once it is known, before any piece is sent to be transcribed. It may throw to stop. */
+  beforePieces?: (seconds: number) => Promise<void>;
 }): Promise<TranscriptSegment[]> {
   const { videoId, deps } = args;
   const storage = getStorage();
@@ -248,6 +250,11 @@ export async function transcribeLong(args: {
         await savePlan(videoId, planPieces(extracted!.durationSeconds, extracted!.pauses));
         pieces = await loadPieces(videoId);
       }
+    }
+
+    // vm_charge: the length is known now; nothing has been paid for yet.
+    if (args.beforePieces && pieces.some((p) => p.status !== "done")) {
+      await args.beforePieces(pieces.reduce((m, p) => Math.max(m, p.end), 0));
     }
 
     // 2. Every piece that is not done yet, in order.

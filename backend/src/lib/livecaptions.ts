@@ -30,6 +30,12 @@ import { allowedOrigins } from "./auth.js";
 import { getEvent, liveConfig, broadcast, save, type LiveEvent } from "./live.js";
 import { addCaption } from "./livechat.js";
 import { recordUsage } from "./usage.js";
+// vm_charge: captions are paid by the host, per minute, held in blocks
+import { reserve, settle, release, CreditsError } from "./credits.js";
+
+/** Minutes held at a time for captions. The next block is held a minute before this one runs out. */
+const BLOCK_MIN = 10;
+export const CAPTIONS_NO_CREDITS = "Captions stopped: not enough credits. Add credits on the Wallet page, then turn captions on again.";
 
 const RATE = 24_000;
 export const captionsUrl = () => process.env.LIVE_CAPTIONS_URL?.trim() || "wss://api.openai.com/v1/realtime?intent=transcription";
@@ -85,7 +91,7 @@ const level = (pcm: Buffer) => {
 };
 const msOf = (bytes: number) => (bytes / 2 / RATE) * 1000;
 
-class CaptionSession {
+export class CaptionSession {
   private up: WebSocket | null = null;
   private upOpenedAt = 0;
   private upReady = false;
@@ -105,6 +111,12 @@ class CaptionSession {
   private closed = false;
   private ping: NodeJS.Timeout;
   private flushTimer: NodeJS.Timeout;
+  // vm_charge
+  private holds: string[] = [];            // one per block, in order
+  private heldMs = 0;                      // audio the holds cover
+  private freeCaptions = false;            // charging off or price 0 when the session began
+  private reserving = false;
+  private lastBlock = false;               // the next block could not be held: stop when this one is used
 
   constructor(private e: LiveEvent, private host: WebSocket) {
     this.ping = setInterval(() => { try { host.ping(); } catch {} }, 25_000);
@@ -113,6 +125,38 @@ class CaptionSession {
     host.on("close", () => this.close("host_left"));
     host.on("error", () => this.close("host_left"));
     this.openUpstream();
+    void this.holdBlock();
+  }
+
+  /** vm_charge: hold the next block of minutes, or stop when the host cannot pay. */
+  private async holdBlock() {
+    if (this.closed || this.freeCaptions || this.reserving) return;
+    this.reserving = true;
+    try {
+      const r = await reserve({ wallet: this.e.wallet, action: "live_captions", quantity: BLOCK_MIN, ttlMs: 6 * 3600_000 });
+      if (r.free) { this.freeCaptions = true; return; }
+      if (this.closed) { await release(r.hold.id).catch(() => {}); return; }
+      this.holds.push(r.hold.id);
+      this.heldMs += BLOCK_MIN * 60_000;
+    } catch (err: any) {
+      if (err instanceof CreditsError && err.code === "not_enough_credits") {
+        // The minutes already held are paid for: use them, then stop.
+        if (this.holds.length) this.lastBlock = true;
+        else { this.tell({ type: "stopped", reason: "credits", message: CAPTIONS_NO_CREDITS }); this.close("no_credits"); }
+      } else {
+        console.error(`[captions] ${this.e.id}: holding credits failed: ${err?.message ?? err}`);
+      }
+    } finally { this.reserving = false; }
+  }
+
+  /** vm_charge: charge each block for the audio really sent in it. */
+  private async settleBlocks() {
+    const block = BLOCK_MIN * 60_000;
+    for (let i = 0; i < this.holds.length; i++) {
+      const used = Math.max(0, Math.min(block, this.sentMs - i * block));
+      await settle(this.holds[i], { quantity: used / 60_000 }).catch((e) => console.error(`[captions] settling: ${e?.message ?? e}`));
+    }
+    this.holds = [];
   }
 
   tell(msg: Record<string, unknown>) {
@@ -198,6 +242,13 @@ class CaptionSession {
   private send(pcm: Buffer) {
     this.toUpstream({ type: "input_audio_buffer.append", audio: pcm.toString("base64") });
     this.sentMs += msOf(pcm.length);
+    // vm_charge: the next block, a minute before this one runs out
+    if (this.lastBlock && this.sentMs >= this.heldMs) {
+      this.tell({ type: "stopped", reason: "credits", message: CAPTIONS_NO_CREDITS });
+      this.close("no_credits");
+      return;
+    }
+    if (!this.freeCaptions && !this.lastBlock && !this.reserving && this.holds.length && this.sentMs > this.heldMs - 60_000) void this.holdBlock();
   }
 
   private fromUpstream(ws: WebSocket, data: RawData) {
@@ -267,6 +318,7 @@ class CaptionSession {
     if (sessions.get(this.e.id) === this) sessions.delete(this.e.id);
     if (this.inTurn && this.speechMs >= MIN_SPEECH_MS) { this.toUpstream({ type: "input_audio_buffer.commit" }); this.commits.push(this.turnStart); }
     void this.flush();
+    void this.settleBlocks();
     try { if (this.host.readyState === WebSocket.OPEN) this.host.close(1000, why.slice(0, 60)); } catch {}
     // Keep listening a few seconds for the last lines, then hang up.
     const up = this.up;

@@ -11,6 +11,7 @@ import { shelbyBlobUrl } from "../lib/shelbyClient.js";
 import type { VideoRecord } from "../types/video.js";
 // vm_apiguard: wallet checks and rate limits, see src/lib/guard.ts
 import { limitUpload, limitPipeline, limitDelete, rateLimit } from "../lib/guard.js";
+import { releaseProcessing } from "../lib/charge.js";
 // vm_signin: the caller is the signed in wallet, never a value they send
 import { requireAuth, optionalAuth, authOf, sameWallet } from "../lib/auth.js";
 // vm_storage: every file of a video lives in storage
@@ -67,6 +68,7 @@ export async function dropVideoWork(id: string): Promise<void> {
   await deleteClipsForVideo(id);     // vm_clips (their files go with the video's other files)
   await deletePublicationsForVideo(id); // vm_youtube (what is already on YouTube stays there)
   await deleteViewsForVideo(id);       // vm_analytics
+  await releaseProcessing(id).catch(() => {}); // vm_charge: a video deleted while processing is not charged
   await abortUpload(id, { keepVideo: true }).catch((err) =>
     console.error(`[uploads] could not discard the unfinished upload of ${id}: ${err?.message ?? err}`));
   // If storage cannot be reached the asset rows stay, and the hourly

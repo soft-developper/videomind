@@ -10,7 +10,7 @@ import { clsx } from "clsx";
 import { useAdmin } from "@/components/Shell";
 import { Note } from "@/components/AuthCard";
 import {
-  ApiError, getCredits, getCreditLedger, setCreditPrice, setWelcome, grantCredits, removeCredits, refundCredit,
+  ApiError, getCredits, getCreditLedger, setCreditPrice, setWelcome, grantCredits, removeCredits, refundCredit, setCharging,
   type CreditsOverview, type CreditEntry, type CreditKind, type ActionPrice, type UnitCost,
 } from "@/lib/api";
 import { dollars, CREDIT_KINDS, CREDIT_UNITS } from "@/lib/actions";
@@ -130,6 +130,16 @@ export default function CreditsPage() {
 
   const refresh = async (message: string) => { setErr(null); await Promise.all([load(), loadLedger(null)]); setDone(message); };
 
+  const toggleCharging = async (on: boolean) => {
+    const priced = (o?.prices ?? []).filter((p) => p.microsPerUnit > 0).length;
+    const ask = on
+      ? `Turn charging on? ${priced} of ${o?.prices.length ?? 0} actions have a price above 0 and will need credits from now on.`
+      : "Turn charging off? Actions become free until you turn it on again.";
+    if (!window.confirm(ask)) return;
+    setBusy(true);
+    try { const s = await setCharging(on); await refresh(s.charging ? "Charging is on." : "Charging is off."); }
+    catch (e) { fail(e); } finally { setBusy(false); }
+  };
   const saveWelcome = async () => {
     const x = Number(welcome);
     if (welcome.trim() === "" || !Number.isFinite(x) || x < 0) return fail(new ApiError("Write the welcome amount as a number of US dollars, for example 1. Write 0 for none.", 400));
@@ -167,11 +177,21 @@ export default function CreditsPage() {
       {!o && !err && <p className="text-[14px] text-dim">Loading</p>}
       {o && t && (
         <div className="space-y-5">
-          <Note kind="info">
-            {o.settings.charging
-              ? "Charging is on: actions take their price from the user's credits."
-              : "Charging is off. Users see these prices on their Wallet page, but nothing is taken from a balance yet. Charging is turned on in a later update, once every action asks for its price first."}
-          </Note>
+          <section className={clsx("panel panel-pad", o.settings.charging ? "border-marker-dim" : "")} aria-label="Charging" data-charging={o.settings.charging ? "on" : "off"}>
+            <div className="flex items-start gap-4 flex-wrap">
+              <div className="flex-1 min-w-[260px]">
+                <h2 className="text-[15px] font-semibold text-paper">Charging is {o.settings.charging ? "on" : "off"}</h2>
+                <p className="text-[13px] text-dim mt-1 max-w-[80ch]">
+                  {o.settings.charging
+                    ? "Each action holds its price before it starts and is charged when it succeeds; a failed action costs nothing. Processing a video and answers on a video are paid by the video's owner (also for visitors' questions); search and Knowledge by the person using them; live captions by the host, per minute. Actions priced at 0 stay free."
+                    : "Nothing is taken from a balance. Users see the prices on their Wallet page. Set the prices first: when you turn charging on, every action with a price above 0 needs credits."}
+                </p>
+              </div>
+              <button onClick={() => void toggleCharging(!o.settings.charging)} disabled={busy} className={clsx("btn h-9 px-4", o.settings.charging ? "btn-ghost" : "btn-signal")} data-charging-toggle>
+                {o.settings.charging ? "Turn charging off" : "Turn charging on"}
+              </button>
+            </div>
+          </section>
 
           {o.topup.treasury ? (
             <p className="text-[13px] text-dim" data-credit-treasury>

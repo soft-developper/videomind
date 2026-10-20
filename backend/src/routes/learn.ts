@@ -1,5 +1,7 @@
 // src/routes/learn.ts
 import { Router } from "express";
+// vm_charge: Knowledge is paid by the signed in wallet
+import { charged, creditFailure } from "../lib/charge.js";
 import { store } from "../lib/store.js";
 import { getDb } from "../lib/db.js";
 import { generateLearningPaths, askLibrary } from "../services/learningService.js";
@@ -53,9 +55,9 @@ router.get("/paths", requireAuth, async (req, res) => {
     // Cache miss, generate fresh. Only this branch calls Claude, so only
     // this branch takes AI budget. Cached page loads are free.
     if (!takeBudget(AI_LIMIT, req, res)) return;
-    const paths = await withUsage(
+    const paths = await charged({ wallet, action: "learn_paths" }, () => withUsage(
       { feature: "learn_paths", ownerWallet: wallet, actorWallet: wallet },
-      () => generateLearningPaths(videos));
+      () => generateLearningPaths(videos)));
     const now = Date.now();
 
     await db.execute({
@@ -70,6 +72,8 @@ router.get("/paths", requireAuth, async (req, res) => {
 
     return res.json({ paths, videoCount: videos.length, generatedAt: now, cached: false });
   } catch (err: any) {
+    const c = creditFailure(err);
+    if (c) return res.status(c.status).json(c.body);
     const f = claudeFailure(err);
     if (f) return res.status(f.status).json({ error: f.error, code: f.code });
     return res.status(500).json({ error: err.message });
@@ -89,9 +93,9 @@ router.post("/paths/regenerate", limitAi, requireAuth, async (req, res) => {
       });
     }
 
-    const paths = await withUsage(
+    const paths = await charged({ wallet, action: "learn_paths" }, () => withUsage(
       { feature: "learn_paths", ownerWallet: wallet, actorWallet: wallet },
-      () => generateLearningPaths(videos));
+      () => generateLearningPaths(videos)));
     const now = Date.now();
     const db = getDb();
 
@@ -107,6 +111,8 @@ router.post("/paths/regenerate", limitAi, requireAuth, async (req, res) => {
 
     return res.json({ paths, videoCount: videos.length, generatedAt: now, cached: false });
   } catch (err: any) {
+    const c = creditFailure(err);
+    if (c) return res.status(c.status).json(c.body);
     const f = claudeFailure(err);
     if (f) return res.status(f.status).json({ error: f.error, code: f.code });
     return res.status(500).json({ error: err.message });
@@ -131,11 +137,13 @@ router.post("/ask", limitAi, requireAuth, async (req, res) => {
       });
     }
 
-    const result = await withUsage(
+    const result = await charged({ wallet, action: "learn_ask" }, () => withUsage(
       { feature: "learn_ask", ownerWallet: wallet, actorWallet: wallet },
-      () => askLibrary(question, videos, wallet));
+      () => askLibrary(question, videos, wallet)));
     return res.json(result);
   } catch (err: any) {
+    const c = creditFailure(err);
+    if (c) return res.status(c.status).json(c.body);
     const f = claudeFailure(err);
     if (f) return res.status(f.status).json({ error: f.error, code: f.code });
     return res.status(500).json({ error: err.message });

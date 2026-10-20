@@ -1943,7 +1943,10 @@
     "creditsLoadFailed": "Your credits could not be loaded. Try again.",
     "topupLoadFailed": "Adding credits could not be loaded. Try again.",
     "pricesLoadFailed": "The prices could not be loaded. Try again.",
-    "notEnoughCredits": "Not enough credits for this. Add credits on the Wallet page and try again."
+    "notEnoughCredits": "Not enough credits for this. Add credits on the Wallet page and try again.",
+    "ownerOutOfCredits": "The owner of this video is out of credits, so it cannot answer questions right now.",
+    "processNoCredits": "Not enough credits to process this video. Add credits on the Wallet page, then try again.",
+    "captionsNoCredits": "Captions stopped: not enough credits. Add credits on the Wallet page, then turn captions on again."
   },
   "notFound": {
     "title": "This page was not found",

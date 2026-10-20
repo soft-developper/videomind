@@ -1943,7 +1943,10 @@
     "creditsLoadFailed": "Não foi possível carregar seus créditos. Tente de novo.",
     "topupLoadFailed": "Não foi possível carregar a opção de adicionar créditos. Tente de novo.",
     "pricesLoadFailed": "Não foi possível carregar os preços. Tente de novo.",
-    "notEnoughCredits": "Você não tem créditos suficientes para isso. Adicione créditos na página Carteira e tente de novo."
+    "notEnoughCredits": "Você não tem créditos suficientes para isso. Adicione créditos na página Carteira e tente de novo.",
+    "ownerOutOfCredits": "O dono deste vídeo está sem créditos, então ele não pode responder perguntas agora.",
+    "processNoCredits": "Você não tem créditos suficientes para processar este vídeo. Adicione créditos na página Carteira e tente de novo.",
+    "captionsNoCredits": "As legendas pararam: não há créditos suficientes. Adicione créditos na página Carteira e ligue as legendas de novo."
   },
   "notFound": {
     "title": "Esta página não foi encontrada",

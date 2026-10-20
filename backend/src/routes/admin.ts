@@ -41,7 +41,7 @@ import { monthReport, monthsWithUsage, listPrices, updatePrice, addFixed, remove
 import { listVideos, getVideoForAdmin, removeVideo, restoreVideo, listLive, endLiveEvent, listPublications, ContentError } from "../lib/adminContent.js";
 // vm_credits: the Credits section
 import {
-  creditsOverview, adminLedger, updateActionPrice, setWelcome, grantCredits, removeCredits, refundCharge, walletCredits, CreditsError, MICROS,
+  creditsOverview, adminLedger, updateActionPrice, setWelcome, grantCredits, removeCredits, refundCharge, walletCredits, CreditsError, MICROS, setCharging,
 } from "../lib/credits.js";
 import { treasuryAddress, TOPUP_NETWORK } from "../lib/topup.js";
 
@@ -373,6 +373,7 @@ router.post("/costs/fixed/:id/delete", requireAdmin, async (req, res) => {
 //   GET  /credits/ledger?wallet=&kind=&before=   the ledger, newest first
 //   GET  /credits/wallets/:wallet          one wallet's balance and last rows
 //   POST /credits/prices/:id   { usd }      the price of one unit of an action
+//   POST /credits/charging     { on }       vm_charge: actions take their price from credits, or not
 //   POST /credits/welcome      { welcomeUsd }   given once to every wallet
 //   POST /credits/grant        { wallet, usd, note }
 //   POST /credits/remove       { wallet, usd, note }   never more than the wallet has free
@@ -395,6 +396,13 @@ router.post("/credits/prices/:id", requireAdmin, async (req, res) => {
     await audit(me(res), "credit_price_changed", p.id, { usd: usdOf(p.microsPerUnit), unit: p.unit });
     return res.json(p);
   } catch (err) { fail(res, err, "Changing the price"); }
+});
+router.post("/credits/charging", requireAdmin, async (req, res) => {
+  try {
+    const s = await setCharging(req.body);
+    await audit(me(res), s.charging ? "charging_turned_on" : "charging_turned_off");
+    return res.json(s);
+  } catch (err) { fail(res, err, "Changing charging"); }
 });
 router.post("/credits/welcome", requireAdmin, async (req, res) => {
   try {

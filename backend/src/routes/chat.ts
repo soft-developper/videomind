@@ -25,6 +25,8 @@ import { withUsage, ownerOf } from "../lib/usage.js";
 // vm_knowledge: a daily limit on answers to people other than the owner
 import { askBudgetPerVideo, visitorAnswersToday } from "../lib/usage.js";
 import { sameWallet } from "../lib/auth.js";
+// vm_charge: answers are paid by the video's owner, searches by the searcher
+import { charged, creditFailure } from "../lib/charge.js";
 
 const VIDEO_BUDGET = {
   error: "This video has had many questions today. Try again tomorrow.",
@@ -37,6 +39,7 @@ const router = Router();
 
 // POST /api/chat/:videoId
 router.post("/:videoId", limitAi, optionalAuth, async (req, res) => {
+  let visitor = true;
   try {
     const video = await store.get(req.params.videoId);
     if (!video) return res.status(404).json({ error: "Video not found" });
@@ -51,6 +54,7 @@ router.post("/:videoId", limitAi, optionalAuth, async (req, res) => {
     // allowance per video, since the owner pays for every answer.
     const owner = ownerOf(video);
     const asker = authOf(req)?.wallet ?? null;
+    visitor = !(owner && asker && sameWallet(owner, asker));
     if (!(owner && asker && sameWallet(owner, asker))) {
       const used = await visitorAnswersToday(video.id, owner);
       if (used >= askBudgetPerVideo()) {
@@ -61,11 +65,14 @@ router.post("/:videoId", limitAi, optionalAuth, async (req, res) => {
 
     // A question on a video counts against the video's owner. The asker
     // is recorded too, or left empty for a visitor.
-    const result = await withUsage(
+    const result = await charged({ wallet: owner, action: "ask", videoId: video.id }, () => withUsage(
       { feature: "ask", ownerWallet: ownerOf(video), actorWallet: authOf(req)?.wallet ?? null, videoId: video.id },
-      () => chatWithVideo(video.ai!.transcript!, question, video.title));
+      () => chatWithVideo(video.ai!.transcript!, question, video.title)));
     return res.json(result);
   } catch (err: any) {
+    // vm_charge: a visitor hears that the owner is out of credits, never a balance.
+    const c = creditFailure(err, { visitor });
+    if (c) return res.status(c.status).json(c.body);
     const f = claudeFailure(err);
     if (f) return res.status(f.status).json({ error: f.error, code: f.code });
     return res.status(500).json({ error: err.message });
@@ -90,13 +97,15 @@ router.post("/search/all", limitSearch, requireAuth, async (req, res) => {
     const collectionId = typeof body.collectionId === "string" && body.collectionId ? body.collectionId : undefined;
     const wallet = authOf(req)!.wallet;
 
-    const hits = await withUsage({ feature: "search", ownerWallet: wallet, actorWallet: wallet },
-      () => findPassages(wallet, query, 60, { categories, collectionId }));
+    const hits = await charged({ wallet, action: "search" }, () => withUsage({ feature: "search", ownerWallet: wallet, actorWallet: wallet },
+      () => findPassages(wallet, query, 60, { categories, collectionId })));
     const results = groupHits(hits);
     const thumbs = await thumbUrls(results.map((r) => r.videoId));
     for (const r of results) r.thumbUrl = thumbs.get(r.videoId) ?? null;
     return res.json({ results, notIndexed: await notIndexed(wallet) });
   } catch (err: any) {
+    const c = creditFailure(err);
+    if (c) return res.status(c.status).json(c.body);
     const status = Number(err?.status);
     if (status === 429 || status >= 500 || err?.name === "APIConnectionError" || err?.name === "APIConnectionTimeoutError") {
       return res.status(503).json({ error: "Search is busy. Please try again in a minute.", code: "busy" });

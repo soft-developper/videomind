@@ -1943,7 +1943,10 @@
     "creditsLoadFailed": "No se pudieron cargar tus créditos. Vuelve a intentarlo.",
     "topupLoadFailed": "No se pudo cargar la opción de añadir créditos. Vuelve a intentarlo.",
     "pricesLoadFailed": "No se pudieron cargar los precios. Vuelve a intentarlo.",
-    "notEnoughCredits": "No tienes créditos suficientes para esto. Añade créditos en la página Billetera y vuelve a intentarlo."
+    "notEnoughCredits": "No tienes créditos suficientes para esto. Añade créditos en la página Billetera y vuelve a intentarlo.",
+    "ownerOutOfCredits": "El dueño de este video se quedó sin créditos, así que ahora no puede responder preguntas.",
+    "processNoCredits": "No tienes créditos suficientes para procesar este video. Añade créditos en la página Billetera y vuelve a intentarlo.",
+    "captionsNoCredits": "Los subtítulos se detuvieron: no hay créditos suficientes. Añade créditos en la página Billetera y vuelve a activar los subtítulos."
   },
   "notFound": {
     "title": "No se encontró esta página",
