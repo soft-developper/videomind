@@ -471,6 +471,18 @@ export const getMyProfile = () => call<MyProfile>(() => raw.get("/api/me/profile
 export const saveMyProfile = (p: { name: string | null; bio: string | null }) => call<MyProfile>(() => raw.put("/api/me/profile", p));
 export const getMyWallet = () => call<WalletOverview>(() => raw.get("/api/me/wallet"));
 
+// ── vm_credits: the wallet's credits, in micro dollars (1 dollar = 1,000,000) ──
+export type CreditKind = "welcome" | "grant" | "remove" | "topup" | "charge" | "refund";
+export type CreditAction = "process_video" | "ask" | "search" | "learn_paths" | "learn_ask" | "live_captions" | "storage";
+export type CreditUnit = "minute" | "answer" | "search" | "generation" | "gb_month";
+export interface CreditEntry { id: string; at: number; kind: CreditKind; amountMicros: number; action: string | null; quantity: number | null; videoId: string | null; refunded: boolean }
+export interface MyCredits {
+  wallet: string; balanceMicros: number; heldMicros: number; availableMicros: number; charging: boolean;
+  entries: CreditEntry[];
+  prices: Array<{ id: CreditAction; unit: CreditUnit; microsPerUnit: number }>;
+}
+export const getMyCredits = () => call<MyCredits>(() => raw.get("/api/credits/me"));
+
 // ── vm_clips: clips cut from a video, for its owner ─────────────────────────
 export type ClipKind = "cut" | "social";
 export type ClipFrame = "original" | "vertical" | "square" | "landscape";

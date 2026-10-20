@@ -159,7 +159,7 @@
     "deleteTitle": "Eliminar mis datos",
     "deleteHint": "Esto elimina, de inmediato y para siempre, todo lo que VideoMind guarda sobre esta billetera.",
     "deleteWhat": "Se elimina: tus videos y sus archivos, transcripciones, capítulos y clips; tus colecciones; tus notas y puntos de reproducción; tu perfil y configuración; tus eventos en vivo con sus subtítulos y chat, y tus mensajes en otros chats; tu conexión con YouTube (revocada en Google); tu inicio de sesión.",
-    "deleteKept": "No se elimina: las copias que guardaste en Shelby (públicas en una red que VideoMind no puede cambiar) y los videos que publicaste en YouTube (quítalos en YouTube Studio). Las cantidades de uso, sin ningún contenido, se conservan como registros del negocio.",
+    "deleteKept": "No se elimina: las copias que guardaste en Shelby (públicas en una red que VideoMind no puede cambiar) y los videos que publicaste en YouTube (quítalos en YouTube Studio). Las cantidades de uso y el registro de tus créditos, sin ningún contenido, se conservan como registros del negocio.",
     "deleteTypeLabel": "Escribe DELETE para confirmar",
     "deleting": "Eliminando",
     "deleteButton": "Eliminar mis datos"
@@ -1133,7 +1133,7 @@
     },
     "sep": ". ",
     "title": "Billetera",
-    "description": "Tu dirección, tus videos en Shelby y lo que usó tu biblioteca en los últimos 30 días.",
+    "description": "Tu dirección, tus créditos, tus videos en Shelby y lo que usó tu biblioteca en los últimos 30 días.",
     "connect": "Conecta una billetera para verla aquí",
     "connectBody": "Tu biblioteca, lo que guardaste en Shelby y tu uso pertenecen a tu billetera.",
     "signIn": "Inicia sesión para ver tu billetera",
@@ -1158,7 +1158,45 @@
     "minutes": "{count, plural, one {# min} many {# min} other {# min}}",
     "answers": "Preguntas respondidas sobre tus videos",
     "tokens": "Tokens de IA, de entrada y de salida",
-    "amountsOnly": "Solo cantidades. VideoMind todavía no tiene precios."
+    "amountsOnly": "Solo cantidades. Lo que cuesta cada acción está en Créditos.",
+    "credits": {
+      "title": "Créditos",
+      "balance": "Saldo",
+      "available": "{amount} disponibles para usar",
+      "onHold": "{amount} reservados para trabajos en marcha",
+      "notCharging": "Los créditos pagan los servicios de VideoMind. Todavía no se cobra nada: los precios de abajo son lo que costará cada acción cuando empiecen los cobros.",
+      "charging": "Cada acción toma su precio de tus créditos, y ves el precio antes de que empiece.",
+      "addSoon": "Pronto podrás añadir créditos con ShelbyUSD.",
+      "activity": "Movimientos",
+      "noActivity": "Todavía no tienes créditos.",
+      "kind": {
+        "welcome": "Créditos de bienvenida",
+        "grant": "Créditos de VideoMind",
+        "remove": "Créditos retirados por VideoMind",
+        "topup": "Créditos añadidos",
+        "charge": "Gasto",
+        "refund": "Reembolso"
+      },
+      "prices": "Lo que cuesta cada cosa",
+      "free": "Gratis",
+      "action": {
+        "process_video": "Procesar un video: transcripción, capítulos, resumen y búsqueda",
+        "ask": "Una respuesta sobre un video",
+        "search": "Una búsqueda en tus videos",
+        "learn_paths": "Rutas de aprendizaje en Conocimiento",
+        "learn_ask": "Una respuesta de Pregunta a tu biblioteca",
+        "live_captions": "Subtítulos en vivo",
+        "storage": "Almacenamiento en VideoMind"
+      },
+      "per": {
+        "minute": "{price} por minuto",
+        "answer": "{price} por respuesta",
+        "search": "{price} por búsqueda",
+        "generation": "{price} cada vez",
+        "gb_month": "{price} por GB al mes"
+      },
+      "loadFailed": "No se pudieron cargar tus créditos. Vuelve a intentarlo en un minuto."
+    }
   },
   "analytics": {
     "range": {
@@ -1567,7 +1605,7 @@
     "keep2": "Subidas sin terminar: se borran después de 7 días.",
     "keep3": "Sesiones: caducan después de 7 días.",
     "keep4": "El perfil, la configuración, los eventos en vivo con sus subtítulos y su chat, y el registro de tu billetera: hasta que los borres en Configuración o nos pidas que lo hagamos.",
-    "keep5": "Cantidades de uso: se conservan como registros del negocio, sin contenido.",
+    "keep5": "Cantidades de uso y el registro de tus créditos (lo añadido, lo gastado y lo reembolsado): se conservan como registros del negocio, sin contenido, también después de que elimines tus datos.",
     "keep6": "Si suspendemos una billetera por incumplir nuestros Términos, se conserva un registro de la suspensión (la dirección de la billetera, la fecha y el motivo) hasta que se levante, aunque se borren los demás datos de la billetera.",
     "keep7": "Las copias que hacen los proveedores para respaldos o registros se eliminan según sus propios calendarios.",
     "choices1": "<b>Acceder y modificar:</b> tu biblioteca, tu perfil y tu configuración están en la aplicación. Puedes editar tus datos en cualquier momento.",

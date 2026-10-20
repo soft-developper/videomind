@@ -34,6 +34,8 @@ import { viewsRouter, analyticsRouter } from "./routes/analytics.js";
 import adminRouter from "./routes/admin.js";
 // vm_media: thumbnails and video facts need FFmpeg
 import { checkMediaTools, mediaHealth } from "./lib/media.js";
+// vm_credits: a wallet's credits
+import creditsRouter from "./routes/credits.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -77,6 +79,7 @@ app.use("/api/shelby", statsRouter);
 app.use("/api/learn", learnRouter);
 app.use("/api/usage", usageRouter);
 app.use("/api/collections", collectionsRouter);
+app.use("/api/credits", creditsRouter);       // vm_credits: balance and prices
 
 app.get("/api/health", (_req, res) => {
   const s = storageHealth();

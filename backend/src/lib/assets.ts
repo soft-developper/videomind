@@ -302,6 +302,9 @@ export function startHousekeeping(everyMs = 60 * 60 * 1000): () => void {
     import("../services/anchor.js").then((m) => m.backfillAnchorChecks())
       .then(() => import("./anchors.js")).then((m) => m.recheckAnchors())
       .catch((err) => console.error(`[anchors] housekeeping failed: ${err?.message ?? err}`));
+    // vm_credits: holds nobody settled are marked expired (they already stopped counting).
+    import("./credits.js").then((m) => m.expireHolds())
+      .catch((err) => console.error(`[credits] expiring holds failed: ${err?.message ?? err}`));
   };
   const first = setTimeout(run, 30_000);
   const timer = setInterval(run, everyMs);

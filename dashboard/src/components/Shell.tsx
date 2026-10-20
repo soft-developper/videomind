@@ -7,7 +7,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
 import { clsx } from "clsx";
-import { LayoutDashboard, Users, Film, Shield, Wrench, BarChart3, Receipt, Settings, Menu, X, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, Users, Film, Shield, Wrench, BarChart3, Receipt, Coins, Settings, Menu, X, type LucideIcon } from "lucide-react";
 import { Brand } from "./AuthCard";
 import { ApiError, getMe, logout, type AdminInfo } from "@/lib/api";
 
@@ -19,6 +19,7 @@ const NAV: Array<{ label: string; href?: string; icon: LucideIcon }> = [
   { label: "Operations", href: "/operations", icon: Wrench },
   { label: "Insights", href: "/insights", icon: BarChart3 },
   { label: "Costs", href: "/costs", icon: Receipt },
+  { label: "Credits", href: "/credits", icon: Coins },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

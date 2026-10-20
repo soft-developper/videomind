@@ -595,6 +595,73 @@ const MIGRATIONS: Migration[] = [
       `ALTER TABLE user_settings ADD COLUMN language TEXT`,
     ],
   },
+  {
+    // vm_credits: credits, counted in whole micro dollars (1 dollar = 1,000,000).
+    // credit_entries is the ledger: rows are only ever added, and a wallet's
+    // balance is the sum of its rows. A hold sets money aside before an
+    // action; it is settled (one charge row) or released (nothing charged).
+    // Prices start at 0 and charging starts off: nothing is charged until an
+    // admin sets prices and turns charging on (Part 16c). See src/lib/credits.ts.
+    id: "024_credits",
+    statements: [
+      `CREATE TABLE credit_entries (
+        id               TEXT PRIMARY KEY,
+        wallet           TEXT NOT NULL,
+        at               INTEGER NOT NULL,
+        kind             TEXT NOT NULL,
+        amount_micros    INTEGER NOT NULL,
+        action           TEXT,
+        quantity         REAL,
+        video_id         TEXT,
+        hold_id          TEXT,
+        refund_of        TEXT,
+        note             TEXT,
+        admin_email      TEXT,
+        idempotency_key  TEXT UNIQUE
+      )`,
+      `CREATE INDEX credit_entries_wallet_idx ON credit_entries(wallet, at)`,
+      `CREATE INDEX credit_entries_at_idx ON credit_entries(at)`,
+      `CREATE TABLE credit_holds (
+        id               TEXT PRIMARY KEY,
+        wallet           TEXT NOT NULL,
+        action           TEXT NOT NULL,
+        quantity         REAL NOT NULL,
+        amount_micros    INTEGER NOT NULL,
+        unit_micros      INTEGER NOT NULL,
+        status           TEXT NOT NULL DEFAULT 'held',
+        video_id         TEXT,
+        job_id           TEXT,
+        created_at       INTEGER NOT NULL,
+        expires_at       INTEGER NOT NULL,
+        closed_at        INTEGER,
+        charged_micros   INTEGER,
+        idempotency_key  TEXT UNIQUE
+      )`,
+      `CREATE INDEX credit_holds_wallet_idx ON credit_holds(wallet, status)`,
+      `CREATE TABLE action_prices (
+        id                TEXT PRIMARY KEY,
+        label             TEXT NOT NULL,
+        unit              TEXT NOT NULL,
+        micros_per_unit   INTEGER NOT NULL DEFAULT 0,
+        position          INTEGER NOT NULL DEFAULT 0,
+        updated_at        INTEGER NOT NULL,
+        updated_by        TEXT
+      )`,
+      `CREATE TABLE credit_settings (
+        id     TEXT PRIMARY KEY,
+        value  TEXT NOT NULL
+      )`,
+      `INSERT INTO action_prices (id, label, unit, micros_per_unit, position, updated_at) VALUES ('process_video', 'Process a video (transcript, chapters, summary, search)', 'minute', 0, 1, 0)`,
+      `INSERT INTO action_prices (id, label, unit, micros_per_unit, position, updated_at) VALUES ('ask', 'Answer a question about a video', 'answer', 0, 2, 0)`,
+      `INSERT INTO action_prices (id, label, unit, micros_per_unit, position, updated_at) VALUES ('search', 'Search across videos', 'search', 0, 3, 0)`,
+      `INSERT INTO action_prices (id, label, unit, micros_per_unit, position, updated_at) VALUES ('learn_paths', 'Make learning paths', 'generation', 0, 4, 0)`,
+      `INSERT INTO action_prices (id, label, unit, micros_per_unit, position, updated_at) VALUES ('learn_ask', 'Answer from Ask your library', 'answer', 0, 5, 0)`,
+      `INSERT INTO action_prices (id, label, unit, micros_per_unit, position, updated_at) VALUES ('live_captions', 'Live captions', 'minute', 0, 6, 0)`,
+      `INSERT INTO action_prices (id, label, unit, micros_per_unit, position, updated_at) VALUES ('storage', 'Storage on VideoMind', 'gb_month', 0, 7, 0)`,
+      `INSERT INTO credit_settings (id, value) VALUES ('charging', 'off')`,
+      `INSERT INTO credit_settings (id, value) VALUES ('welcome_micros', '0')`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

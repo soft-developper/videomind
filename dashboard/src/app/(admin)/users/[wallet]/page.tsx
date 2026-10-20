@@ -6,7 +6,8 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, Copy, Check } from "lucide-react";
 import { useAdmin } from "@/components/Shell";
 import { Note } from "@/components/AuthCard";
-import { ApiError, getUser, signOutUser, suspendUser, unsuspendUser, deleteUserData, type UserDetail, type UsageNumbers } from "@/lib/api";
+import { ApiError, getUser, signOutUser, suspendUser, unsuspendUser, deleteUserData, getWalletCredits, type UserDetail, type UsageNumbers, type WalletCredits } from "@/lib/api";
+import { dollars, CREDIT_KINDS } from "@/lib/actions";
 import { num, bytes, duration, tokens, when, day } from "@/lib/format";
 
 const msg = (e: unknown) => (e instanceof ApiError ? e.message : "That did not work. Try again.");
@@ -45,6 +46,9 @@ export default function UserPage({ params }: { params: { wallet: string } }) {
   const [confirm, setConfirm] = useState("");
   const [copied, setCopied] = useState(false);
   const [gone, setGone] = useState<string | null>(null);
+  // vm_credits
+  const [credits, setCredits] = useState<WalletCredits | null>(null);
+  useEffect(() => { getWalletCredits(wallet).then(setCredits, () => setCredits(null)); }, [wallet, done]);
 
   const load = useCallback(async () => {
     try { setD(await getUser(wallet)); setErr(null); }
@@ -127,6 +131,27 @@ export default function UserPage({ params }: { params: { wallet: string } }) {
             </Panel>
           </div>
 
+          {credits && (
+            <Panel title="Credits">
+              <div className="flex items-baseline gap-6 flex-wrap" data-user-credits>
+                <p className="text-[13.5px] text-dim">Balance <span className="text-[17px] text-paper tabular-nums ml-1">{dollars(credits.balanceMicros, true)}</span></p>
+                {credits.heldMicros > 0 && <p className="text-[13.5px] text-dim">On hold <span className="text-paper tabular-nums ml-1">{dollars(credits.heldMicros, true)}</span></p>}
+                <Link href={`/credits?wallet=${encodeURIComponent(credits.wallet)}`} className="text-[13.5px] text-paper-2 underline hover:text-paper ml-auto">Give credits, refunds and the full ledger</Link>
+              </div>
+              {credits.entries.length > 0 && (
+                <ul className="mt-3 divide-y divide-rule text-[13.5px]">
+                  {credits.entries.slice(0, 5).map((e) => (
+                    <li key={e.id} className="flex items-center gap-3 py-1.5">
+                      <span className="text-dim whitespace-nowrap">{day(e.at)}</span>
+                      <span className="text-paper-2 truncate min-w-0">{CREDIT_KINDS[e.kind] ?? e.kind}{e.note ? `: ${e.note}` : ""}</span>
+                      <span className="ml-auto tabular-nums text-paper whitespace-nowrap">{e.amountMicros > 0 ? "+" : ""}{dollars(e.amountMicros, true)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+          )}
+
           <Panel title={`Videos (${num(d.videos.length)})`}>
             {d.videos.length === 0 ? <p className="text-[13.5px] text-dim">No videos.</p> : (
               <div className="overflow-x-auto">
@@ -178,11 +203,11 @@ export default function UserPage({ params }: { params: { wallet: string } }) {
               {!u.dataDeleted && (
                 <div className="space-y-2 border-t border-rule pt-5">
                   <h3 className="text-[14px] font-semibold text-paper">Delete the data</h3>
-                  <p className="text-[13px] text-dim max-w-[70ch]">Deletes this wallet&rsquo;s videos and their files, collections, notes, profile, settings, live events and chat, and its YouTube connection, the same as Delete my data. Copies on Shelby and YouTube stay. This cannot be undone.</p>
+                  <p className="text-[13px] text-dim max-w-[70ch]">Deletes this wallet&rsquo;s videos and their files, collections, notes, profile, settings, live events and chat, and its YouTube connection, the same as Delete my data. Copies on Shelby and YouTube stay, and so does its credits ledger, as a record of money. This cannot be undone.</p>
                   <label className="block max-w-[520px]"><span className="block text-[13px] text-paper-2 mb-1.5">Type the wallet address to confirm</span>
                     <input value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" spellCheck={false} className="w-full h-9 px-3 text-[13px] tc" />
                   </label>
-                  <button disabled={busy || confirm.trim().toLowerCase() !== u.wallet.toLowerCase()} onClick={() => void act(async () => { const r = await deleteUserData(u.wallet, confirm.trim()); setConfirm(""); if (!u.suspended) setGone("The wallet's data was deleted. Nothing about it is kept, so it no longer appears in Users."); return `Deleted: ${num(r.deleted.videos ?? 0)} videos, ${num(r.deleted.collections ?? 0)} collections, ${num(r.deleted.notes ?? 0)} notes, ${num(r.deleted.liveEvents ?? 0)} live events.`; })} className="btn h-9 px-3.5 bg-error/90 text-void hover:bg-error disabled:opacity-40">Delete this wallet&rsquo;s data</button>
+                  <button disabled={busy || confirm.trim().toLowerCase() !== u.wallet.toLowerCase()} onClick={() => void act(async () => { const r = await deleteUserData(u.wallet, confirm.trim()); setConfirm(""); if (!u.suspended) setGone("The wallet's data was deleted. Only its usage amounts and credits ledger are kept, so it no longer appears in Users."); return `Deleted: ${num(r.deleted.videos ?? 0)} videos, ${num(r.deleted.collections ?? 0)} collections, ${num(r.deleted.notes ?? 0)} notes, ${num(r.deleted.liveEvents ?? 0)} live events.`; })} className="btn h-9 px-3.5 bg-error/90 text-void hover:bg-error disabled:opacity-40">Delete this wallet&rsquo;s data</button>
                 </div>
               )}
             </div>

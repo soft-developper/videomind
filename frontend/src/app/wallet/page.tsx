@@ -1,7 +1,7 @@
 "use client";
-// vm_profile: the signed in wallet. Its address, every video's store on
-// Shelby (with the ones that need attention first), and what it used in
-// the last 30 days. Quantities only: there are no prices yet.
+// vm_profile: the signed in wallet. Its address, its credits (vm_credits),
+// every video's store on Shelby (with the ones that need attention first),
+// and what it used in the last 30 days.
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -14,10 +14,82 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { WalletButton } from "@/components/layout/WalletButton";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { explorer } from "@/lib/explorer";
-import { getMyWallet, type WalletOverview } from "@/lib/api";
+import { getMyWallet, getMyCredits, type WalletOverview, type MyCredits } from "@/lib/api";
 // vm_lang
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/lib/format";
+import { intlLocale, type Locale } from "@/i18n/config";
+
+// vm_credits: dollars in the reader's language, never rounded: $3.925 stays
+// $3.925 and a price of $0.006 keeps its digits. Whole cents show two digits.
+function useMoney() {
+  const locale = useLocale() as Locale;
+  // Arabic formats carry direction marks; the amounts sit in left to right
+  // boxes, so the marks are taken out (they would move the minus sign).
+  return (micros: number, sign = false) => {
+    const x = micros / 1_000_000;
+    const s = new Intl.NumberFormat(intlLocale(locale), { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 6 }).format(x).replace(/[\u200e\u200f\u061c]/g, "");
+    return sign && x > 0 ? `+${s}` : s;
+  };
+}
+
+/** An amount inside a sentence, kept left to right in every language (Unicode isolate). */
+const inline = (s: string) => `\u2066${s}\u2069`;
+
+function CreditsSection({ c }: { c: MyCredits }) {
+  const t = useTranslations("walletPage.credits");
+  const tw = useTranslations("walletPage");
+  const f = useFormat();
+  const money = useMoney();
+  return (
+    <section aria-labelledby="cr-h" data-credits>
+      <h2 id="cr-h" className="text-[15px] font-semibold text-paper">{t("title")}</h2>
+      <div className="mt-3 flex items-end gap-x-8 gap-y-2 flex-wrap">
+        <div>
+          <p className="text-[12.5px] text-dim">{t("balance")}</p>
+          <p className="text-[26px] font-display text-paper mt-0.5 tabular-nums" dir="ltr" data-credits-balance>{money(c.balanceMicros)}</p>
+        </div>
+        {c.heldMicros > 0 && (
+          <p className="text-[13px] text-dim pb-1.5">
+            {t("available", { amount: inline(money(c.availableMicros)) })}{tw("sep")}{t("onHold", { amount: inline(money(c.heldMicros)) })}
+          </p>
+        )}
+      </div>
+      <p className="text-[13px] text-dim mt-2 max-w-[70ch]">{c.charging ? t("charging") : t("notCharging")} {t("addSoon")}</p>
+
+      <div className="grid md:grid-cols-2 gap-x-10 gap-y-8 mt-6">
+        <div className="min-w-0">
+          <h3 className="eyebrow mb-2">{t("activity")}</h3>
+          {c.entries.length === 0 ? <p className="text-[14px] text-dim">{t("noActivity")}</p> : (
+            <ul className="divide-y divide-rule border-y border-rule" aria-label={t("activity")}>
+              {c.entries.slice(0, 10).map((e) => (
+                <li key={e.id} className="flex items-baseline gap-3 py-2.5" data-credit-entry={e.kind}>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[14px] text-paper-2">{t(`kind.${e.kind}`)}</span>
+                    {e.action && <span className="block text-[12.5px] text-dim truncate">{t.has(`action.${e.action}` as never) ? t(`action.${e.action}` as never) : e.action}</span>}
+                  </span>
+                  <span className="text-[12.5px] text-dim whitespace-nowrap">{f.date(e.at)}</span>
+                  <span className={clsx("tc whitespace-nowrap", e.amountMicros > 0 ? "tc-marker" : "text-paper")} dir="ltr">{money(e.amountMicros, true)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="min-w-0">
+          <h3 className="eyebrow mb-2">{t("prices")}</h3>
+          <dl className="divide-y divide-rule border-y border-rule">
+            {c.prices.map((p) => (
+              <div key={p.id} className="flex items-baseline justify-between gap-4 py-2.5" data-credit-price={p.id}>
+                <dt className="text-[14px] text-paper-2">{t(`action.${p.id}`)}</dt>
+                <dd className="text-[13.5px] text-paper text-end shrink-0">{p.microsPerUnit === 0 ? t("free") : t(`per.${p.unit}`, { price: inline(money(p.microsPerUnit)) })}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 type Row = WalletOverview["videos"][number];
 
@@ -71,6 +143,9 @@ export default function WalletPage() {
   const wallet = useSessionWallet();
   const [copied, setCopied] = useState(false);
   const { data, isLoading, isError } = useQuery({ queryKey: ["my-wallet", wallet ?? null], queryFn: getMyWallet, enabled: !!wallet });
+  // vm_credits
+  const tcr = useTranslations("walletPage.credits");
+  const credits = useQuery({ queryKey: ["my-credits", wallet ?? null], queryFn: getMyCredits, enabled: !!wallet });
 
   const total = (feature: string | null, metric: string) =>
     (data?.usage.totals ?? []).filter((t) => (feature === null || t.feature === feature) && t.metric === metric).reduce((a, t) => a + t.total, 0);
@@ -115,6 +190,9 @@ export default function WalletPage() {
                 {t("network")} <Link href={`/u/${data.wallet}`} className="underline underline-offset-2 hover:text-paper">{t("publicPage")}</Link>
               </p>
             </section>
+
+            {credits.data && <CreditsSection c={credits.data} />}
+            {credits.isError && <p className="text-[14px] text-error" role="alert">{tcr("loadFailed")}</p>}
 
             <section aria-labelledby="sum-h">
               <h2 id="sum-h" className="sr-only">{t("summary")}</h2>

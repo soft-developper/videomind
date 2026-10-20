@@ -8,6 +8,8 @@ export const ACTIONS: Record<string, string> = {
   video_removed: "Took a video down", video_restored: "Restored a video", live_ended: "Ended a live event",
   user_signed_out: "Signed a wallet out", user_suspended: "Suspended a wallet", user_unsuspended: "Lifted a suspension", user_data_deleted: "Deleted a wallet's data",
   price_changed: "Changed a price", fixed_cost_added: "Added a fixed cost", fixed_cost_removed: "Removed a fixed cost",
+  credit_price_changed: "Changed a credit price", credit_welcome_changed: "Changed the welcome credits", credits_granted: "Gave credits",
+  credits_removed: "Removed credits", credit_refunded: "Refunded a charge",
   admin_invited: "Invited an admin", invite_cancelled: "Cancelled an invitation", invite_accepted: "Accepted an invitation", admin_removed: "Removed an admin",
   password_changed: "Changed the password", authenticator_changed: "Changed the authenticator", recovery_codes_renewed: "Made new recovery codes",
 };
@@ -19,3 +21,14 @@ export const FEATURES: Record<string, string> = {
   learn_paths: "Learning paths", learn_ask: "Learn questions", live_captions: "Live captions", storage: "Storage", unattributed: "Not attributed",
 };
 export const featureLabel = (f: string) => FEATURES[f] ?? f.replace(/_/g, " ");
+
+/** vm_credits: money as the dashboard shows it. Credits are counted in micro dollars. */
+export function dollars(micros: number, exact = false): string {
+  const x = micros / 1_000_000;
+  if (!exact && x !== 0 && Math.abs(x) < 0.01) return x < 0 ? "-under $0.01" : "under $0.01";
+  return x.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: exact ? 6 : 2 });
+}
+export const CREDIT_KINDS: Record<string, string> = {
+  welcome: "Welcome", grant: "Given by an admin", remove: "Removed by an admin", topup: "Top up", charge: "Charge", refund: "Refund",
+};
+export const CREDIT_UNITS: Record<string, string> = { minute: "per minute", answer: "per answer", search: "per search", generation: "per generation", gb_month: "per GB month" };

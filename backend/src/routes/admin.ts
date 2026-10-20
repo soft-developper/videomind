@@ -39,6 +39,10 @@ import {
 import { limitsOverview } from "../lib/adminSettings.js";
 import { monthReport, monthsWithUsage, listPrices, updatePrice, addFixed, removeFixed, CostsError } from "../lib/costs.js";
 import { listVideos, getVideoForAdmin, removeVideo, restoreVideo, listLive, endLiveEvent, listPublications, ContentError } from "../lib/adminContent.js";
+// vm_credits: the Credits section
+import {
+  creditsOverview, adminLedger, updateActionPrice, setWelcome, grantCredits, removeCredits, refundCharge, walletCredits, CreditsError, MICROS,
+} from "../lib/credits.js";
 
 const router = Router();
 const SESSION = "vm_admin", PENDING = "vm_admin_mfa";
@@ -85,6 +89,7 @@ function fail(res: Response, err: any, what: string) {
   if (err instanceof ContentError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof CostsError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof UsersError) return res.status(err.status).json({ error: err.message, code: err.code });
+  if (err instanceof CreditsError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof MailError) return res.status(502).json({ error: "The email could not be sent. Check the Resend settings on the server and try again.", code: "mail_failed" });
   console.error(`[admin] ${what}: ${err?.message ?? err}`);
   return res.status(500).json({ error: `${what} did not work. Try again.`, code: "server_error" });
@@ -360,6 +365,61 @@ router.post("/costs/fixed", requireAdmin, async (req, res) => {
 router.post("/costs/fixed/:id/delete", requireAdmin, async (req, res) => {
   try { await removeFixed(req.params.id); await audit(me(res), "fixed_cost_removed", req.params.id); return res.json({ ok: true }); }
   catch (err) { fail(res, err, "Removing the cost"); }
+});
+
+// ── vm_credits: Credits ─────────────────────────────────────────────────────
+//   GET  /credits                          settings, prices with the cost per unit, totals
+//   GET  /credits/ledger?wallet=&kind=&before=   the ledger, newest first
+//   GET  /credits/wallets/:wallet          one wallet's balance and last rows
+//   POST /credits/prices/:id   { usd }      the price of one unit of an action
+//   POST /credits/welcome      { welcomeUsd }   given once to every wallet
+//   POST /credits/grant        { wallet, usd, note }
+//   POST /credits/remove       { wallet, usd, note }   never more than the wallet has free
+//   POST /credits/entries/:id/refund { note }      a charge, in full, once
+const usdOf = (micros: number) => micros / MICROS;
+router.get("/credits", requireAdmin, async (_req, res) => {
+  try { return res.json(await creditsOverview()); } catch (err) { fail(res, err, "Loading the credits"); }
+});
+router.get("/credits/ledger", requireAdmin, async (req, res) => {
+  try { return res.json(await adminLedger(req.query)); } catch (err) { fail(res, err, "Loading the ledger"); }
+});
+router.get("/credits/wallets/:wallet", requireAdmin, async (req, res) => {
+  try { return res.json(await walletCredits(req.params.wallet)); } catch (err) { fail(res, err, "Loading the wallet's credits"); }
+});
+router.post("/credits/prices/:id", requireAdmin, async (req, res) => {
+  try {
+    const p = await updateActionPrice(req.params.id, req.body, me(res).email);
+    await audit(me(res), "credit_price_changed", p.id, { usd: usdOf(p.microsPerUnit), unit: p.unit });
+    return res.json(p);
+  } catch (err) { fail(res, err, "Changing the price"); }
+});
+router.post("/credits/welcome", requireAdmin, async (req, res) => {
+  try {
+    const s = await setWelcome(req.body);
+    await audit(me(res), "credit_welcome_changed", null, { usd: usdOf(s.welcomeMicros) });
+    return res.json(s);
+  } catch (err) { fail(res, err, "Changing the welcome amount"); }
+});
+router.post("/credits/grant", requireAdmin, async (req, res) => {
+  try {
+    const e = await grantCredits(req.body, me(res).email);
+    await audit(me(res), "credits_granted", e.wallet, { usd: usdOf(e.amountMicros), note: e.note });
+    return res.status(201).json(e);
+  } catch (err) { fail(res, err, "Giving the credits"); }
+});
+router.post("/credits/remove", requireAdmin, async (req, res) => {
+  try {
+    const e = await removeCredits(req.body, me(res).email);
+    await audit(me(res), "credits_removed", e.wallet, { usd: usdOf(-e.amountMicros), note: e.note });
+    return res.status(201).json(e);
+  } catch (err) { fail(res, err, "Removing the credits"); }
+});
+router.post("/credits/entries/:id/refund", requireAdmin, async (req, res) => {
+  try {
+    const e = await refundCharge(req.params.id, req.body, me(res).email);
+    await audit(me(res), "credit_refunded", e.wallet, { usd: usdOf(e.amountMicros), charge: req.params.id, note: e.note });
+    return res.status(201).json(e);
+  } catch (err) { fail(res, err, "Refunding the charge"); }
 });
 
 // ── vm_admin_settings: Settings ─────────────────────────────────────────────

@@ -80,9 +80,10 @@ export function monthBounds(month?: unknown, now = Date.now()) {
   return { month: m, start, end, days: Math.round((end - start) / 86400_000) };
 }
 
-const modelMatches = (ledgerModel: string | null, priceModel: string) =>
+// vm_credits: exported for the cost per unit next to each credit price.
+export const modelMatches = (ledgerModel: string | null, priceModel: string) =>
   priceModel === "*" || (!!ledgerModel && (ledgerModel === priceModel || ledgerModel.startsWith(priceModel + "-")));
-const quantityIn = (unit: Price["unit"], q: number) => (unit === "minute" ? q / 60 : unit === "million_tokens" ? q / 1e6 : q);
+export const quantityIn = (unit: Price["unit"], q: number) => (unit === "minute" ? q / 60 : unit === "million_tokens" ? q / 1e6 : q);
 
 /**
  * GB months of storage in a month: the bytes held at the end of each day,

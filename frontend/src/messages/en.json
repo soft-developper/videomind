@@ -159,7 +159,7 @@
     "deleteTitle": "Delete my data",
     "deleteHint": "This deletes, at once and for good, everything VideoMind holds about this wallet.",
     "deleteWhat": "Deleted: your videos and their files, transcripts, chapters and clips; your collections; your notes and watch places; your profile and settings; your live events with their captions and chat, and your messages in other chats; your YouTube connection (revoked at Google); your sign in.",
-    "deleteKept": "Not deleted: copies you stored on Shelby (public on a network VideoMind cannot change) and videos you published to YouTube (remove them in YouTube Studio). Usage amounts, without any content, are kept as business records.",
+    "deleteKept": "Not deleted: copies you stored on Shelby (public on a network VideoMind cannot change) and videos you published to YouTube (remove them in YouTube Studio). Usage amounts and your credits record, without any content, are kept as business records.",
     "deleteTypeLabel": "Type DELETE to confirm",
     "deleting": "Deleting",
     "deleteButton": "Delete my data"
@@ -1133,7 +1133,7 @@
     },
     "sep": ". ",
     "title": "Wallet",
-    "description": "Your address, your videos on Shelby, and what your library used in the last 30 days.",
+    "description": "Your address, your credits, your videos on Shelby, and what your library used in the last 30 days.",
     "connect": "Connect a wallet to see it here",
     "connectBody": "Your library, your stores on Shelby and your usage belong to your wallet.",
     "signIn": "Sign in to see your wallet",
@@ -1158,7 +1158,45 @@
     "minutes": "{count, plural, one {# min} other {# min}}",
     "answers": "Questions answered on your videos",
     "tokens": "AI tokens, in and out",
-    "amountsOnly": "Amounts only. VideoMind has no prices yet."
+    "amountsOnly": "Amounts only. What each action costs is under Credits.",
+    "credits": {
+      "title": "Credits",
+      "balance": "Balance",
+      "available": "{amount} free to use",
+      "onHold": "{amount} set aside for work that is running",
+      "notCharging": "Credits pay for VideoMind's services. Nothing is charged yet: the prices below are what each action will cost once charging starts.",
+      "charging": "Each action takes its price from your credits, and you see the price before it starts.",
+      "addSoon": "Adding credits with ShelbyUSD comes soon.",
+      "activity": "Activity",
+      "noActivity": "No credits yet.",
+      "kind": {
+        "welcome": "Welcome credits",
+        "grant": "Credits from VideoMind",
+        "remove": "Credits removed by VideoMind",
+        "topup": "Credits added",
+        "charge": "Spent",
+        "refund": "Refund"
+      },
+      "prices": "What things cost",
+      "free": "Free",
+      "action": {
+        "process_video": "Processing a video: transcript, chapters, summary and search",
+        "ask": "An answer about a video",
+        "search": "A search across your videos",
+        "learn_paths": "Learning paths in Knowledge",
+        "learn_ask": "An answer from Ask your library",
+        "live_captions": "Live captions",
+        "storage": "Storage on VideoMind"
+      },
+      "per": {
+        "minute": "{price} a minute",
+        "answer": "{price} an answer",
+        "search": "{price} a search",
+        "generation": "{price} each time",
+        "gb_month": "{price} per GB a month"
+      },
+      "loadFailed": "Your credits could not be loaded. Try again in a minute."
+    }
   },
   "analytics": {
     "range": {
@@ -1567,7 +1605,7 @@
     "keep2": "Unfinished uploads: deleted after 7 days.",
     "keep3": "Sessions: they expire after 7 days.",
     "keep4": "Profile, settings, live events with their captions and chat, and your wallet record: until you delete them in Settings or ask us to.",
-    "keep5": "Usage quantities: kept as business records, without content.",
+    "keep5": "Usage quantities and the record of your credits (what was added, spent and refunded): kept as business records, without content, also after you delete your data.",
     "keep6": "If we suspend a wallet for breaking our Terms, a record of the suspension (the wallet address, the date and the reason) is kept until the suspension is lifted, even if the wallet’s other data is deleted.",
     "keep7": "Copies made by providers for backups or logs are removed on their own schedules.",
     "choices1": "<b>Access and change:</b> your library, profile and settings are in the app. You can edit your details at any time.",

@@ -212,3 +212,33 @@ export const getLimits = () => call<Limits>("GET", "/settings/limits");
 export const inviteStart = (token: string) => call<{ email: string; secret: string; uri: string; by: string | null }>("POST", "/invite/start", { token });
 export const inviteComplete = (token: string, password: string, code: string) =>
   call<{ admin: AdminInfo; recoveryCodes: string[] }>("POST", "/invite/complete", { token, password, code });
+
+// ── vm_credits ───────────────────────────────────────────────────────────────
+export type CreditKind = "welcome" | "grant" | "remove" | "topup" | "charge" | "refund";
+export type CreditUnit = "minute" | "answer" | "search" | "generation" | "gb_month";
+export interface CreditEntry {
+  id: string; wallet: string; at: number; kind: CreditKind; amountMicros: number;
+  action: string | null; quantity: number | null; videoId: string | null; holdId: string | null;
+  refundOf: string | null; note: string | null; adminEmail: string | null; refunded: boolean;
+}
+export interface ActionPrice { id: string; label: string; unit: CreditUnit; microsPerUnit: number; position: number; updatedAt: number; updatedBy: string | null }
+export interface UnitCost { action: string; units: number; costUsd: number; perUnitUsd: number | null }
+export interface CreditsOverview {
+  settings: { charging: boolean; welcomeMicros: number };
+  prices: ActionPrice[]; costs: UnitCost[];
+  totals: { byKind: Record<CreditKind, { micros: number; count: number }>; outstandingMicros: number; openHolds: { count: number; micros: number }; walletsWithCredits: number };
+}
+export interface WalletCredits { wallet: string; balanceMicros: number; heldMicros: number; availableMicros: number; entries: CreditEntry[] }
+export const getCredits = () => call<CreditsOverview>("GET", "/credits");
+export function getCreditLedger(o: { wallet?: string; kind?: CreditKind | ""; before?: string | null }) {
+  const p = new URLSearchParams();
+  if (o.wallet) p.set("wallet", o.wallet); if (o.kind) p.set("kind", o.kind); if (o.before) p.set("before", String(o.before));
+  p.set("limit", "50");
+  return call<{ entries: CreditEntry[]; next: string | null }>("GET", `/credits/ledger?${p}`);
+}
+export const getWalletCredits = (wallet: string) => call<WalletCredits>("GET", `/credits/wallets/${encodeURIComponent(wallet)}`);
+export const setCreditPrice = (id: string, usd: string) => call<ActionPrice>("POST", `/credits/prices/${encodeURIComponent(id)}`, { usd });
+export const setWelcome = (welcomeUsd: string) => call<{ charging: boolean; welcomeMicros: number }>("POST", "/credits/welcome", { welcomeUsd });
+export const grantCredits = (wallet: string, usd: string, note: string) => call<CreditEntry>("POST", "/credits/grant", { wallet, usd, note });
+export const removeCredits = (wallet: string, usd: string, note: string) => call<CreditEntry>("POST", "/credits/remove", { wallet, usd, note });
+export const refundCredit = (id: string, note: string) => call<CreditEntry>("POST", `/credits/entries/${encodeURIComponent(id)}/refund`, { note });

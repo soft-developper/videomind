@@ -159,7 +159,7 @@
     "deleteTitle": "Excluir meus dados",
     "deleteHint": "Isto exclui, na hora e para sempre, tudo o que o VideoMind guarda sobre esta carteira.",
     "deleteWhat": "Excluído: seus vídeos e os arquivos deles, transcrições, capítulos e clipes; suas coleções; suas notas e pontos de reprodução; seu perfil e suas configurações; seus eventos ao vivo com legendas e chat, e suas mensagens em outros chats; sua conexão com o YouTube (revogada no Google); sua entrada na conta.",
-    "deleteKept": "Não excluído: cópias que você guardou na Shelby (públicas em uma rede que o VideoMind não pode alterar) e vídeos que você publicou no YouTube (remova esses vídeos no YouTube Studio). Quantidades de uso, sem nenhum conteúdo, são mantidas como registros do negócio.",
+    "deleteKept": "Não excluído: cópias que você guardou na Shelby (públicas em uma rede que o VideoMind não pode alterar) e vídeos que você publicou no YouTube (remova esses vídeos no YouTube Studio). Quantidades de uso e o registro dos seus créditos, sem nenhum conteúdo, são mantidos como registros do negócio.",
     "deleteTypeLabel": "Digite DELETE para confirmar",
     "deleting": "Excluindo",
     "deleteButton": "Excluir meus dados"
@@ -1133,7 +1133,7 @@
     },
     "sep": ". ",
     "title": "Carteira",
-    "description": "Seu endereço, seus vídeos na Shelby e o que a sua biblioteca usou nos últimos 30 dias.",
+    "description": "Seu endereço, seus créditos, seus vídeos na Shelby e o que a sua biblioteca usou nos últimos 30 dias.",
     "connect": "Conecte uma carteira para ver os dados dela aqui",
     "connectBody": "Sua biblioteca, o que você guardou na Shelby e o seu uso pertencem à sua carteira.",
     "signIn": "Entre para ver sua carteira",
@@ -1158,7 +1158,45 @@
     "minutes": "{count, plural, one {# min} many {# min} other {# min}}",
     "answers": "Perguntas respondidas sobre seus vídeos",
     "tokens": "Tokens de IA, de entrada e de saída",
-    "amountsOnly": "Só quantidades. O VideoMind ainda não tem preços."
+    "amountsOnly": "Só quantidades. O preço de cada ação está em Créditos.",
+    "credits": {
+      "title": "Créditos",
+      "balance": "Saldo",
+      "available": "{amount} disponíveis para usar",
+      "onHold": "{amount} reservados para trabalhos em andamento",
+      "notCharging": "Os créditos pagam os serviços do VideoMind. Ainda nada é cobrado: os preços abaixo são o que cada ação vai custar quando as cobranças começarem.",
+      "charging": "Cada ação tira o preço dos seus créditos, e você vê o preço antes de ela começar.",
+      "addSoon": "Em breve você poderá adicionar créditos com ShelbyUSD.",
+      "activity": "Movimentações",
+      "noActivity": "Ainda não há créditos.",
+      "kind": {
+        "welcome": "Créditos de boas vindas",
+        "grant": "Créditos do VideoMind",
+        "remove": "Créditos retirados pelo VideoMind",
+        "topup": "Créditos adicionados",
+        "charge": "Gasto",
+        "refund": "Reembolso"
+      },
+      "prices": "Quanto custa cada coisa",
+      "free": "Grátis",
+      "action": {
+        "process_video": "Processar um vídeo: transcrição, capítulos, resumo e busca",
+        "ask": "Uma resposta sobre um vídeo",
+        "search": "Uma busca nos seus vídeos",
+        "learn_paths": "Trilhas de aprendizado em Conhecimento",
+        "learn_ask": "Uma resposta de Pergunte à sua biblioteca",
+        "live_captions": "Legendas ao vivo",
+        "storage": "Armazenamento no VideoMind"
+      },
+      "per": {
+        "minute": "{price} por minuto",
+        "answer": "{price} por resposta",
+        "search": "{price} por busca",
+        "generation": "{price} cada vez",
+        "gb_month": "{price} por GB ao mês"
+      },
+      "loadFailed": "Não foi possível carregar seus créditos. Tente de novo em um minuto."
+    }
   },
   "analytics": {
     "range": {
@@ -1567,7 +1605,7 @@
     "keep2": "Envios não terminados: apagados depois de 7 dias.",
     "keep3": "Sessões: expiram depois de 7 dias.",
     "keep4": "O perfil, as configurações, os eventos ao vivo com as legendas e o chat, e o registro da sua carteira: até você excluir em Configurações ou nos pedir.",
-    "keep5": "Quantidades de uso: mantidas como registros do negócio, sem conteúdo.",
+    "keep5": "Quantidades de uso e o registro dos seus créditos (o que foi adicionado, gasto e reembolsado): mantidos como registros do negócio, sem conteúdo, também depois que você excluir seus dados.",
     "keep6": "Se suspendermos uma carteira por descumprir nossos Termos, um registro da suspensão (o endereço da carteira, a data e o motivo) é mantido até a suspensão ser retirada, mesmo que os outros dados da carteira sejam excluídos.",
     "keep7": "As cópias feitas pelos provedores para backups ou registros são removidas conforme os prazos deles.",
     "choices1": "<b>Acessar e alterar:</b> sua biblioteca, seu perfil e suas configurações estão no aplicativo. Você pode editar seus dados a qualquer momento.",

@@ -159,7 +159,7 @@
     "deleteTitle": "Supprimer mes données",
     "deleteHint": "Cela supprime, immédiatement et définitivement, tout ce que VideoMind conserve sur ce portefeuille.",
     "deleteWhat": "Supprimé : vos vidéos et leurs fichiers, transcriptions, chapitres et extraits ; vos collections ; vos notes et points de lecture ; votre profil et vos paramètres ; vos événements en direct avec leurs sous-titres et leur chat, et vos messages dans d’autres chats ; votre connexion YouTube (révoquée chez Google) ; votre connexion.",
-    "deleteKept": "Non supprimé : les copies que vous avez stockées sur Shelby (publiques sur un réseau que VideoMind ne peut pas modifier) et les vidéos publiées sur YouTube (à retirer dans YouTube Studio). Les quantités d’utilisation, sans aucun contenu, sont conservées comme registres de l’activité.",
+    "deleteKept": "Non supprimé : les copies que vous avez stockées sur Shelby (publiques sur un réseau que VideoMind ne peut pas modifier) et les vidéos publiées sur YouTube (à retirer dans YouTube Studio). Les quantités d’utilisation et l’historique de vos crédits, sans aucun contenu, sont conservés comme registres de l’activité.",
     "deleteTypeLabel": "Tapez DELETE pour confirmer",
     "deleting": "Suppression",
     "deleteButton": "Supprimer mes données"
@@ -1133,7 +1133,7 @@
     },
     "sep": ". ",
     "title": "Portefeuille",
-    "description": "Votre adresse, vos vidéos sur Shelby et ce que votre bibliothèque a utilisé ces 30 derniers jours.",
+    "description": "Votre adresse, vos crédits, vos vidéos sur Shelby et ce que votre bibliothèque a utilisé ces 30 derniers jours.",
     "connect": "Reliez un portefeuille pour le voir ici",
     "connectBody": "Votre bibliothèque, vos stockages sur Shelby et votre utilisation appartiennent à votre portefeuille.",
     "signIn": "Se connecter pour voir votre portefeuille",
@@ -1158,7 +1158,45 @@
     "minutes": "{count, plural, one {# min} many {# min} other {# min}}",
     "answers": "Questions répondues sur vos vidéos",
     "tokens": "Jetons d’IA, en entrée et en sortie",
-    "amountsOnly": "Des quantités seulement. VideoMind n’a pas encore de tarifs."
+    "amountsOnly": "Des quantités seulement. Le prix de chaque action est dans Crédits.",
+    "credits": {
+      "title": "Crédits",
+      "balance": "Solde",
+      "available": "{amount} disponibles",
+      "onHold": "{amount} mis de côté pour un travail en cours",
+      "notCharging": "Les crédits paient les services de VideoMind. Rien n’est encore facturé : les prix indiqués plus bas sont ce que coûtera chaque action quand la facturation commencera.",
+      "charging": "Chaque action prend son prix sur vos crédits, et vous voyez le prix avant qu’elle commence.",
+      "addSoon": "Bientôt, vous pourrez ajouter des crédits avec ShelbyUSD.",
+      "activity": "Mouvements",
+      "noActivity": "Pas encore de crédits.",
+      "kind": {
+        "welcome": "Crédits de bienvenue",
+        "grant": "Crédits offerts par VideoMind",
+        "remove": "Crédits retirés par VideoMind",
+        "topup": "Crédits ajoutés",
+        "charge": "Dépense",
+        "refund": "Remboursement"
+      },
+      "prices": "Ce que coûte chaque action",
+      "free": "Gratuit",
+      "action": {
+        "process_video": "Traiter une vidéo : transcription, chapitres, résumé et recherche",
+        "ask": "Une réponse sur une vidéo",
+        "search": "Une recherche dans vos vidéos",
+        "learn_paths": "Parcours d’apprentissage dans Connaissances",
+        "learn_ask": "Une réponse de Interroger votre bibliothèque",
+        "live_captions": "Sous-titres en direct",
+        "storage": "Stockage sur VideoMind"
+      },
+      "per": {
+        "minute": "{price} la minute",
+        "answer": "{price} la réponse",
+        "search": "{price} la recherche",
+        "generation": "{price} à chaque fois",
+        "gb_month": "{price} par Go et par mois"
+      },
+      "loadFailed": "Vos crédits n’ont pas pu être chargés. Réessayez dans une minute."
+    }
   },
   "analytics": {
     "range": {
@@ -1567,7 +1605,7 @@
     "keep2": "Envois inachevés : supprimés après 7 jours.",
     "keep3": "Sessions : elles expirent après 7 jours.",
     "keep4": "Le profil, les paramètres, les directs avec leurs sous-titres et leur discussion, et l’enregistrement de votre portefeuille : jusqu’à ce que vous les supprimiez dans Paramètres ou que vous nous le demandiez.",
-    "keep5": "Quantités utilisées : conservées comme documents de gestion, sans contenu.",
+    "keep5": "Quantités utilisées et historique de vos crédits (ce qui a été ajouté, dépensé et remboursé) : conservés comme documents de gestion, sans contenu, même après la suppression de vos données.",
     "keep6": "Si nous suspendons un portefeuille pour manquement à nos Conditions, une trace de la suspension (adresse du portefeuille, date et motif) est conservée jusqu’à la levée de la suspension, même si les autres données du portefeuille sont supprimées.",
     "keep7": "Les copies faites par les fournisseurs pour les sauvegardes ou les journaux sont effacées selon leurs propres calendriers.",
     "choices1": "<b>Accès et modification :</b> votre bibliothèque, votre profil et vos paramètres sont dans l’application. Vous pouvez modifier vos informations à tout moment.",
