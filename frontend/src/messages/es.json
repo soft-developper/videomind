@@ -1166,7 +1166,6 @@
       "onHold": "{amount} reservados para trabajos en marcha",
       "notCharging": "Los créditos pagan los servicios de VideoMind. Todavía no se cobra nada: los precios de abajo son lo que costará cada acción cuando empiecen los cobros.",
       "charging": "Cada acción toma su precio de tus créditos, y ves el precio antes de que empiece.",
-      "addSoon": "Pronto podrás añadir créditos con ShelbyUSD.",
       "activity": "Movimientos",
       "noActivity": "Todavía no tienes créditos.",
       "kind": {
@@ -1195,7 +1194,35 @@
         "generation": "{price} cada vez",
         "gb_month": "{price} por GB al mes"
       },
-      "loadFailed": "No se pudieron cargar tus créditos. Vuelve a intentarlo en un minuto."
+      "loadFailed": "No se pudieron cargar tus créditos. Vuelve a intentarlo en un minuto.",
+      "add": {
+        "title": "Añadir créditos",
+        "body": "Paga con ShelbyUSD desde tu billetera: 1 ShelbyUSD añade 1,00 US$ de créditos. Tu billetera te pide aprobar una transferencia, que también necesita un poco de APT para el gas.",
+        "amount": "Importe en dólares",
+        "add": "Añadir {amount}",
+        "wallet": "Aprueba la transferencia en tu billetera",
+        "checking": "Comprobando la transferencia",
+        "youHave": "Tu billetera tiene {amount} ShelbyUSD.",
+        "notEnough": "Tu billetera no tiene suficientes ShelbyUSD para esto.",
+        "getTest": "Conseguir ShelbyUSD de prueba",
+        "otherNetwork": "Tu billetera está en {network}. Cámbiala a shelbynet y vuelve a intentarlo.",
+        "network": "Red de prueba: los ShelbyUSD de shelbynet no tienen valor.",
+        "added": "Se añadieron {amount} a tus créditos.",
+        "alreadyAdded": "Esa transferencia ya se había añadido a tus créditos.",
+        "view": "Ver la transferencia",
+        "pending": "Hay una transferencia de este navegador que aún no se comprobó.",
+        "checkAgain": "Comprobarla de nuevo",
+        "off": "Todavía no se pueden añadir créditos.",
+        "tooLow": "Añade al menos {min}.",
+        "tooHigh": "Añade como máximo {max} cada vez.",
+        "badAmount": "Escribe un importe en dólares, por ejemplo 5.",
+        "manualTitle": "¿Pagaste y no ves los créditos?",
+        "manualBody": "Pega el hash de la transacción de tu billetera. Cada transferencia se añade una sola vez.",
+        "hash": "Hash de la transacción",
+        "check": "Comprobar",
+        "checkFailed": "No se pudo comprobar tu transferencia. Está a salvo; vuelve a intentarlo en un minuto.",
+        "walletFailed": "La transferencia no se envió. No se pagó nada; vuelve a intentarlo."
+      }
     }
   },
   "analytics": {
@@ -1900,7 +1927,23 @@
     "claudeNoSummary": "El análisis de Claude volvió sin resumen.",
     "claudeUnreadable": "No se pudo leer la respuesta de Claude en este paso.",
     "claudeTooLong": "La respuesta de Claude en este paso superó los {max} tokens.",
-    "noTranscriptIndex": "No hay ninguna transcripción que indexar."
+    "noTranscriptIndex": "No hay ninguna transcripción que indexar.",
+    "topupOff": "Añadir créditos todavía no está configurado en este servidor.",
+    "badHash": "Eso no es un hash de transacción.",
+    "chainUnreachable": "No se pudo conectar con shelbynet. Tu transferencia está a salvo; vuelve a intentarlo en un minuto.",
+    "txNotFound": "Esa transacción todavía no aparece en shelbynet. Espera un minuto y vuelve a intentarlo.",
+    "notUserTx": "Esa transacción no es una transferencia desde una billetera.",
+    "txFailed": "Esa transacción falló en shelbynet, así que no se pagó nada.",
+    "wrongSender": "Esa transacción la envió una billetera distinta de la que inició sesión.",
+    "byTreasury": "Esa transacción la envió la propia tesorería de VideoMind.",
+    "nothingReceived": "Esa transacción no envió ShelbyUSD a VideoMind.",
+    "tooSmall": "Esa transferencia es demasiado pequeña: lo mínimo es 0,000001 ShelbyUSD.",
+    "hashUsed": "Esa transacción ya la usó otra billetera.",
+    "topupCheckFailed": "No se pudo comprobar tu transferencia. Está a salvo; vuelve a intentarlo en un minuto.",
+    "creditsLoadFailed": "No se pudieron cargar tus créditos. Vuelve a intentarlo.",
+    "topupLoadFailed": "No se pudo cargar la opción de añadir créditos. Vuelve a intentarlo.",
+    "pricesLoadFailed": "No se pudieron cargar los precios. Vuelve a intentarlo.",
+    "notEnoughCredits": "No tienes créditos suficientes para esto. Añade créditos en la página Billetera y vuelve a intentarlo."
   },
   "notFound": {
     "title": "No se encontró esta página",

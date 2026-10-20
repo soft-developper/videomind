@@ -31,36 +31,6 @@
 #
 # Run from the repo root (dir containing backend/ and frontend/).
 # ============================================================================
-# ============================================================================
-# VideoMind, Part 15b3: the rest of the site in five languages, on for everyone
-# ============================================================================
-# FOR THE rebuild BRANCH. It refuses to run on main: apply it on rebuild,
-# check it, then fast forward main.
-#
-# After this part (plan: claude/language-plan.md):
-#   * languages are ON in every environment. No Vercel setting is needed;
-#     NEXT_PUBLIC_LANGUAGES=off switches them off again without a release
-#   * translated in Spanish, French, Arabic and Portuguese: Record, Go live,
-#     the live studio, live chat and the public live page, Profile, Wallet,
-#     Analytics, Ask your library, Knowledge, About, the shared video page,
-#     public profiles, Presentation Mode, the page for a wrong address
-#   * the Privacy Policy and Terms of Service in every language, each
-#     saying at the top that the English version governs, with a link to it
-#   * the Privacy Policy now names the one language cookie (vm_lang) and
-#     the language kept with a signed in wallet; it takes effect 19 Oct 2026
-#   * public pages have the language picker in their top bar
-#   * page titles and link previews in the reader's language
-#   * server error messages shown in the reader's language (220 templates
-#     matched against what the API says; anything unknown stays English)
-#
-#   FRONTEND   3 new, 43 changed. No backend change, no migration, no new package
-#
-#   ./vm_lang_b3.sh            apply (needs Part 15b2 on the branch)
-#   ./vm_lang_b3.sh --force    apply even if local files differ from GitHub
-#   ./vm_lang_b3.sh --revert   restore everything from the latest backup
-#
-# Run from the repo root (dir containing backend/ and frontend/).
-# ============================================================================
 set -euo pipefail
 
 MARKER="024_credits"

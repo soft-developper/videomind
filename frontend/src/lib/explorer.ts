@@ -10,6 +10,8 @@ const NET = "shelbynet";
 export const explorer = {
   account: (address: string) => `${BASE}/account/${address}?network=${NET}`,
   txnByVersion: (version: number | string) => `${BASE}/txn/${version}?network=${NET}`,
+  // vm_topup: a transaction by its hash
+  txn: (hash: string) => `${BASE}/txn/${hash}?network=${NET}`,
   object: (address: string) => `${BASE}/object/${address}?network=${NET}`,
   network: () => `${BASE}/?network=${NET}`,
 };

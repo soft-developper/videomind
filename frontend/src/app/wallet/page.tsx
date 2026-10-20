@@ -19,6 +19,8 @@ import { getMyWallet, getMyCredits, type WalletOverview, type MyCredits } from "
 import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/lib/format";
 import { intlLocale, type Locale } from "@/i18n/config";
+import { AddCredits } from "@/components/wallet/AddCredits";
+import { ExternalLink as LinkOut } from "lucide-react";
 
 // vm_credits: dollars in the reader's language, never rounded: $3.925 stays
 // $3.925 and a price of $0.006 keeps its digits. Whole cents show two digits.
@@ -55,7 +57,8 @@ function CreditsSection({ c }: { c: MyCredits }) {
           </p>
         )}
       </div>
-      <p className="text-[13px] text-dim mt-2 max-w-[70ch]">{c.charging ? t("charging") : t("notCharging")} {t("addSoon")}</p>
+      <p className="text-[13px] text-dim mt-2 max-w-[70ch]">{c.charging ? t("charging") : t("notCharging")}</p>
+      <AddCredits wallet={c.wallet} money={money} />
 
       <div className="grid md:grid-cols-2 gap-x-10 gap-y-8 mt-6">
         <div className="min-w-0">
@@ -67,6 +70,7 @@ function CreditsSection({ c }: { c: MyCredits }) {
                   <span className="flex-1 min-w-0">
                     <span className="block text-[14px] text-paper-2">{t(`kind.${e.kind}`)}</span>
                     {e.action && <span className="block text-[12.5px] text-dim truncate">{t.has(`action.${e.action}` as never) ? t(`action.${e.action}` as never) : e.action}</span>}
+                    {e.txHash && <a href={explorer.txn(e.txHash)} target="_blank" rel="noopener noreferrer" className="text-[12.5px] text-dim hover:text-paper inline-flex items-center gap-1 no-min">{t("add.view")} <LinkOut size={11} /></a>}
                   </span>
                   <span className="text-[12.5px] text-dim whitespace-nowrap">{f.date(e.at)}</span>
                   <span className={clsx("tc whitespace-nowrap", e.amountMicros > 0 ? "tc-marker" : "text-paper")} dir="ltr">{money(e.amountMicros, true)}</span>

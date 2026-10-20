@@ -1166,7 +1166,6 @@
       "onHold": "{amount} reservados para trabalhos em andamento",
       "notCharging": "Os créditos pagam os serviços do VideoMind. Ainda nada é cobrado: os preços abaixo são o que cada ação vai custar quando as cobranças começarem.",
       "charging": "Cada ação tira o preço dos seus créditos, e você vê o preço antes de ela começar.",
-      "addSoon": "Em breve você poderá adicionar créditos com ShelbyUSD.",
       "activity": "Movimentações",
       "noActivity": "Ainda não há créditos.",
       "kind": {
@@ -1195,7 +1194,35 @@
         "generation": "{price} cada vez",
         "gb_month": "{price} por GB ao mês"
       },
-      "loadFailed": "Não foi possível carregar seus créditos. Tente de novo em um minuto."
+      "loadFailed": "Não foi possível carregar seus créditos. Tente de novo em um minuto.",
+      "add": {
+        "title": "Adicionar créditos",
+        "body": "Pague com ShelbyUSD da sua carteira: 1 ShelbyUSD adiciona US$ 1,00 em créditos. A carteira pede que você aprove uma transferência, que também precisa de um pouco de APT para o gás.",
+        "amount": "Valor em dólares",
+        "add": "Adicionar {amount}",
+        "wallet": "Aprove a transferência na sua carteira",
+        "checking": "Verificando a transferência",
+        "youHave": "Sua carteira tem {amount} ShelbyUSD.",
+        "notEnough": "Sua carteira não tem ShelbyUSD suficiente para isso.",
+        "getTest": "Obter ShelbyUSD de teste",
+        "otherNetwork": "Sua carteira está na rede {network}. Mude para shelbynet e tente de novo.",
+        "network": "Rede de teste: ShelbyUSD na shelbynet não tem valor.",
+        "added": "{amount} adicionados aos seus créditos.",
+        "alreadyAdded": "Essa transferência já foi adicionada aos seus créditos.",
+        "view": "Ver a transferência",
+        "pending": "Uma transferência deste navegador ainda não foi verificada.",
+        "checkAgain": "Verificar de novo",
+        "off": "Ainda não é possível adicionar créditos.",
+        "tooLow": "Adicione pelo menos {min}.",
+        "tooHigh": "Adicione no máximo {max} por vez.",
+        "badAmount": "Escreva um valor em dólares, por exemplo 5.",
+        "manualTitle": "Pagou e não vê os créditos?",
+        "manualBody": "Cole o hash da transação da sua carteira. Cada transferência só é adicionada uma vez.",
+        "hash": "Hash da transação",
+        "check": "Verificar",
+        "checkFailed": "Não foi possível verificar sua transferência. Ela está segura; tente de novo em um minuto.",
+        "walletFailed": "A transferência não foi enviada. Nada foi pago; tente de novo."
+      }
     }
   },
   "analytics": {
@@ -1900,7 +1927,23 @@
     "claudeNoSummary": "A análise do Claude voltou sem resumo.",
     "claudeUnreadable": "Não foi possível ler a resposta do Claude nesta etapa.",
     "claudeTooLong": "A resposta do Claude nesta etapa passou de {max} tokens.",
-    "noTranscriptIndex": "Não há transcrição para indexar."
+    "noTranscriptIndex": "Não há transcrição para indexar.",
+    "topupOff": "Adicionar créditos ainda não está configurado neste servidor.",
+    "badHash": "Isso não é um hash de transação.",
+    "chainUnreachable": "Não foi possível acessar a shelbynet. Sua transferência está segura; tente de novo em um minuto.",
+    "txNotFound": "Essa transação ainda não aparece na shelbynet. Espere um minuto e tente de novo.",
+    "notUserTx": "Essa transação não é uma transferência de uma carteira.",
+    "txFailed": "Essa transação falhou na shelbynet, então nada foi pago.",
+    "wrongSender": "Essa transação foi enviada por uma carteira diferente da que está conectada.",
+    "byTreasury": "Essa transação foi enviada pela própria tesouraria do VideoMind.",
+    "nothingReceived": "Essa transação não enviou ShelbyUSD para o VideoMind.",
+    "tooSmall": "Essa transferência é pequena demais: o mínimo é 0,000001 ShelbyUSD.",
+    "hashUsed": "Essa transação já foi usada por outra carteira.",
+    "topupCheckFailed": "Não foi possível verificar sua transferência. Ela está segura; tente de novo em um minuto.",
+    "creditsLoadFailed": "Não foi possível carregar seus créditos. Tente de novo.",
+    "topupLoadFailed": "Não foi possível carregar a opção de adicionar créditos. Tente de novo.",
+    "pricesLoadFailed": "Não foi possível carregar os preços. Tente de novo.",
+    "notEnoughCredits": "Você não tem créditos suficientes para isso. Adicione créditos na página Carteira e tente de novo."
   },
   "notFound": {
     "title": "Esta página não foi encontrada",

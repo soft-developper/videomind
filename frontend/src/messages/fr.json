@@ -1166,7 +1166,6 @@
       "onHold": "{amount} mis de côté pour un travail en cours",
       "notCharging": "Les crédits paient les services de VideoMind. Rien n’est encore facturé : les prix indiqués plus bas sont ce que coûtera chaque action quand la facturation commencera.",
       "charging": "Chaque action prend son prix sur vos crédits, et vous voyez le prix avant qu’elle commence.",
-      "addSoon": "Bientôt, vous pourrez ajouter des crédits avec ShelbyUSD.",
       "activity": "Mouvements",
       "noActivity": "Pas encore de crédits.",
       "kind": {
@@ -1195,7 +1194,35 @@
         "generation": "{price} à chaque fois",
         "gb_month": "{price} par Go et par mois"
       },
-      "loadFailed": "Vos crédits n’ont pas pu être chargés. Réessayez dans une minute."
+      "loadFailed": "Vos crédits n’ont pas pu être chargés. Réessayez dans une minute.",
+      "add": {
+        "title": "Ajouter des crédits",
+        "body": "Payez en ShelbyUSD depuis votre portefeuille : 1 ShelbyUSD ajoute 1,00 $ US de crédits. Votre portefeuille vous demande d’approuver un transfert, qui demande aussi un peu d’APT pour les frais.",
+        "amount": "Montant en dollars",
+        "add": "Ajouter {amount}",
+        "wallet": "Approuvez le transfert dans votre portefeuille",
+        "checking": "Vérification du transfert",
+        "youHave": "Votre portefeuille contient {amount} ShelbyUSD.",
+        "notEnough": "Votre portefeuille n’a pas assez de ShelbyUSD pour cela.",
+        "getTest": "Obtenir des ShelbyUSD de test",
+        "otherNetwork": "Votre portefeuille est sur {network}. Passez sur shelbynet, puis réessayez.",
+        "network": "Réseau de test : les ShelbyUSD de shelbynet n’ont aucune valeur.",
+        "added": "{amount} ajoutés à vos crédits.",
+        "alreadyAdded": "Ce transfert a déjà été ajouté à vos crédits.",
+        "view": "Voir le transfert",
+        "pending": "Un transfert envoyé depuis ce navigateur n’a pas encore été vérifié.",
+        "checkAgain": "Le vérifier à nouveau",
+        "off": "L’ajout de crédits n’est pas encore ouvert.",
+        "tooLow": "Ajoutez au moins {min}.",
+        "tooHigh": "Ajoutez au plus {max} à la fois.",
+        "badAmount": "Indiquez un montant en dollars, par exemple 5.",
+        "manualTitle": "Vous avez payé mais vous ne voyez pas les crédits ?",
+        "manualBody": "Collez le hash de la transaction affiché par votre portefeuille. Un transfert n’est jamais ajouté deux fois.",
+        "hash": "Hash de la transaction",
+        "check": "Vérifier",
+        "checkFailed": "Votre transfert n’a pas pu être vérifié. Il est en sécurité ; réessayez dans une minute.",
+        "walletFailed": "Le transfert n’a pas été envoyé. Rien n’a été payé ; réessayez."
+      }
     }
   },
   "analytics": {
@@ -1900,7 +1927,23 @@
     "claudeNoSummary": "L’analyse de Claude est revenue sans résumé.",
     "claudeUnreadable": "La réponse de Claude à cette étape n’a pas pu être lue.",
     "claudeTooLong": "La réponse de Claude à cette étape a dépassé {max} jetons.",
-    "noTranscriptIndex": "Il n’y a aucune transcription à indexer."
+    "noTranscriptIndex": "Il n’y a aucune transcription à indexer.",
+    "topupOff": "L’ajout de crédits n’est pas encore configuré sur ce serveur.",
+    "badHash": "Ce n’est pas un hash de transaction.",
+    "chainUnreachable": "Impossible de joindre shelbynet. Votre transfert est en sécurité ; réessayez dans une minute.",
+    "txNotFound": "Cette transaction n’apparaît pas encore sur shelbynet. Attendez une minute et réessayez.",
+    "notUserTx": "Cette transaction n’est pas un transfert depuis un portefeuille.",
+    "txFailed": "Cette transaction a échoué sur shelbynet : rien n’a été payé.",
+    "wrongSender": "Cette transaction a été envoyée par un autre portefeuille que celui connecté.",
+    "byTreasury": "Cette transaction a été envoyée par la trésorerie de VideoMind elle même.",
+    "nothingReceived": "Cette transaction n’a pas envoyé de ShelbyUSD à VideoMind.",
+    "tooSmall": "Ce transfert est trop petit : le minimum est de 0,000001 ShelbyUSD.",
+    "hashUsed": "Cette transaction a déjà été utilisée par un autre portefeuille.",
+    "topupCheckFailed": "Votre transfert n’a pas pu être vérifié. Il est en sécurité ; réessayez dans une minute.",
+    "creditsLoadFailed": "Vos crédits n’ont pas pu être chargés. Réessayez.",
+    "topupLoadFailed": "L’ajout de crédits n’a pas pu être chargé. Réessayez.",
+    "pricesLoadFailed": "Les prix n’ont pas pu être chargés. Réessayez.",
+    "notEnoughCredits": "Vous n’avez pas assez de crédits pour cela. Ajoutez des crédits dans la page Portefeuille et réessayez."
   },
   "notFound": {
     "title": "Cette page est introuvable",

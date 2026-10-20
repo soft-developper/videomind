@@ -42,11 +42,13 @@ export interface Entry {
   id: string; wallet: string; at: number; kind: EntryKind; amountMicros: number;
   action: string | null; quantity: number | null; videoId: string | null; holdId: string | null;
   refundOf: string | null; note: string | null; adminEmail: string | null; refunded: boolean;
+  /** vm_topup: the transaction hash of a top up. */
+  ref: string | null;
 }
 const rowToEntry = (r: any): Entry => ({
   id: String(r.id), wallet: String(r.wallet), at: n(r.at), kind: String(r.kind) as EntryKind, amountMicros: n(r.amount_micros),
   action: s(r.action), quantity: r.quantity == null ? null : n(r.quantity), videoId: s(r.video_id), holdId: s(r.hold_id),
-  refundOf: s(r.refund_of), note: s(r.note), adminEmail: s(r.admin_email), refunded: !!n(r.refunded),
+  refundOf: s(r.refund_of), note: s(r.note), adminEmail: s(r.admin_email), refunded: !!n(r.refunded), ref: s(r.ref),
 });
 
 export interface Hold {
@@ -143,7 +145,7 @@ export async function myCredits(walletIn: string) {
   await ensureWelcome(wallet);
   const [balance, entries, settings, prices] = await Promise.all([balanceOf(wallet), entriesOf(wallet, 30), getCreditSettings(), listActionPrices()]);
   // Admin emails and notes are for the dashboard, not the wallet page.
-  const shown = entries.map((e) => ({ id: e.id, at: e.at, kind: e.kind, amountMicros: e.amountMicros, action: e.action, quantity: e.quantity, videoId: e.videoId, refunded: e.refunded }));
+  const shown = entries.map((e) => ({ id: e.id, at: e.at, kind: e.kind, amountMicros: e.amountMicros, action: e.action, quantity: e.quantity, videoId: e.videoId, refunded: e.refunded, txHash: e.kind === "topup" ? e.ref : null }));
   return { wallet, ...balance, charging: settings.charging, entries: shown, prices: prices.map(publicPrice) };
 }
 

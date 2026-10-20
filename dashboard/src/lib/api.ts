@@ -220,6 +220,7 @@ export interface CreditEntry {
   id: string; wallet: string; at: number; kind: CreditKind; amountMicros: number;
   action: string | null; quantity: number | null; videoId: string | null; holdId: string | null;
   refundOf: string | null; note: string | null; adminEmail: string | null; refunded: boolean;
+  ref: string | null;
 }
 export interface ActionPrice { id: string; label: string; unit: CreditUnit; microsPerUnit: number; position: number; updatedAt: number; updatedBy: string | null }
 export interface UnitCost { action: string; units: number; costUsd: number; perUnitUsd: number | null }
@@ -227,6 +228,7 @@ export interface CreditsOverview {
   settings: { charging: boolean; welcomeMicros: number };
   prices: ActionPrice[]; costs: UnitCost[];
   totals: { byKind: Record<CreditKind, { micros: number; count: number }>; outstandingMicros: number; openHolds: { count: number; micros: number }; walletsWithCredits: number };
+  topup: { treasury: string | null; network: string };
 }
 export interface WalletCredits { wallet: string; balanceMicros: number; heldMicros: number; availableMicros: number; entries: CreditEntry[] }
 export const getCredits = () => call<CreditsOverview>("GET", "/credits");

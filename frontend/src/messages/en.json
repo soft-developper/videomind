@@ -1166,7 +1166,6 @@
       "onHold": "{amount} set aside for work that is running",
       "notCharging": "Credits pay for VideoMind's services. Nothing is charged yet: the prices below are what each action will cost once charging starts.",
       "charging": "Each action takes its price from your credits, and you see the price before it starts.",
-      "addSoon": "Adding credits with ShelbyUSD comes soon.",
       "activity": "Activity",
       "noActivity": "No credits yet.",
       "kind": {
@@ -1195,7 +1194,35 @@
         "generation": "{price} each time",
         "gb_month": "{price} per GB a month"
       },
-      "loadFailed": "Your credits could not be loaded. Try again in a minute."
+      "loadFailed": "Your credits could not be loaded. Try again in a minute.",
+      "add": {
+        "title": "Add credits",
+        "body": "Pay with ShelbyUSD from your wallet: 1 ShelbyUSD adds $1.00 of credits. Your wallet asks you to approve one transfer, which also needs a little APT for gas.",
+        "amount": "Amount in dollars",
+        "add": "Add {amount}",
+        "wallet": "Approve the transfer in your wallet",
+        "checking": "Checking the transfer",
+        "youHave": "Your wallet has {amount} ShelbyUSD.",
+        "notEnough": "Your wallet does not have enough ShelbyUSD for this.",
+        "getTest": "Get test ShelbyUSD",
+        "otherNetwork": "Your wallet is on {network}. Switch it to shelbynet, then try again.",
+        "network": "Test network: ShelbyUSD on shelbynet has no value.",
+        "added": "{amount} added to your credits.",
+        "alreadyAdded": "That transfer was already added to your credits.",
+        "view": "View the transfer",
+        "pending": "A transfer from this browser has not been checked yet.",
+        "checkAgain": "Check it again",
+        "off": "Adding credits is not open yet.",
+        "tooLow": "Add at least {min}.",
+        "tooHigh": "Add at most {max} at a time.",
+        "badAmount": "Write an amount in dollars, for example 5.",
+        "manualTitle": "Paid but no credits?",
+        "manualBody": "Paste the transaction hash from your wallet. A transfer is only ever added once.",
+        "hash": "Transaction hash",
+        "check": "Check",
+        "checkFailed": "Your transfer could not be checked. It is safe; try again in a minute.",
+        "walletFailed": "The transfer was not sent. Nothing was paid; try again."
+      }
     }
   },
   "analytics": {
@@ -1900,7 +1927,23 @@
     "claudeNoSummary": "Claude's analysis came back without a summary.",
     "claudeUnreadable": "Claude's answer to {purpose} could not be read.",
     "claudeTooLong": "Claude's answer to {purpose} was longer than {max} tokens.",
-    "noTranscriptIndex": "There is no transcript to index."
+    "noTranscriptIndex": "There is no transcript to index.",
+    "topupOff": "Adding credits is not set up on this server yet.",
+    "badHash": "That is not a transaction hash.",
+    "chainUnreachable": "shelbynet could not be reached. Your transfer is safe; try again in a minute.",
+    "txNotFound": "That transaction was not found on shelbynet yet. Wait a minute and try again.",
+    "notUserTx": "That transaction is not a transfer from a wallet.",
+    "txFailed": "That transaction failed on shelbynet, so nothing was paid.",
+    "wrongSender": "That transaction was sent by a different wallet than the one signed in.",
+    "byTreasury": "That transaction was sent by VideoMind's own treasury.",
+    "nothingReceived": "That transaction did not send ShelbyUSD to VideoMind.",
+    "tooSmall": "That transfer is too small to add: the least is 0.000001 ShelbyUSD.",
+    "hashUsed": "That transaction was already used by another wallet.",
+    "topupCheckFailed": "Your transfer could not be checked. It is safe; try again in a minute.",
+    "creditsLoadFailed": "Your credits could not be loaded. Try again.",
+    "topupLoadFailed": "Adding credits could not be loaded. Try again.",
+    "pricesLoadFailed": "The prices could not be loaded. Try again.",
+    "notEnoughCredits": "Not enough credits for this. Add credits on the Wallet page and try again."
   },
   "notFound": {
     "title": "This page was not found",

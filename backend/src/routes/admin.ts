@@ -43,6 +43,7 @@ import { listVideos, getVideoForAdmin, removeVideo, restoreVideo, listLive, endL
 import {
   creditsOverview, adminLedger, updateActionPrice, setWelcome, grantCredits, removeCredits, refundCharge, walletCredits, CreditsError, MICROS,
 } from "../lib/credits.js";
+import { treasuryAddress, TOPUP_NETWORK } from "../lib/topup.js";
 
 const router = Router();
 const SESSION = "vm_admin", PENDING = "vm_admin_mfa";
@@ -378,7 +379,9 @@ router.post("/costs/fixed/:id/delete", requireAdmin, async (req, res) => {
 //   POST /credits/entries/:id/refund { note }      a charge, in full, once
 const usdOf = (micros: number) => micros / MICROS;
 router.get("/credits", requireAdmin, async (_req, res) => {
-  try { return res.json(await creditsOverview()); } catch (err) { fail(res, err, "Loading the credits"); }
+  // vm_topup: where top ups go (TOPUP_TREASURY_ADDRESS on the server, read only here).
+  try { return res.json({ ...(await creditsOverview()), topup: { treasury: treasuryAddress(), network: TOPUP_NETWORK } }); }
+  catch (err) { fail(res, err, "Loading the credits"); }
 });
 router.get("/credits/ledger", requireAdmin, async (req, res) => {
   try { return res.json(await adminLedger(req.query)); } catch (err) { fail(res, err, "Loading the ledger"); }

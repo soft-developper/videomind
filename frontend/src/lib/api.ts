@@ -475,13 +475,21 @@ export const getMyWallet = () => call<WalletOverview>(() => raw.get("/api/me/wal
 export type CreditKind = "welcome" | "grant" | "remove" | "topup" | "charge" | "refund";
 export type CreditAction = "process_video" | "ask" | "search" | "learn_paths" | "learn_ask" | "live_captions" | "storage";
 export type CreditUnit = "minute" | "answer" | "search" | "generation" | "gb_month";
-export interface CreditEntry { id: string; at: number; kind: CreditKind; amountMicros: number; action: string | null; quantity: number | null; videoId: string | null; refunded: boolean }
+export interface CreditEntry { id: string; at: number; kind: CreditKind; amountMicros: number; action: string | null; quantity: number | null; videoId: string | null; refunded: boolean; txHash: string | null }
 export interface MyCredits {
   wallet: string; balanceMicros: number; heldMicros: number; availableMicros: number; charging: boolean;
   entries: CreditEntry[];
   prices: Array<{ id: CreditAction; unit: CreditUnit; microsPerUnit: number }>;
 }
 export const getMyCredits = () => call<MyCredits>(() => raw.get("/api/credits/me"));
+// vm_topup: adding credits with ShelbyUSD
+export interface TopupInfo {
+  enabled: boolean; network: string; asset: string; symbol: string; decimals: number;
+  treasury: string | null; minUsd: number; maxUsd: number; walletUnits: string | null;
+}
+export interface TopupResult { added: boolean; alreadyAdded: boolean; amountMicros: number; txHash: string; balanceMicros: number; availableMicros: number }
+export const getTopupInfo = () => call<TopupInfo>(() => raw.get("/api/credits/topup"));
+export const claimTopup = (hash: string) => call<TopupResult>(() => raw.post("/api/credits/topup", { hash }));
 
 // ── vm_clips: clips cut from a video, for its owner ─────────────────────────
 export type ClipKind = "cut" | "social";

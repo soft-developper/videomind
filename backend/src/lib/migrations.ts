@@ -662,6 +662,29 @@ const MIGRATIONS: Migration[] = [
       `INSERT INTO credit_settings (id, value) VALUES ('welcome_micros', '0')`,
     ],
   },
+  {
+    // vm_topup: credits paid for with ShelbyUSD (Part 16b). One row per
+    // transaction hash, so a transfer can only ever be added once. The
+    // ledger row of a top up keeps the hash in ref. See src/lib/topup.ts.
+    id: "025_topups",
+    statements: [
+      `ALTER TABLE credit_entries ADD COLUMN ref TEXT`,
+      `CREATE TABLE credit_topups (
+        tx_hash        TEXT PRIMARY KEY,
+        wallet         TEXT NOT NULL,
+        network        TEXT NOT NULL,
+        asset          TEXT NOT NULL,
+        treasury       TEXT NOT NULL,
+        amount_units   INTEGER NOT NULL,
+        amount_micros  INTEGER NOT NULL,
+        entry_id       TEXT NOT NULL,
+        tx_version     INTEGER,
+        tx_at          INTEGER,
+        created_at     INTEGER NOT NULL
+      )`,
+      `CREATE INDEX credit_topups_wallet_idx ON credit_topups(wallet, created_at)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

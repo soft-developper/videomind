@@ -83,6 +83,7 @@ function What({ e }: { e: CreditEntry }) {
   if (e.action) parts.push(e.action.replace(/_/g, " "));
   if (e.quantity != null && e.kind === "charge") parts.push(e.quantity.toLocaleString("en-US", { maximumFractionDigits: 2 }));
   if (e.videoId) parts.push(<Link key="v" href={`/content/videos/${e.videoId}`} className="underline hover:text-paper">video</Link>);
+  if (e.kind === "topup" && e.ref) parts.push(<a key="t" href={`https://explorer.aptoslabs.com/txn/${e.ref}?network=shelbynet`} target="_blank" rel="noreferrer" className="underline hover:text-paper">ShelbyUSD transfer</a>);
   return (
     <span className="text-paper-2">
       {parts.map((x, i) => <span key={i}>{i > 0 && ", "}{x}</span>)}
@@ -172,11 +173,19 @@ export default function CreditsPage() {
               : "Charging is off. Users see these prices on their Wallet page, but nothing is taken from a balance yet. Charging is turned on in a later update, once every action asks for its price first."}
           </Note>
 
+          {o.topup.treasury ? (
+            <p className="text-[13px] text-dim" data-credit-treasury>
+              Top ups go to the treasury <a href={`https://explorer.aptoslabs.com/account/${o.topup.treasury}?network=${o.topup.network}`} target="_blank" rel="noreferrer" className="tc text-paper-2 underline hover:text-paper break-all">{o.topup.treasury}</a> on {o.topup.network}, 1 ShelbyUSD for 1 dollar of credits. It is set on the server (TOPUP_TREASURY_ADDRESS on Render).
+            </p>
+          ) : (
+            <Note kind="error">Adding credits is off: no treasury address is set. Add TOPUP_TREASURY_ADDRESS on Render, with the address of the wallet that should receive ShelbyUSD.</Note>
+          )}
+
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Tile test="outstanding" label="Credits held by wallets" value={dollars(t.outstandingMicros)} sub={`${num(t.walletsWithCredits)} ${t.walletsWithCredits === 1 ? "wallet" : "wallets"} with credits`} />
             <Tile test="given" label="Given free" value={dollars(given)} sub="Welcome and admin grants, less removals" />
             <Tile test="spent" label="Spent" value={dollars(spent)} sub={`Charges less ${num(t.byKind.refund.count)} ${t.byKind.refund.count === 1 ? "refund" : "refunds"}`} />
-            <Tile test="topups" label="Top ups" value={dollars(t.byKind.topup.micros)} sub={t.openHolds.count ? `${num(t.openHolds.count)} open ${t.openHolds.count === 1 ? "hold" : "holds"}, ${dollars(t.openHolds.micros)}` : "Paying with ShelbyUSD comes next"} />
+            <Tile test="topups" label="Top ups" value={dollars(t.byKind.topup.micros)} sub={`${num(t.byKind.topup.count)} paid in ShelbyUSD${t.openHolds.count ? `. ${num(t.openHolds.count)} open ${t.openHolds.count === 1 ? "hold" : "holds"}, ${dollars(t.openHolds.micros)}` : ""}`} />
           </div>
 
           <Panel title="Prices" hint={<>The price of one unit of each action. 0 means free. Next to it: what one unit cost VideoMind in the last 30 days, from the usage and the provider prices on <Link href="/costs" className="underline hover:text-paper">Costs</Link> (standard prices, so an estimate), and the margin at your price. A new price applies to actions started after you save it.</>}>
