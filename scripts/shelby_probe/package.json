@@ -1,0 +1,11 @@
+{
+  "name": "videomind-shelby-probe",
+  "private": true,
+  "type": "module",
+  "description": "Part 16 probe: what shelbynet can do for VideoMind. Test accounts only.",
+  "scripts": { "probe": "node probe.mjs" },
+  "dependencies": {
+    "@aptos-labs/ts-sdk": "5.2.1",
+    "@shelby-protocol/sdk": "0.9.2"
+  }
+}
