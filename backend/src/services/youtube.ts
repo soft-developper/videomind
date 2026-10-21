@@ -7,6 +7,8 @@ import { store } from "../lib/store.js";
 import { getStorage } from "../lib/storage.js";
 import { getOriginal, getAssetById, type MediaAsset } from "../lib/assets.js";
 import { getClip } from "../lib/clips.js";
+// vm_shelbyhome: a public video kept on Shelby only is sent from Shelby
+import { videoSource, httpRange } from "../lib/shelbyHome.js";
 import { getDb } from "../lib/db.js";
 import {
   getPublication, updatePublication, accessToken, startSession, sendFile, YouTubeError, type ReadRange,
@@ -22,6 +24,11 @@ export async function queuePublication(videoId: string, pubId: string): Promise<
 /** Reads any byte range of a stored file: from the bucket with a Range request, or from local disk. */
 function reader(asset: MediaAsset): ReadRange {
   const storage = getStorage();
+  // vm_shelbyhome: a file read from Shelby's public address
+  if (asset.driver === "shelby") return async (start, end) => {
+    try { return await httpRange(asset.key, start, end); }
+    catch (e: any) { throw new YouTubeError(502, "storage", `Shelby could not be read: ${e?.message ?? e}`, true); }
+  };
   return async (start, end) => {
     const url = await storage.signedUrl(asset.key, 30 * 60);
     if (url) {
@@ -46,12 +53,20 @@ export async function youtubeHandler(job: Job): Promise<void> {
   if (!video) throw new PermanentJobError("video_gone", "The video was deleted.");
 
   let asset: MediaAsset | null = null;
+  let fromShelby: { url: string; bytes: number } | null = null;
   if (pub.clipId) {
     const clip = await getClip(pub.clipId);
     if (!clip || clip.status !== "ready" || !clip.assetId) throw new PermanentJobError("clip_gone", "The clip is no longer ready.");
     asset = await getAssetById(clip.assetId);
   } else {
-    asset = await getOriginal(video.id);
+    const src = await videoSource(video);
+    if (src?.from === "storage") asset = src.asset;
+    else if (src?.from === "shelby") fromShelby = { url: src.url, bytes: src.bytes };
+  }
+  if (!asset && fromShelby) {
+    // The same steps, with the file read from Shelby in ranges.
+    asset = { id: "shelby", videoId: video.id, ownerWallet: null, kind: "original", driver: "shelby", key: fromShelby.url, bytes: fromShelby.bytes,
+      contentType: video.meta?.mimeType ?? "video/mp4", sha256: null, createdAt: 0 };
   }
   if (!asset) throw new PermanentJobError("source_missing", "The file is no longer in storage.");
 

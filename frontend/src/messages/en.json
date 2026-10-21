@@ -433,7 +433,8 @@
     "formats": "MP4, WebM, MOV, AVI or MKV, up to {size}",
     "chooseFirst": "Choose a video first",
     "addTitle": "Add a title",
-    "upload": "Upload"
+    "upload": "Upload",
+    "shelbyOnlyWarning": "This video is public, so once Shelby confirms it, VideoMind deletes its own copy and the video plays from Shelby only. Shelby's test network is reset about once a week and storage lasts 30 days: after a reset or when the 30 days end, the video cannot play until you store it again from your own copy of the file. Keep your file."
   },
   "info": {
     "removeTag": "Remove tag {tag}",
@@ -509,7 +510,13 @@
     "startOver": "Start over",
     "upNext": "Up next in this course",
     "playNext": "Play next lesson",
-    "stay": "Stay here"
+    "stay": "Stay here",
+    "gone": {
+      "missing": "This video lives on Shelby only, and Shelby's test network was reset, so it cannot play right now.",
+      "lapsed": "This video lives on Shelby only, and its 30 days of storage ended, so it cannot play right now.",
+      "unconfirmed": "This video lives on Shelby only, and its file there could not be confirmed, so it cannot play right now."
+    },
+    "storeAgain": "Store it on Shelby again"
   },
   "transcript": {
     "title": "Transcript",
@@ -749,7 +756,8 @@
     "label": "Details",
     "factsTitle": "Picture size, frame rate, video format and file type",
     "edit": "Edit details",
-    "privateShelby": "This video is already stored on Shelby. Private closes its pages on VideoMind, but the copy on Shelby can still be read by anyone who has its address, until its paid period ends."
+    "privateShelby": "This video is already stored on Shelby. Private closes its pages on VideoMind, but the copy on Shelby can still be read by anyone who has its address, until its paid period ends.",
+    "shelbyOnly": "VideoMind no longer keeps a copy of this video: its only copy is on Shelby, where anyone with its address can read it. Unlisted or private only hides its pages on VideoMind."
   },
   "export": {
     "srt": "subtitles for editors",

@@ -371,6 +371,12 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
           <p className="text-[13.5px] text-dim mt-1 leading-relaxed max-w-[58ch]">
             {tu("storeBody")}
           </p>
+          {/* vm_shelbyhome: a public video moves to Shelby only, and the owner must know what that means */}
+          {(anchorId ? anchorVideoQ.data?.visibility : draft.visibility) === "public" && (
+            <p className="text-[13px] text-warn mt-3 leading-relaxed max-w-[62ch]" data-shelby-only-warning>
+              {tu("shelbyOnlyWarning")}
+            </p>
+          )}
 
           <div className="mt-4" aria-live="polite">
             {shelby.at === "wallet" && (
@@ -473,6 +479,12 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
           {anchorVideoQ.data?.visibility === "private" && (
             <p className="text-[13.5px] text-warn mt-2 leading-relaxed">
               {tu("anchorPrivate")}
+            </p>
+          )}
+          {/* vm_shelbyhome: said before the file is even chosen */}
+          {anchorVideoQ.data?.visibility === "public" && (
+            <p className="text-[13px] text-warn mt-2 leading-relaxed max-w-[62ch]" data-shelby-only-warning>
+              {tu("shelbyOnlyWarning")}
             </p>
           )}
         </div>

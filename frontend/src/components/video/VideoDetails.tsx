@@ -81,7 +81,13 @@ export function VideoDetails({ video, owner }: { video: VideoRecord; owner: bool
           <h2 className="font-display text-[15px] text-paper mb-4">{td("edit")}</h2>
           <VideoInfoForm value={draft} onChange={setDraft} idPrefix="edit" />
           {/* Making a video private closes its pages here. It cannot take back a copy already on Shelby. */}
-          {draft.visibility === "private" && video.onShelby && (
+          {/* vm_shelbyhome: a public video kept on Shelby only stays readable there */}
+          {draft.visibility !== "public" && video.source === "shelby" && (
+            <p className="text-[13px] text-warn mt-4 leading-relaxed max-w-[62ch]" data-shelby-only-note>
+              {td("shelbyOnly")}
+            </p>
+          )}
+          {draft.visibility === "private" && video.onShelby && video.source !== "shelby" && (
             <p className="text-[13px] text-warn mt-4 leading-relaxed max-w-[62ch]">
               {td("privateShelby")}
             </p>

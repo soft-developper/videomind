@@ -433,7 +433,8 @@
     "formats": "MP4, WebM, MOV, AVI o MKV, hasta {size}",
     "chooseFirst": "Primero elige un video",
     "addTitle": "Añade un título",
-    "upload": "Subir"
+    "upload": "Subir",
+    "shelbyOnlyWarning": "Este video es público, así que cuando Shelby lo confirme, VideoMind borrará su propia copia y el video se reproducirá solo desde Shelby. La red de prueba de Shelby se reinicia más o menos una vez por semana y el almacenamiento dura 30 días: después de un reinicio o cuando terminen los 30 días, el video no se podrá reproducir hasta que lo guardes de nuevo desde tu propia copia del archivo. Conserva tu archivo."
   },
   "info": {
     "removeTag": "Quitar la etiqueta {tag}",
@@ -509,7 +510,13 @@
     "startOver": "Empezar de nuevo",
     "upNext": "A continuación en este curso",
     "playNext": "Reproducir la siguiente lección",
-    "stay": "Quedarme aquí"
+    "stay": "Quedarme aquí",
+    "gone": {
+      "missing": "Este video solo está en Shelby, y la red de prueba de Shelby se reinició, así que ahora no se puede reproducir.",
+      "lapsed": "Este video solo está en Shelby, y sus 30 días de almacenamiento terminaron, así que ahora no se puede reproducir.",
+      "unconfirmed": "Este video solo está en Shelby, y su archivo allí no se pudo confirmar, así que ahora no se puede reproducir."
+    },
+    "storeAgain": "Guardarlo de nuevo en Shelby"
   },
   "transcript": {
     "title": "Transcripción",
@@ -749,7 +756,8 @@
     "label": "Detalles",
     "factsTitle": "Tamaño de imagen, fotogramas por segundo, formato de video y tipo de archivo",
     "edit": "Editar detalles",
-    "privateShelby": "Este video ya está guardado en Shelby. Privado cierra sus páginas en VideoMind, pero cualquiera que tenga la dirección de la copia en Shelby puede leerla hasta que termine su período pagado."
+    "privateShelby": "Este video ya está guardado en Shelby. Privado cierra sus páginas en VideoMind, pero cualquiera que tenga la dirección de la copia en Shelby puede leerla hasta que termine su período pagado.",
+    "shelbyOnly": "VideoMind ya no guarda una copia de este video: su única copia está en Shelby, donde cualquiera con su dirección puede leerla. No listado o privado solo oculta sus páginas en VideoMind."
   },
   "export": {
     "srt": "subtítulos para editores",

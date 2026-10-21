@@ -7,7 +7,9 @@ import { enqueueJob, type Job } from "../lib/jobs.js";
 import { nudgeRunner, PermanentJobError } from "../lib/runner.js";
 import { store } from "../lib/store.js";
 import { getStorage, ObjectMissingError } from "../lib/storage.js";
-import { getOriginal, saveClipAsset, deleteAssetById } from "../lib/assets.js";
+import { saveClipAsset, deleteAssetById } from "../lib/assets.js";
+// vm_shelbyhome: a public video kept on Shelby only is cut from Shelby
+import { videoSource } from "../lib/shelbyHome.js";
 import { cutClip, makeSocialClip, mediaHealth, MediaError, probeFile } from "../lib/media.js";
 import { CLIP_JOB, getClip, updateClip, srtForClip, copyFormat, fileNameFor } from "../lib/clips.js";
 import { getDb } from "../lib/db.js";
@@ -38,12 +40,14 @@ export async function clipHandler(job: Job): Promise<void> {
   const video = await store.get(job.videoId);
   if (!video) return;
   if (!mediaHealth().ffmpeg) throw new PermanentJobError("no_ffmpeg", "FFmpeg is not installed on this server, so clips cannot be made.");
-  const original = await getOriginal(video.id);
-  if (!original) throw new PermanentJobError("source_missing", "The original file is no longer in storage.");
+  const src = await videoSource(video);
+  if (!src) throw new PermanentJobError("source_missing", "The original file is no longer in storage or on Shelby.");
   const storage = getStorage();
   const withInput = async <T>(fn: (input: string) => Promise<T>): Promise<T> => {
-    const url = await storage.signedUrl(original.key, READ_SECONDS);
-    return url ? fn(url) : storage.withLocalFile(original.key, fn);
+    // FFmpeg reads the public Shelby address with ranges, like a player.
+    if (src.from === "shelby") return fn(src.url);
+    const url = await storage.signedUrl(src.asset.key, READ_SECONDS);
+    return url ? fn(url) : storage.withLocalFile(src.asset.key, fn);
   };
 
   await updateClip(id, { status: "making", error: null });

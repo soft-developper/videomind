@@ -12,6 +12,8 @@
 //   POST /:id/youtube                       publish { clipId?, title, description, tags, privacy, madeForKids }
 //   POST /:id/youtube/:pubId/retry          try a failed one again
 import { Router } from "express";
+// vm_shelbyhome: a public video kept on Shelby only can still be sent
+import { videoSource } from "../lib/shelbyHome.js";
 import { store } from "../lib/store.js";
 import { requireAuth, authOf, allowedOrigins } from "../lib/auth.js";
 import { ownsVideo } from "../lib/videoInfo.js";
@@ -144,7 +146,7 @@ youtubeVideoRouter.post("/:id/youtube", limitYoutube, requireAuth, async (req, r
       if (!clip || clip.videoId !== video.id) return res.status(404).json({ error: "Clip not found" });
       if (clip.status !== "ready" || !clip.assetId) return res.status(409).json({ error: "The clip is not ready yet.", code: "clip_not_ready" });
       clipId = clip.id;
-    } else if (!(await getOriginal(video.id))) {
+    } else if (!(await videoSource(video))) {
       return res.status(409).json({ error: "The original file is not in VideoMind's storage, so it cannot be sent to YouTube.", code: "no_original" });
     }
 

@@ -21,6 +21,9 @@ interface Props {
   blobName?: string;
   /** vm_upload: where the file is served from */
   source?: "storage" | "shelby" | null;
+  /** vm_shelbyhome: why a video kept on Shelby only cannot play, and where its owner stores it again */
+  shelbyGone?: "missing" | "lapsed" | "unconfirmed" | null;
+  storeHref?: string | null;
   /** vm_media: the picture shown until playback starts */
   poster?: string | null;
   /** what the file is ("HEVC in MOV") when browsers cannot all play it */
@@ -55,7 +58,7 @@ function ccPreference(): boolean {
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
-  function VideoPlayer({ streamUrl, source, poster, format, captions, chapters, startAt, resumed, onStartOver, onProgress, upNext, onDuration, onTimeUpdate, countViewsOf }, ref) {
+  function VideoPlayer({ streamUrl, source, shelbyGone, storeHref, poster, format, captions, chapters, startAt, resumed, onStartOver, onProgress, upNext, onDuration, onTimeUpdate, countViewsOf }, ref) {
     const tp = useTranslations("player");
     const v = useRef<HTMLVideoElement>(null);
     const views = useViewCounter(countViewsOf);
@@ -166,8 +169,13 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
 
     if (!streamUrl) {
       return (
-        <div className="aspect-video rounded-md bg-screen border border-rule flex items-center justify-center">
-          <span className="tc">{tp("noFile")}</span>
+        <div className="aspect-video rounded-md bg-screen border border-rule flex flex-col items-center justify-center gap-3 px-6 text-center" data-player-empty={shelbyGone ?? "none"}>
+          {shelbyGone ? (
+            <>
+              <span className="text-[14px] text-paper-2 max-w-[52ch] leading-relaxed">{tp(`gone.${shelbyGone}`)}</span>
+              {storeHref && <a href={storeHref} className="btn btn-signal h-9 px-3.5 inline-flex items-center">{tp("storeAgain")}</a>}
+            </>
+          ) : <span className="tc">{tp("noFile")}</span>}
         </div>
       );
     }

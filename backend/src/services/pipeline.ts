@@ -24,6 +24,8 @@ import type { TranscriptSegment, VideoAIData } from "../types/video.js";
 // vm_charge: processing is paid by the video's owner, per minute of sound
 import { holdProcessing, settleProcessing, releaseProcessing } from "../lib/charge.js";
 import { CreditsError } from "../lib/credits.js";
+// vm_shelbyhome: a public video already confirmed on Shelby moves there once ready
+import { afterChange as shelbyAfterChange } from "../lib/shelbyHome.js";
 // vm_media: thumbnails and video facts, a job of its own next to these stages
 import { INSPECT, makeInspectHandler } from "./inspect.js";
 import { EMBED, embedHandler, queueEmbed } from "./search.js";
@@ -100,6 +102,7 @@ export function makeHandlers(deps: PipelineDeps) {
     if (!(await store.get(job.videoId))?.ai?.transcript?.length) {
       await store.update(job.videoId, { status: "ready" });
       await settleProcessing(job.videoId);
+      shelbyAfterChange(job.videoId);
       return;
     }
 
@@ -138,6 +141,7 @@ export function makeHandlers(deps: PipelineDeps) {
 
     await store.update(job.videoId, { status: "ready" });
     await settleProcessing(job.videoId);
+    shelbyAfterChange(job.videoId);
 
     // The original is kept: it is the copy the video plays from and the
     // one later steps (playback files, clips, storing on Shelby) are made from.

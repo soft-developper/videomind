@@ -7,6 +7,8 @@ import { nudgeRunner } from "../lib/runner.js";
 import { store } from "../lib/store.js";
 import { ANCHOR_CHECK, checkAnchor, getAnchor, pendingWithoutCheck } from "../lib/anchors.js";
 import { getDb } from "../lib/db.js";
+// vm_shelbyhome: a public video confirmed on Shelby plays from there
+import { moveToShelbyIfReady } from "../lib/shelbyHome.js";
 
 export { ANCHOR_CHECK };
 
@@ -28,6 +30,7 @@ export async function anchorCheckHandler(job: Job): Promise<void> {
     e.code = "not_indexed";
     throw e;
   }
+  if (r.state === "anchored") await moveToShelbyIfReady(job.videoId).catch((e) => console.error(`[shelbyhome] ${job.videoId}: ${e?.message ?? e}`));
 }
 
 /** When every look failed because Shelby could not be reached, say so on the store. */

@@ -271,6 +271,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                     ref={player}
                     streamUrl={video.streamUrl}
                     source={video.source}
+                  shelbyGone={video.shelbyGone ?? null}
+                  storeHref={mine ? `/upload?anchor=${video.id}` : null}
                     poster={video.posterUrl}
                     format={video.media && video.media.playable !== "yes" ? formatLabel(video.media) : null}
                     title={video.title}
@@ -296,6 +298,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   ref={player}
                   streamUrl={video.streamUrl ?? null}
                   source={video.source}
+                  shelbyGone={video.shelbyGone ?? null}
+                  storeHref={mine ? `/upload?anchor=${video.id}` : null}
                   poster={video.posterUrl}
                   format={video.media && video.media.playable !== "yes" ? formatLabel(video.media) : null}
                   title={video.title}

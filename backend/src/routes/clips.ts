@@ -9,6 +9,7 @@
 //   GET    /:id/clips/:clipId/captions     the clip's captions as SubRip (.srt)
 //   GET    /:id/clips/:clipId/file         local disk storage only, behind a signature
 import { Router } from "express";
+import { videoSource } from "../lib/shelbyHome.js";
 import crypto from "crypto";
 import { store } from "../lib/store.js";
 import { requireAuth, authOf } from "../lib/auth.js";
@@ -73,7 +74,8 @@ router.post("/:id/clips", limitClips, requireAuth, async (req, res) => {
     const video = await ownVideo(req, res); if (!video) return;
     if (video.status !== "ready") return res.status(409).json({ error: "Clips can be made once the video is ready.", code: "not_ready" });
     if (!mediaHealth().ffmpeg) return res.status(503).json({ error: "This server cannot make clips right now (FFmpeg is missing).", code: "no_ffmpeg" });
-    if (!(await getOriginal(video.id))) return res.status(409).json({ error: "The original file is not in VideoMind's storage, so clips cannot be cut from it.", code: "no_original" });
+    // vm_shelbyhome: from storage, or from the confirmed store on Shelby
+    if (!(await videoSource(video))) return res.status(409).json({ error: "The original file is not in VideoMind's storage, so clips cannot be cut from it.", code: "no_original" });
     const c = parseClip(req.body, video);
     if ((await countClips(video.id)) >= LIMITS.perVideo) return res.status(409).json({ error: `A video can have up to ${LIMITS.perVideo} clips. Delete some first.`, code: "too_many" });
     if (c.kind === "social" && (await socialToday(authOf(req)!.wallet)) >= LIMITS.socialPerDay) {

@@ -408,6 +408,8 @@ export interface VideoRecord {
   ownerWallet?: string;
   /** where streamUrl points: our own storage, or Shelby */
   source?: "storage" | "shelby" | null;
+  /** vm_shelbyhome: why a video kept on Shelby only cannot play right now */
+  shelbyGone?: "missing" | "lapsed" | "unconfirmed" | null;
   /** true once the owner has stored the file on Shelby */
   onShelby?: boolean;
   /** vm_info: the owner's details. Videos from before these existed are "unlisted". */

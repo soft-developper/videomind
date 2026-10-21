@@ -189,6 +189,8 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 ref={player}
                 streamUrl={video.streamUrl ?? null}
                   source={video.source}
+                  shelbyGone={video.shelbyGone ?? null}
+                  storeHref={video.isOwner ? `/upload?anchor=${params.id}` : null}
                 poster={video.posterUrl}
                 format={video.media && video.media.playable !== "yes" ? formatLabel(video.media) : null}
                 title={video.title}
