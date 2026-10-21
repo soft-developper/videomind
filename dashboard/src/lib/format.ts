@@ -6,6 +6,11 @@ export function bytes(b: number): string {
   while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
   return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${u[i]}`;
 }
+/** vm_storagecharge: storage as it is priced, in GB of 10^9 bytes. */
+export function gb(b: number): string {
+  const x = b / 1e9;
+  return `${x.toLocaleString("en-US", { maximumFractionDigits: x < 10 ? 2 : 1 })} GB`;
+}
 export function duration(sec: number): string {
   const s = Math.round(sec);
   if (s < 60) return `${s} s`;

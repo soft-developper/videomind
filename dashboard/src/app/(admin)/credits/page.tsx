@@ -10,11 +10,11 @@ import { clsx } from "clsx";
 import { useAdmin } from "@/components/Shell";
 import { Note } from "@/components/AuthCard";
 import {
-  ApiError, getCredits, getCreditLedger, setCreditPrice, setWelcome, grantCredits, removeCredits, refundCredit, setCharging,
+  ApiError, getCredits, getCreditLedger, setCreditPrice, setWelcome, grantCredits, removeCredits, refundCredit, setCharging, setStorageFree,
   type CreditsOverview, type CreditEntry, type CreditKind, type ActionPrice, type UnitCost,
 } from "@/lib/api";
 import { dollars, CREDIT_KINDS, CREDIT_UNITS } from "@/lib/actions";
-import { num, when, short } from "@/lib/format";
+import { num, when, short, gb } from "@/lib/format";
 
 const msg = (e: unknown) => (e instanceof ApiError ? e.message : "That did not work. Try again.");
 const asInput = (micros: number) => String(micros / 1_000_000);
@@ -98,6 +98,7 @@ export default function CreditsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [welcome, setWelcomeV] = useState("");
+  const [freeGb, setFreeGb] = useState("");
   const [wallet, setWallet] = useState(""); const [amt, setAmt] = useState(""); const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   // The ledger
@@ -108,7 +109,7 @@ export default function CreditsPage() {
 
   const fail = useCallback((e: unknown) => { if (e instanceof ApiError && e.status === 401) return signedOut(); setDone(null); setErr(msg(e)); }, [signedOut]);
   const load = useCallback(async () => {
-    try { const r = await getCredits(); setO(r); setWelcomeV(asInput(r.settings.welcomeMicros)); } catch (e) { fail(e); }
+    try { const r = await getCredits(); setO(r); setWelcomeV(asInput(r.settings.welcomeMicros)); setFreeGb(String(r.storage.freeBytes / r.storage.gbBytes)); } catch (e) { fail(e); }
   }, [fail]);
   useEffect(() => { void load(); }, [load]);
 
@@ -145,6 +146,13 @@ export default function CreditsPage() {
     if (welcome.trim() === "" || !Number.isFinite(x) || x < 0) return fail(new ApiError("Write the welcome amount as a number of US dollars, for example 1. Write 0 for none.", 400));
     setBusy(true);
     try { const s = await setWelcome(welcome.trim()); await refresh(s.welcomeMicros ? `Every wallet now gets ${dollars(s.welcomeMicros, true)} once.` : "New wallets get no welcome credits."); }
+    catch (e) { fail(e); } finally { setBusy(false); }
+  };
+  const saveFree = async () => {
+    const x = Number(freeGb);
+    if (freeGb.trim() === "" || !Number.isFinite(x) || x < 0) return fail(new ApiError("Write the free storage as a number of GB, for example 1. Write 0 for none.", 400));
+    setBusy(true);
+    try { const s = await setStorageFree(freeGb.trim()); await refresh(s.freeBytes ? `Every owner now keeps ${gb(s.freeBytes)} free.` : "Storage is charged from the first byte."); }
     catch (e) { fail(e); } finally { setBusy(false); }
   };
   const change = async (how: "grant" | "remove") => {
@@ -224,6 +232,19 @@ export default function CreditsPage() {
               <div className="flex items-end gap-3 flex-wrap">
                 <label className="text-[13px] text-dim flex flex-col gap-1">US dollars<input value={welcome} onChange={(e) => setWelcomeV(e.target.value)} inputMode="decimal" className="h-9 px-3 text-[13.5px] w-32 tabular-nums" data-credit-welcome /></label>
                 <button onClick={() => void saveWelcome()} disabled={busy || welcome.trim() === asInput(o.settings.welcomeMicros)} className="btn btn-ghost h-9 px-3.5">Save</button>
+              </div>
+            </Panel>
+
+            <Panel title="Storage on VideoMind" id="storage" hint={<>Files VideoMind keeps for a video (the original, its pictures and sound, clips) are charged once a day, a thirtieth of the storage price above, for what each owner keeps above the free amount. A public video on Shelby only no longer counts its original. What a wallet cannot pay is owed and paid first from its next credits. After {o.storage.graceDays} days owed, its videos kept here stop playing (a public video also on Shelby plays from there) and new uploads wait. Nothing is deleted. Nothing is charged while charging is off or the price is 0.</>}>
+              <div className="text-[13.5px] text-paper-2 space-y-1 mb-3" data-credit-storage>
+                <p>{gb(o.storage.totalBytes)} kept by {num(o.storage.owners)} {o.storage.owners === 1 ? "owner" : "owners"}{(() => { const p = o.prices.find((p) => p.id === "storage"); return p && p.microsPerUnit > 0 && o.settings.charging ? `, charged at ${dollars(p.microsPerUnit, true)} per GB month` : ", not charged now"; })()}.</p>
+                {o.storage.walletsOwing > 0
+                  ? <p className={o.storage.walletsPaused ? "text-warn" : ""}>{dollars(o.storage.owedMicros, true)} owed by {num(o.storage.walletsOwing)} {o.storage.walletsOwing === 1 ? "wallet" : "wallets"}{o.storage.walletsPaused ? `, ${num(o.storage.walletsPaused)} paused` : ""}. Forgive it from a user&rsquo;s page.</p>
+                  : <p className="text-dim">Nothing owed.</p>}
+              </div>
+              <div className="flex items-end gap-3 flex-wrap">
+                <label className="text-[13px] text-dim flex flex-col gap-1">Free per owner, GB<input value={freeGb} onChange={(e) => setFreeGb(e.target.value)} inputMode="decimal" className="h-9 px-3 text-[13.5px] w-32 tabular-nums" data-credit-free-gb /></label>
+                <button onClick={() => void saveFree()} disabled={busy || freeGb.trim() === String(o.storage.freeBytes / o.storage.gbBytes)} className="btn btn-ghost h-9 px-3.5">Save</button>
               </div>
             </Panel>
 

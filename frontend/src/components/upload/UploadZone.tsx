@@ -22,7 +22,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 // vm_charge: what processing will cost
-import { PriceTag } from "@/components/credits/Credits";
+import { PriceTag, AddCreditsLink } from "@/components/credits/Credits";
 import { useUploadBlobs } from "@shelby-protocol/react";
 import {
   createUpload, listOpenUploads, discardUpload, anchorVideo, getVideo, ApiError, type UploadInfo,
@@ -115,6 +115,8 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
   const [target, setTarget] = useState<Target | null>(null);
   const [shelby, setShelby] = useState<Shelby>({ at: "idle" });
   const [err, setErr] = useState<string | null>(null);
+  // vm_storagecharge: the last error was unpaid storage, so it gets a link to add credits
+  const [errCredits, setErrCredits] = useState(false);
   const [starting, setStarting] = useState(false);
   const runner = useRef<ResumableUpload | null>(null);
   const info = useRef<UploadInfo | null>(null);
@@ -237,12 +239,13 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
   const begin = async () => {
     if (!file || !title.trim() || starting) return;
     if (!sessionWallet) { setErr(tu("signInFirst")); return; }
-    setErr(null); setStarting(true);
+    setErr(null); setErrCredits(false); setStarting(true);
     try {
       const u = await createUpload({ filename: file.name, size: file.size, contentType: file.type || "video/mp4", ...draftToPatch(draft) });
       saveDefaults(draft);
       await run(file, u);
     } catch (e: any) {
+      setErrCredits(e instanceof ApiError && e.code === "storage_unpaid");
       setErr(localize(e?.message) ?? tu("startFailed"));
     } finally { setStarting(false); }
   };
@@ -258,7 +261,7 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
 
   const reset = () => {
     runNo.current++;
-    setFile(null); setDraft(emptyDraft()); setErr(null);
+    setFile(null); setDraft(emptyDraft()); setErr(null); setErrCredits(false);
     setStep({ at: "choose" }); setProgress(null); setTarget(null); setShelby({ at: "idle" });
     runner.current = null; info.current = null;
   };
@@ -267,7 +270,7 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
   const onDrop = useCallback((files: File[]) => {
     const f = files[0];
     if (!f) return;
-    setErr(null);
+    setErr(null); setErrCredits(false);
 
     // Storing an earlier video on Shelby: it must be the same file.
     if (anchorId) {
@@ -321,8 +324,8 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
     <div role="alert" className="rounded-md border border-error/50 bg-error/5">
       <div className="flex items-start gap-3 p-3.5">
         <AlertTriangle size={15} className="text-error shrink-0 mt-0.5" />
-        <p className="text-[13.5px] font-sans text-error leading-relaxed flex-1">{err}</p>
-        <button onClick={() => setErr(null)} aria-label={tc("dismiss")} className="text-dim hover:text-paper shrink-0 no-min">
+        <p className="text-[13.5px] font-sans text-error leading-relaxed flex-1">{err}{errCredits && <> <AddCreditsLink /></>}</p>
+        <button onClick={() => { setErr(null); setErrCredits(false); }} aria-label={tc("dismiss")} className="text-dim hover:text-paper shrink-0 no-min">
           <X size={13} />
         </button>
       </div>

@@ -17,6 +17,12 @@ export function bytesIn(locale: Locale, n: number): string {
   return unit(Math.round((gb / 1024) * 10) / 10, "terabyte", 1);
 }
 
+/** vm_storagecharge: storage as it is priced, in GB of 10^9 bytes ("2.5 GB"). */
+export function gbIn(locale: Locale, n: number): string {
+  const gb = n / 1e9;
+  return new Intl.NumberFormat(intlLocale(locale), { style: "unit", unit: "gigabyte", unitDisplay: "short", maximumFractionDigits: gb < 10 ? 2 : 1 }).format(gb);
+}
+
 /** Whole minutes and hours, short: "58 min", "1 h 5 min". Null under a minute. */
 export function lengthIn(locale: Locale, seconds: number): string | null {
   const min = Math.round(seconds / 60);
@@ -38,6 +44,7 @@ export function useFormat() {
       locale,
       number: (n: number) => new Intl.NumberFormat(il).format(n),
       bytes: (n: number) => bytesIn(locale, n),
+      gb: (n: number) => gbIn(locale, n),
       /** A video's length, or "Under a minute". Null when unknown. */
       length: (seconds?: number | null) => {
         if (!seconds || !isFinite(seconds)) return null;

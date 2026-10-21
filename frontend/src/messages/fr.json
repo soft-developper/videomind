@@ -516,7 +516,11 @@
       "lapsed": "Cette vidéo n’existe que sur Shelby, et ses 30 jours de stockage sont terminés : elle ne peut pas être lue pour l’instant.",
       "unconfirmed": "Cette vidéo n’existe que sur Shelby, et son fichier n’a pas pu y être confirmé : elle ne peut pas être lue pour l’instant."
     },
-    "storeAgain": "La stocker à nouveau sur Shelby"
+    "storeAgain": "La stocker à nouveau sur Shelby",
+    "paused": {
+      "owner": "Cette vidéo est en pause car le stockage sur VideoMind n’est pas payé. Ajoutez des crédits pour la lire à nouveau ; rien n’a été supprimé.",
+      "visitor": "Cette vidéo est en pause pour le moment."
+    }
   },
   "transcript": {
     "title": "Transcription",
@@ -1230,6 +1234,15 @@
         "check": "Vérifier",
         "checkFailed": "Votre transfert n’a pas pu être vérifié. Il est en sécurité ; réessayez dans une minute.",
         "walletFailed": "Le transfert n’a pas été envoyé. Rien n’a été payé ; réessayez."
+      },
+      "storage": {
+        "title": "Stockage",
+        "kept": "Vous gardez {size} sur VideoMind.",
+        "free": "Les premiers {size} sont gratuits.",
+        "daily": "Cela coûte {price} par jour.",
+        "how": "Facturé une fois par jour pour les fichiers que VideoMind garde pour vos vidéos. Une vidéo publique qui n’existe que sur Shelby ne compte que ses images.",
+        "owed": "{amount} est dû pour le stockage. Il est payé en premier avec les crédits que vous ajoutez. S’il est encore dû le {date}, vos vidéos gardées sur VideoMind sont mises en pause et les nouveaux imports attendent.",
+        "paused": "{amount} est dû pour le stockage : vos vidéos gardées sur VideoMind sont en pause et les nouveaux imports attendent. Ajoutez des crédits pour le payer ; rien n’a été supprimé."
       }
     }
   },
@@ -1954,7 +1967,8 @@
     "notEnoughCredits": "Vous n’avez pas assez de crédits pour cela. Ajoutez des crédits dans la page Portefeuille et réessayez.",
     "ownerOutOfCredits": "Le propriétaire de cette vidéo n’a plus de crédits : elle ne peut pas répondre aux questions pour l’instant.",
     "processNoCredits": "Pas assez de crédits pour traiter cette vidéo. Ajoutez des crédits dans la page Portefeuille, puis réessayez.",
-    "captionsNoCredits": "Sous-titres arrêtés : pas assez de crédits. Ajoutez des crédits dans la page Portefeuille, puis réactivez les sous-titres."
+    "captionsNoCredits": "Sous-titres arrêtés : pas assez de crédits. Ajoutez des crédits dans la page Portefeuille, puis réactivez les sous-titres.",
+    "storageUnpaid": "Votre stockage sur VideoMind n’est pas payé, donc les nouveaux imports sont en pause. Ajoutez des crédits dans la page Portefeuille et ce qui est dû est payé en premier."
   },
   "notFound": {
     "title": "Cette page est introuvable",
@@ -1978,6 +1992,8 @@
     "pathsTitle": "Créez vos parcours d’apprentissage",
     "pathsBody": "{count, plural, one {Vous avez # vidéo prête.} many {Vous avez # vidéos prêtes.} other {Vous avez # vidéos prêtes.}} Les parcours d’apprentissage sont créés quand vous les demandez, car ils coûtent des crédits.",
     "makePaths": "Créer les parcours",
-    "pathsOld": "Vous avez plus de vidéos qu’au moment où ces parcours ont été créés. Créez de nouveaux parcours pour en tenir compte."
+    "pathsOld": "Vous avez plus de vidéos qu’au moment où ces parcours ont été créés. Créez de nouveaux parcours pour en tenir compte.",
+    "storageOwed": "{amount} est dû pour le stockage. Vos vidéos gardées sur VideoMind seront en pause le {date} si vous n’ajoutez pas de crédits.",
+    "storagePaused": "Vos vidéos gardées sur VideoMind sont en pause : {amount} est dû pour le stockage."
   }
 }

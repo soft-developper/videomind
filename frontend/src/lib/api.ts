@@ -410,6 +410,8 @@ export interface VideoRecord {
   source?: "storage" | "shelby" | null;
   /** vm_shelbyhome: why a video kept on Shelby only cannot play right now */
   shelbyGone?: "missing" | "lapsed" | "unconfirmed" | null;
+  /** vm_storagecharge: the owner's storage is unpaid, so a video kept only on VideoMind does not play. */
+  storagePaused?: boolean;
   /** true once the owner has stored the file on Shelby */
   onShelby?: boolean;
   /** vm_info: the owner's details. Videos from before these existed are "unlisted". */
@@ -484,6 +486,12 @@ export interface MyCredits {
   wallet: string; balanceMicros: number; heldMicros: number; availableMicros: number; charging: boolean;
   entries: CreditEntry[];
   prices: Array<{ id: CreditAction; unit: CreditUnit; microsPerUnit: number }>;
+  /** vm_storagecharge: what this wallet keeps on VideoMind's storage and owes for it (Part 16e). */
+  storage?: StorageStatus;
+}
+export interface StorageStatus {
+  bytes: number; freeBytes: number; microsPerGbMonth: number; dailyMicros: number;
+  owedMicros: number; owedSince: number | null; pausesAt: number | null; paused: boolean; graceDays: number;
 }
 export const getMyCredits = () => call<MyCredits>(() => raw.get("/api/credits/me"));
 // vm_charge: the price of each action, for anyone

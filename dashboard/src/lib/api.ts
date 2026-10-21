@@ -229,8 +229,15 @@ export interface CreditsOverview {
   prices: ActionPrice[]; costs: UnitCost[];
   totals: { byKind: Record<CreditKind, { micros: number; count: number }>; outstandingMicros: number; openHolds: { count: number; micros: number }; walletsWithCredits: number };
   topup: { treasury: string | null; network: string };
+  /** vm_storagecharge: what owners keep on VideoMind's storage, and what is owed for it. */
+  storage: StorageTotals;
 }
-export interface WalletCredits { wallet: string; balanceMicros: number; heldMicros: number; availableMicros: number; entries: CreditEntry[] }
+export interface StorageTotals { totalBytes: number; owners: number; freeBytes: number; owedMicros: number; walletsOwing: number; walletsPaused: number; graceDays: number; gbBytes: number }
+export interface StorageStatus {
+  bytes: number; freeBytes: number; microsPerGbMonth: number; dailyMicros: number;
+  owedMicros: number; owedSince: number | null; pausesAt: number | null; paused: boolean; graceDays: number;
+}
+export interface WalletCredits { wallet: string; balanceMicros: number; heldMicros: number; availableMicros: number; entries: CreditEntry[]; storage: StorageStatus }
 export const getCredits = () => call<CreditsOverview>("GET", "/credits");
 export function getCreditLedger(o: { wallet?: string; kind?: CreditKind | ""; before?: string | null }) {
   const p = new URLSearchParams();
@@ -244,4 +251,6 @@ export const setCharging = (on: boolean) => call<{ charging: boolean; welcomeMic
 export const setWelcome = (welcomeUsd: string) => call<{ charging: boolean; welcomeMicros: number }>("POST", "/credits/welcome", { welcomeUsd });
 export const grantCredits = (wallet: string, usd: string, note: string) => call<CreditEntry>("POST", "/credits/grant", { wallet, usd, note });
 export const removeCredits = (wallet: string, usd: string, note: string) => call<CreditEntry>("POST", "/credits/remove", { wallet, usd, note });
+export const setStorageFree = (freeGb: string) => call<{ freeBytes: number }>("POST", "/credits/storage", { freeGb });
+export const forgiveStorage = (wallet: string) => call<{ forgivenMicros: number; days: number }>("POST", `/credits/wallets/${encodeURIComponent(wallet)}/forgive-storage`);
 export const refundCredit = (id: string, note: string) => call<CreditEntry>("POST", `/credits/entries/${encodeURIComponent(id)}/refund`, { note });

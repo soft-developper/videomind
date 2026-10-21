@@ -10,6 +10,8 @@ import {
 } from "../lib/uploads.js";
 // vm_info: the details typed in the upload form
 import { parseInfo, InfoError } from "../lib/videoInfo.js";
+// vm_storagecharge: no new uploads while storage is unpaid past the grace days
+import { storagePaused, STORAGE_UNPAID } from "../lib/storageCharge.js";
 
 const router = Router();
 
@@ -60,6 +62,7 @@ const describe = (u: UploadRow) => ({
 router.post("/", limitUpload, requireAuth, requireStorage, async (req, res) => {
   try {
     const b = (req.body ?? {}) as Record<string, unknown>;
+    if (await storagePaused(authOf(req)!.wallet)) return res.status(402).json({ error: STORAGE_UNPAID, code: "storage_unpaid" });
     const u = await createUpload({
       wallet: authOf(req)!.wallet,
       filename: String(b.filename ?? ""), size: Number(b.size),

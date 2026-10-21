@@ -6,11 +6,14 @@
 //   GET  /api/credits/prices   the price of each action (anyone may read them)
 //   GET  /api/credits/topup    where to send ShelbyUSD, and the wallet's ShelbyUSD
 //   POST /api/credits/topup    { hash }  add the credits a transfer paid for, once
+//                              (then pays what is owed for storage first, Part 16e)
 import { Router } from "express";
 import { requireAuth, authOf } from "../lib/auth.js";
 import { rateLimit } from "../lib/guard.js";
 import { myCredits, listActionPrices, publicPrice, getCreditSettings, CreditsError } from "../lib/credits.js";
 import { claimTopup, topupInfo, TopupError } from "../lib/topup.js";
+// vm_storagecharge: storage kept, owed and paused (Part 16e)
+import { storageStatus, collectOwed } from "../lib/storageCharge.js";
 
 const router = Router();
 
@@ -29,7 +32,9 @@ function fail(res: any, err: any, what: string, message: string) {
 router.get("/me", requireAuth, async (req, res) => {
   try {
     res.setHeader("Cache-Control", "no-store");
-    return res.json(await myCredits(authOf(req)!.wallet));
+    const wallet = authOf(req)!.wallet;
+    const [mine, storage] = await Promise.all([myCredits(wallet), storageStatus(wallet)]);
+    return res.json({ ...mine, storage });
   } catch (err: any) { return fail(res, err, "reading a balance", "Your credits could not be loaded. Try again."); }
 });
 
@@ -50,7 +55,9 @@ router.get("/topup", requireAuth, async (req, res) => {
 router.post("/topup", limitTopup, requireAuth, async (req, res) => {
   try {
     const r = await claimTopup(authOf(req)!.wallet, req.body?.hash);
-    return res.status(r.added ? 201 : 200).json(r);
+    // vm_storagecharge: what is owed for storage is paid first from new credits.
+    const storagePaidMicros = r.added ? await collectOwed(authOf(req)!.wallet).catch((e) => { console.error(`[storage] collecting after a top up: ${e?.message ?? e}`); return 0; }) : 0;
+    return res.status(r.added ? 201 : 200).json({ ...r, storagePaidMicros });
   } catch (err: any) { return fail(res, err, "adding a top up", "Your transfer could not be checked. It is safe; try again in a minute."); }
 });
 

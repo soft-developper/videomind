@@ -21,6 +21,33 @@ import { useFormat, useMoney, inline } from "@/lib/format";
 import { AddCredits } from "@/components/wallet/AddCredits";
 import { ExternalLink as LinkOut } from "lucide-react";
 
+/** vm_storagecharge: what this wallet keeps on VideoMind, its daily cost, and anything owed (Part 16e). */
+function StorageLine({ s }: { s: NonNullable<MyCredits["storage"]> }) {
+  const t = useTranslations("walletPage.credits.storage");
+  const f = useFormat();
+  const money = useMoney();
+  const owed = s.owedMicros > 0;
+  if (s.bytes === 0 && !owed) return null;
+  return (
+    <div className="mt-6 max-w-[640px]" data-storage={s.paused ? "paused" : owed ? "owed" : "ok"}>
+      <h3 className="eyebrow mb-2">{t("title")}</h3>
+      <p className="text-[14px] text-paper-2">
+        {t("kept", { size: inline(f.gb(s.bytes)) })}
+        {s.freeBytes > 0 && <> {t("free", { size: inline(f.gb(s.freeBytes)) })}</>}
+        {s.dailyMicros > 0 && <> {t("daily", { price: inline(money(s.dailyMicros)) })}</>}
+      </p>
+      {owed && (
+        <p role={s.paused ? "alert" : undefined} className={clsx("text-[13.5px] mt-2", s.paused ? "text-error" : "text-warn")}>
+          {s.paused
+            ? t("paused", { amount: inline(money(s.owedMicros)) })
+            : t("owed", { amount: inline(money(s.owedMicros)), date: s.pausesAt ? f.date(s.pausesAt) : "" })}
+        </p>
+      )}
+      {s.microsPerGbMonth > 0 && <p className="text-[12.5px] text-dim mt-2">{t("how")}</p>}
+    </div>
+  );
+}
+
 function CreditsSection({ c }: { c: MyCredits }) {
   const t = useTranslations("walletPage.credits");
   const tw = useTranslations("walletPage");
@@ -42,6 +69,7 @@ function CreditsSection({ c }: { c: MyCredits }) {
       </div>
       <p className="text-[13px] text-dim mt-2 max-w-[70ch]">{c.charging ? t("charging") : t("notCharging")}</p>
       <AddCredits wallet={c.wallet} money={money} />
+      {c.storage && <StorageLine s={c.storage} />}
 
       <div className="grid md:grid-cols-2 gap-x-10 gap-y-8 mt-6">
         <div className="min-w-0">

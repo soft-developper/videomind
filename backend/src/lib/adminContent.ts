@@ -78,7 +78,7 @@ export async function getVideoForAdmin(id: string) {
   const owner = ownerOf(v);
   const db = getDb();
   const [play, names, pubs, clips, views] = await Promise.all([
-    playbackOf(v),
+    playbackOf(v, { admin: true }),
     owner ? namesOf([owner]).catch(() => new Map<string, string>()) : Promise.resolve(new Map<string, string>()),
     db.execute({ sql: "SELECT id, title, privacy, status, remote_id, created_at FROM publications WHERE video_id = ? ORDER BY created_at DESC", args: [id] }),
     db.execute({ sql: "SELECT COUNT(*) AS n FROM clips WHERE video_id = ?", args: [id] }),

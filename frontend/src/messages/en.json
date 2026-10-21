@@ -516,7 +516,11 @@
       "lapsed": "This video lives on Shelby only, and its 30 days of storage ended, so it cannot play right now.",
       "unconfirmed": "This video lives on Shelby only, and its file there could not be confirmed, so it cannot play right now."
     },
-    "storeAgain": "Store it on Shelby again"
+    "storeAgain": "Store it on Shelby again",
+    "paused": {
+      "owner": "This video is paused because storage on VideoMind is unpaid. Add credits to play it again; nothing was deleted.",
+      "visitor": "This video is paused for now."
+    }
   },
   "transcript": {
     "title": "Transcript",
@@ -1230,6 +1234,15 @@
         "check": "Check",
         "checkFailed": "Your transfer could not be checked. It is safe; try again in a minute.",
         "walletFailed": "The transfer was not sent. Nothing was paid; try again."
+      },
+      "storage": {
+        "title": "Storage",
+        "kept": "You keep {size} on VideoMind.",
+        "free": "The first {size} are free.",
+        "daily": "That costs {price} a day.",
+        "how": "Charged once a day for the files VideoMind keeps for your videos. A public video that lives on Shelby only counts just its pictures.",
+        "owed": "{amount} is owed for storage. It is paid first from the credits you add. If it is still owed on {date}, your videos kept on VideoMind pause and new uploads wait.",
+        "paused": "{amount} is owed for storage, so your videos kept on VideoMind are paused and new uploads wait. Add credits to pay it; nothing was deleted."
       }
     }
   },
@@ -1954,7 +1967,8 @@
     "notEnoughCredits": "Not enough credits for this. Add credits on the Wallet page and try again.",
     "ownerOutOfCredits": "The owner of this video is out of credits, so it cannot answer questions right now.",
     "processNoCredits": "Not enough credits to process this video. Add credits on the Wallet page, then try again.",
-    "captionsNoCredits": "Captions stopped: not enough credits. Add credits on the Wallet page, then turn captions on again."
+    "captionsNoCredits": "Captions stopped: not enough credits. Add credits on the Wallet page, then turn captions on again.",
+    "storageUnpaid": "Your storage on VideoMind is unpaid, so new uploads are paused. Add credits on the Wallet page and what is owed is paid first."
   },
   "notFound": {
     "title": "This page was not found",
@@ -1978,6 +1992,8 @@
     "pathsTitle": "Make your learning paths",
     "pathsBody": "{count, plural, one {You have # video ready.} other {You have # videos ready.}} Learning paths are made when you ask for them, because they cost credits.",
     "makePaths": "Make learning paths",
-    "pathsOld": "You have more videos than when these paths were made. Build again to include them."
+    "pathsOld": "You have more videos than when these paths were made. Build again to include them.",
+    "storageOwed": "{amount} is owed for storage. Your videos kept on VideoMind pause on {date} unless you add credits.",
+    "storagePaused": "Your videos kept on VideoMind are paused: {amount} is owed for storage."
   }
 }

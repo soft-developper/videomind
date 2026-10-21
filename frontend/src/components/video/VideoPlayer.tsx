@@ -8,6 +8,8 @@ import Link from "next/link";
 import { useViewCounter } from "@/lib/useViewCounter";
 // vm_lang
 import { useTranslations } from "next-intl";
+// vm_storagecharge: where the owner adds credits when storage is unpaid
+import { ADD_CREDITS_HREF } from "@/components/credits/Credits";
 
 export interface VideoPlayerHandle {
   seekTo: (seconds: number) => void;
@@ -23,6 +25,8 @@ interface Props {
   source?: "storage" | "shelby" | null;
   /** vm_shelbyhome: why a video kept on Shelby only cannot play, and where its owner stores it again */
   shelbyGone?: "missing" | "lapsed" | "unconfirmed" | null;
+  /** vm_storagecharge: unpaid storage; the owner is told how to play it again. */
+  storagePaused?: "owner" | "visitor" | null;
   storeHref?: string | null;
   /** vm_media: the picture shown until playback starts */
   poster?: string | null;
@@ -58,8 +62,9 @@ function ccPreference(): boolean {
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
-  function VideoPlayer({ streamUrl, source, shelbyGone, storeHref, poster, format, captions, chapters, startAt, resumed, onStartOver, onProgress, upNext, onDuration, onTimeUpdate, countViewsOf }, ref) {
+  function VideoPlayer({ streamUrl, source, shelbyGone, storagePaused, storeHref, poster, format, captions, chapters, startAt, resumed, onStartOver, onProgress, upNext, onDuration, onTimeUpdate, countViewsOf }, ref) {
     const tp = useTranslations("player");
+    const tc = useTranslations("credits");
     const v = useRef<HTMLVideoElement>(null);
     const views = useViewCounter(countViewsOf);
     const [loading, setLoading] = useState(true);
@@ -169,8 +174,13 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
 
     if (!streamUrl) {
       return (
-        <div className="aspect-video rounded-md bg-screen border border-rule flex flex-col items-center justify-center gap-3 px-6 text-center" data-player-empty={shelbyGone ?? "none"}>
-          {shelbyGone ? (
+        <div className="aspect-video rounded-md bg-screen border border-rule flex flex-col items-center justify-center gap-3 px-6 text-center" data-player-empty={storagePaused ? "paused" : shelbyGone ?? "none"}>
+          {storagePaused ? (
+            <>
+              <span className="text-[14px] text-paper-2 max-w-[52ch] leading-relaxed">{tp(`paused.${storagePaused}`)}</span>
+              {storagePaused === "owner" && <Link href={ADD_CREDITS_HREF} className="btn btn-signal h-9 px-3.5 inline-flex items-center">{tc("add")}</Link>}
+            </>
+          ) : shelbyGone ? (
             <>
               <span className="text-[14px] text-paper-2 max-w-[52ch] leading-relaxed">{tp(`gone.${shelbyGone}`)}</span>
               {storeHref && <a href={storeHref} className="btn btn-signal h-9 px-3.5 inline-flex items-center">{tp("storeAgain")}</a>}

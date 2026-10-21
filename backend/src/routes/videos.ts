@@ -14,6 +14,8 @@ import { limitUpload, limitPipeline, limitDelete, rateLimit } from "../lib/guard
 import { releaseProcessing } from "../lib/charge.js";
 // vm_shelbyhome: public videos play from Shelby once it holds them
 import { afterChange as shelbyAfterChange, shelbyGone } from "../lib/shelbyHome.js";
+// vm_storagecharge: unpaid storage pauses the videos kept here
+import { storagePaused } from "../lib/storageCharge.js";
 // vm_signin: the caller is the signed in wallet, never a value they send
 import { requireAuth, optionalAuth, authOf, sameWallet } from "../lib/auth.js";
 // vm_storage: every file of a video lives in storage
@@ -128,8 +130,16 @@ function signedFilePath(id: string, seconds: number): string {
   return `/api/videos/${id}/file?exp=${exp}&sig=${fileSignature(id, exp)}`;
 }
 /** vm_content: where a video plays from, as the video page gets it (also for the admin dashboard's review). */
-export async function playbackOf(video: VideoRecord): Promise<{ streamUrl: string | null; source: "storage" | "shelby" | null; shelbyGone?: "missing" | "lapsed" | "unconfirmed" | null }> {
+export async function playbackOf(video: VideoRecord, opts: { admin?: boolean } = {}): Promise<{ streamUrl: string | null; source: "storage" | "shelby" | null; shelbyGone?: "missing" | "lapsed" | "unconfirmed" | null; storagePaused?: boolean }> {
   const original = video.status === "uploading" ? null : await getOriginal(video.id);
+  // vm_storagecharge: the owner's storage is unpaid past the grace days. A video
+  // also stored on Shelby plays from there; one kept only here waits. Admins still review it.
+  const paused = !!original && !opts.admin && (await storagePaused(video.ownerWallet).catch(() => false));
+  if (paused) {
+    const gone = await shelbyGone(video).catch(() => "unconfirmed" as const);
+    if (!gone && video.visibility === "public" && onShelby(video) && video.shelby.videoBlobName) return { streamUrl: shelbyBlobUrl(video.shelby.videoBlobName, video.shelby.accountAddress), source: "shelby" };
+    return { streamUrl: null, source: null, storagePaused: true };
+  }
   if (original) {
     const url = (await getStorage().signedUrl(original.key, PLAY_URL_SECONDS).catch(() => null)) ?? signedFilePath(video.id, PLAY_URL_SECONDS);
     return { streamUrl: url, source: "storage" };
@@ -281,7 +291,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
     // vm_upload: play from our own storage when the original is there,
     // otherwise from Shelby. Storage is the copy made for delivery.
     // vm_shelbyhome: one place decides (storage, else Shelby, else why it cannot play)
-    const { streamUrl, source, shelbyGone: gone } = await playbackOf(video);
+    const { streamUrl, source, shelbyGone: gone, storagePaused: paused } = await playbackOf(video);
 
     // vm_media: the picture shown before playback starts, and the small one for cards
     const pics = (await pictureKeys([video.id]).catch(() => new Map())).get(video.id);
@@ -293,7 +303,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
     const course = await courseOf(video, wallet).catch(() => null);
     const ownerWallet = normalizeWallet(video.ownerWallet);
     const ownerName = ownerWallet ? (await namesOf([ownerWallet]).catch(() => new Map<string, string>())).get(ownerWallet) ?? null : null;
-    return res.json({ ...body, streamUrl, source, shelbyGone: gone ?? null, posterUrl, thumbUrl, onShelby: onShelby(video), isOwner: ownsVideo(video, wallet), course, ownerName });
+    return res.json({ ...body, streamUrl, source, shelbyGone: gone ?? null, storagePaused: !!paused, posterUrl, thumbUrl, onShelby: onShelby(video), isOwner: ownsVideo(video, wallet), course, ownerName });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

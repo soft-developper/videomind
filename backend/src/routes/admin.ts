@@ -44,6 +44,8 @@ import {
   creditsOverview, adminLedger, updateActionPrice, setWelcome, grantCredits, removeCredits, refundCharge, walletCredits, CreditsError, MICROS, setCharging,
 } from "../lib/credits.js";
 import { treasuryAddress, TOPUP_NETWORK } from "../lib/topup.js";
+// vm_storagecharge: storage kept and owed (Part 16e)
+import { storageTotals, storageStatus, setStorageFree, forgiveStorage, collectOwed, GB } from "../lib/storageCharge.js";
 
 const router = Router();
 const SESSION = "vm_admin", PENDING = "vm_admin_mfa";
@@ -378,17 +380,25 @@ router.post("/costs/fixed/:id/delete", requireAdmin, async (req, res) => {
 //   POST /credits/grant        { wallet, usd, note }
 //   POST /credits/remove       { wallet, usd, note }   never more than the wallet has free
 //   POST /credits/entries/:id/refund { note }      a charge, in full, once
+//   POST /credits/storage      { freeGb }   vm_storagecharge: the free allowance per owner
+//   POST /credits/wallets/:wallet/forgive-storage   let a wallet off what it owes for storage
 const usdOf = (micros: number) => micros / MICROS;
 router.get("/credits", requireAdmin, async (_req, res) => {
   // vm_topup: where top ups go (TOPUP_TREASURY_ADDRESS on the server, read only here).
-  try { return res.json({ ...(await creditsOverview()), topup: { treasury: treasuryAddress(), network: TOPUP_NETWORK } }); }
+  try {
+    const [overview, storage] = await Promise.all([creditsOverview(), storageTotals()]);
+    return res.json({ ...overview, storage, topup: { treasury: treasuryAddress(), network: TOPUP_NETWORK } });
+  }
   catch (err) { fail(res, err, "Loading the credits"); }
 });
 router.get("/credits/ledger", requireAdmin, async (req, res) => {
   try { return res.json(await adminLedger(req.query)); } catch (err) { fail(res, err, "Loading the ledger"); }
 });
 router.get("/credits/wallets/:wallet", requireAdmin, async (req, res) => {
-  try { return res.json(await walletCredits(req.params.wallet)); } catch (err) { fail(res, err, "Loading the wallet's credits"); }
+  try {
+    const [credits, storage] = await Promise.all([walletCredits(req.params.wallet), storageStatus(req.params.wallet)]);
+    return res.json({ ...credits, storage });
+  } catch (err) { fail(res, err, "Loading the wallet's credits"); }
 });
 router.post("/credits/prices/:id", requireAdmin, async (req, res) => {
   try {
@@ -415,6 +425,8 @@ router.post("/credits/grant", requireAdmin, async (req, res) => {
   try {
     const e = await grantCredits(req.body, me(res).email);
     await audit(me(res), "credits_granted", e.wallet, { usd: usdOf(e.amountMicros), note: e.note });
+    // vm_storagecharge: what the wallet owes for storage is paid first.
+    await collectOwed(e.wallet).catch((x) => console.error(`[storage] collecting after a grant: ${x?.message ?? x}`));
     return res.status(201).json(e);
   } catch (err) { fail(res, err, "Giving the credits"); }
 });
@@ -431,6 +443,20 @@ router.post("/credits/entries/:id/refund", requireAdmin, async (req, res) => {
     await audit(me(res), "credit_refunded", e.wallet, { usd: usdOf(e.amountMicros), charge: req.params.id, note: e.note });
     return res.status(201).json(e);
   } catch (err) { fail(res, err, "Refunding the charge"); }
+});
+router.post("/credits/storage", requireAdmin, async (req, res) => {
+  try {
+    const s = await setStorageFree(req.body);
+    await audit(me(res), "storage_free_changed", null, { gb: s.freeBytes / GB });
+    return res.json(s);
+  } catch (err) { fail(res, err, "Changing the free storage"); }
+});
+router.post("/credits/wallets/:wallet/forgive-storage", requireAdmin, async (req, res) => {
+  try {
+    const r = await forgiveStorage(req.params.wallet, me(res).email);
+    await audit(me(res), "storage_forgiven", req.params.wallet, { usd: usdOf(r.forgivenMicros), days: r.days });
+    return res.json(r);
+  } catch (err) { fail(res, err, "Forgiving the storage owed"); }
 });
 
 // ── vm_admin_settings: Settings ─────────────────────────────────────────────

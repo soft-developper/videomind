@@ -190,6 +190,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 streamUrl={video.streamUrl ?? null}
                   source={video.source}
                   shelbyGone={video.shelbyGone ?? null}
+                  storagePaused={video.storagePaused ? (video.isOwner ? "owner" : "visitor") : null}
                   storeHref={video.isOwner ? `/upload?anchor=${params.id}` : null}
                 poster={video.posterUrl}
                 format={video.media && video.media.playable !== "yes" ? formatLabel(video.media) : null}

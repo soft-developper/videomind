@@ -6,9 +6,9 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, Copy, Check } from "lucide-react";
 import { useAdmin } from "@/components/Shell";
 import { Note } from "@/components/AuthCard";
-import { ApiError, getUser, signOutUser, suspendUser, unsuspendUser, deleteUserData, getWalletCredits, type UserDetail, type UsageNumbers, type WalletCredits } from "@/lib/api";
+import { ApiError, getUser, signOutUser, suspendUser, unsuspendUser, deleteUserData, getWalletCredits, forgiveStorage, type UserDetail, type UsageNumbers, type WalletCredits } from "@/lib/api";
 import { dollars, CREDIT_KINDS } from "@/lib/actions";
-import { num, bytes, duration, tokens, when, day } from "@/lib/format";
+import { num, bytes, duration, tokens, when, day, gb } from "@/lib/format";
 
 const msg = (e: unknown) => (e instanceof ApiError ? e.message : "That did not work. Try again.");
 
@@ -138,6 +138,19 @@ export default function UserPage({ params }: { params: { wallet: string } }) {
                 {credits.heldMicros > 0 && <p className="text-[13.5px] text-dim">On hold <span className="text-paper tabular-nums ml-1">{dollars(credits.heldMicros, true)}</span></p>}
                 <Link href={`/credits?wallet=${encodeURIComponent(credits.wallet)}`} className="text-[13.5px] text-paper-2 underline hover:text-paper ml-auto">Give credits, refunds and the full ledger</Link>
               </div>
+              {credits.storage && (
+                <div className="mt-3 text-[13.5px] flex items-baseline gap-x-4 gap-y-1 flex-wrap" data-user-storage={credits.storage.paused ? "paused" : credits.storage.owedMicros > 0 ? "owed" : "ok"}>
+                  <p className="text-dim">Storage on VideoMind <span className="text-paper tabular-nums ml-1">{gb(credits.storage.bytes)}</span>{credits.storage.dailyMicros > 0 && <span className="text-paper-2">, {dollars(credits.storage.dailyMicros, true)} a day</span>}</p>
+                  {credits.storage.owedMicros > 0 && (
+                    <p className={credits.storage.paused ? "text-error" : "text-warn"}>
+                      {dollars(credits.storage.owedMicros, true)} owed{credits.storage.owedSince ? ` since ${day(credits.storage.owedSince)}` : ""}. {credits.storage.paused ? "Its videos kept here are paused and new uploads wait." : credits.storage.pausesAt ? `Pauses on ${day(credits.storage.pausesAt)}.` : ""}
+                    </p>
+                  )}
+                  {credits.storage.owedMicros > 0 && (
+                    <button disabled={busy} onClick={() => { if (window.confirm(`Forgive ${dollars(credits.storage.owedMicros, true)} of storage owed by this wallet? Its videos play again and nothing is taken from its credits.`)) void act(async () => { const r = await forgiveStorage(credits.wallet); return `Forgave ${dollars(r.forgivenMicros, true)} of storage (${num(r.days)} ${r.days === 1 ? "day" : "days"}).`; }); }} className="btn btn-ghost h-8 px-3 text-[13px] no-min">Forgive</button>
+                  )}
+                </div>
+              )}
               {credits.entries.length > 0 && (
                 <ul className="mt-3 divide-y divide-rule text-[13.5px]">
                   {credits.entries.slice(0, 5).map((e) => (

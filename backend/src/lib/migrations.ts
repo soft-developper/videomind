@@ -685,6 +685,29 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX credit_topups_wallet_idx ON credit_topups(wallet, created_at)`,
     ],
   },
+  {
+    // vm_storagecharge: one row per owner and UTC day of storage charged (Part 16e).
+    // due is what the day cost; paid grows as credits come in; forgiven by an admin.
+    id: "026_storage_charge",
+    statements: [
+      `CREATE TABLE storage_days (
+        wallet       TEXT NOT NULL,
+        day          TEXT NOT NULL,
+        bytes        INTEGER NOT NULL,
+        free_bytes   INTEGER NOT NULL,
+        unit_micros  INTEGER NOT NULL,
+        gb_months    REAL NOT NULL,
+        due_micros   INTEGER NOT NULL,
+        paid_micros  INTEGER NOT NULL DEFAULT 0,
+        paid_at      INTEGER,
+        forgiven_at  INTEGER,
+        forgiven_by  TEXT,
+        created_at   INTEGER NOT NULL,
+        PRIMARY KEY (wallet, day)
+      )`,
+      `CREATE INDEX storage_days_owed ON storage_days(wallet, day) WHERE paid_micros < due_micros AND forgiven_at IS NULL`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

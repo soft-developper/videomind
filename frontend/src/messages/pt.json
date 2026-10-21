@@ -516,7 +516,11 @@
       "lapsed": "Este vídeo existe só na Shelby, e os 30 dias de armazenamento terminaram, então ele não pode ser reproduzido agora.",
       "unconfirmed": "Este vídeo existe só na Shelby, e o arquivo dele lá não pôde ser confirmado, então ele não pode ser reproduzido agora."
     },
-    "storeAgain": "Guardar de novo na Shelby"
+    "storeAgain": "Guardar de novo na Shelby",
+    "paused": {
+      "owner": "Este vídeo está pausado porque o armazenamento no VideoMind não foi pago. Adicione créditos para assistir de novo; nada foi apagado.",
+      "visitor": "Este vídeo está pausado por enquanto."
+    }
   },
   "transcript": {
     "title": "Transcrição",
@@ -1230,6 +1234,15 @@
         "check": "Verificar",
         "checkFailed": "Não foi possível verificar sua transferência. Ela está segura; tente de novo em um minuto.",
         "walletFailed": "A transferência não foi enviada. Nada foi pago; tente de novo."
+      },
+      "storage": {
+        "title": "Armazenamento",
+        "kept": "Você guarda {size} no VideoMind.",
+        "free": "Os primeiros {size} são grátis.",
+        "daily": "Isso custa {price} por dia.",
+        "how": "Cobrado uma vez por dia pelos arquivos que o VideoMind guarda dos seus vídeos. Um vídeo público que existe só na Shelby conta só as imagens dele.",
+        "owed": "Você deve {amount} de armazenamento. Isso é pago primeiro com os créditos que você adicionar. Se ainda estiver devendo em {date}, seus vídeos guardados no VideoMind são pausados e os novos envios esperam.",
+        "paused": "Você deve {amount} de armazenamento, então seus vídeos guardados no VideoMind estão pausados e os novos envios esperam. Adicione créditos para pagar; nada foi apagado."
       }
     }
   },
@@ -1954,7 +1967,8 @@
     "notEnoughCredits": "Você não tem créditos suficientes para isso. Adicione créditos na página Carteira e tente de novo.",
     "ownerOutOfCredits": "O dono deste vídeo está sem créditos, então ele não pode responder perguntas agora.",
     "processNoCredits": "Você não tem créditos suficientes para processar este vídeo. Adicione créditos na página Carteira e tente de novo.",
-    "captionsNoCredits": "As legendas pararam: não há créditos suficientes. Adicione créditos na página Carteira e ligue as legendas de novo."
+    "captionsNoCredits": "As legendas pararam: não há créditos suficientes. Adicione créditos na página Carteira e ligue as legendas de novo.",
+    "storageUnpaid": "Seu armazenamento no VideoMind não foi pago, então os novos envios estão pausados. Adicione créditos na página Carteira e o que você deve é pago primeiro."
   },
   "notFound": {
     "title": "Esta página não foi encontrada",
@@ -1978,6 +1992,8 @@
     "pathsTitle": "Crie suas trilhas de aprendizado",
     "pathsBody": "{count, plural, one {Você tem # vídeo pronto.} many {Você tem # vídeos prontos.} other {Você tem # vídeos prontos.}} As trilhas de aprendizado são criadas quando você pede, porque custam créditos.",
     "makePaths": "Criar trilhas de aprendizado",
-    "pathsOld": "Você tem mais vídeos do que quando estas trilhas foram criadas. Crie as trilhas de novo para que eles entrem."
+    "pathsOld": "Você tem mais vídeos do que quando estas trilhas foram criadas. Crie as trilhas de novo para que eles entrem.",
+    "storageOwed": "Você deve {amount} de armazenamento. Seus vídeos guardados no VideoMind são pausados em {date} se você não adicionar créditos.",
+    "storagePaused": "Seus vídeos guardados no VideoMind estão pausados: você deve {amount} de armazenamento."
   }
 }
