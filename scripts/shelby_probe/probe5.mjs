@@ -44,7 +44,7 @@ const SIZE = 21 * MB; // three frames, the last one short
 const BUCKET = "videomind-private";
 const GATEWAY = "https://api.shelbynet.shelby.xyz/shelby";
 
-const report = { probeVersion: 5, startedAt: new Date().toISOString(), host: process.env.RENDER ? "render" : "this machine", gateway: GATEWAY, steps: {} };
+const report = { probeVersion: "5b", startedAt: new Date().toISOString(), host: process.env.RENDER ? "render" : "this machine", gateway: GATEWAY, steps: {} };
 const say = (s) => console.log(s);
 const json = (v) => JSON.parse(JSON.stringify(v, (_k, x) => (typeof x === "bigint" ? x.toString() : x instanceof Uint8Array ? `<${x.length} bytes>` : x)));
 const sha = (b) => crypto.createHash("sha256").update(b).digest("hex");
@@ -118,21 +118,32 @@ const client = new ShelbyNodeClient({ network: Network.SHELBYNET, apiKey: API_KE
 const aptos = client.aptos;
 say(`\nTest account (shelbynet, no value): ${owner}`);
 const urlOf = (name) => `${GATEWAY}/v1/blobs/${owner}/${name.split("/").map(encodeURIComponent).join("/")}`;
-/** A stranger's read: plain GET, no key. */
-async function gatewayRange(name, a, b) {
-  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 120_000);
-  try {
-    const r = await fetch(urlOf(name), { headers: { Range: `bytes=${a}-${b - 1}` }, signal: ctl.signal });
-    if (r.status !== 206 && r.status !== 200) throw new Error(`gateway answered ${r.status}: ${(await r.text()).slice(0, 200)}`);
-    const buf = Buffer.from(await r.arrayBuffer());
-    return r.status === 200 ? buf.subarray(a, b) : buf;
-  } finally { clearTimeout(timer); }
+const PIECE = MB; // run 1 cut 10 MB ranges with NGHTTP2_INTERNAL_ERROR, so read 1 MB at a time
+const reads = { pieces: 0, retries: 0, cuts: [] };
+/** A stranger's read: plain GET, no key, one piece, up to 4 tries. */
+async function gatewayPiece(name, a, b) {
+  for (let attempt = 1; ; attempt++) {
+    const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 60_000);
+    try {
+      const r = await fetch(urlOf(name), { headers: { Range: `bytes=${a}-${b - 1}` }, signal: ctl.signal });
+      if (r.status !== 206 && r.status !== 200) throw new Error(`gateway answered ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      const buf = Buffer.from(await r.arrayBuffer());
+      const out = r.status === 200 ? buf.subarray(a, b) : buf;
+      if (out.length !== b - a) throw new Error(`got ${out.length} bytes, wanted ${b - a}`);
+      reads.pieces++; return out;
+    } catch (e) {
+      if (reads.cuts.length < 20) reads.cuts.push({ range: `${a}-${b - 1}`, attempt, error: errText(e).slice(0, 160) });
+      if (attempt >= 4) throw e;
+      reads.retries++; await new Promise((r) => setTimeout(r, 1500 * attempt));
+    } finally { clearTimeout(timer); }
+  }
 }
-/** Reads stored bytes in 10 MB ranges (one chunkset at a time). */
+/** Reads stored bytes [a, b) in 1 MB pieces. */
 async function gatewayRead(name, a, b) {
-  const parts = []; for (let x = a; x < b; x += geometry.chunksetBytes) parts.push(await gatewayRange(name, x, Math.min(b, x + geometry.chunksetBytes)));
+  const parts = []; for (let x = a; x < b; x += PIECE) parts.push(await gatewayPiece(name, x, Math.min(b, x + PIECE)));
   return Buffer.concat(parts);
 }
+const gatewayRange = gatewayRead;
 
 await step("1 fund the test account", async () => {
   const bal = await aptos.view({ payload: { function: "0x1::primary_fungible_store::balance", typeArguments: ["0x1::fungible_asset::Metadata"], functionArguments: [p.accountAddress, SHELBYUSD_FA_METADATA_ADDRESS] } }).then((r) => Number(r[0])).catch(() => 0);
@@ -172,17 +183,38 @@ await step("2B store with the plain upload (marked Unencrypted, bytes sealed)", 
 
 for (const k of ["A", "B"]) {
   const name = stored[k]; if (!name) continue;
-  await step(`3${k} read from the public address with no key`, async () => {
+  const storedSize = storedSizeForPlaintext(SIZE, geometry);
+  let whole;
+  await step(`3${k}1 a stranger reads the first 1 KB and the whole file, no key`, async () => {
+    Object.assign(reads, { pieces: 0, retries: 0, cuts: [] });
     const head = await gatewayRange(name, 0, 1024);
-    const t0 = Date.now(); const whole = await gatewayRead(name, 0, storedSizeForPlaintext(SIZE, geometry)); const readMs = Date.now() - t0;
+    const t0 = Date.now(); whole = await gatewayRead(name, 0, storedSize); const readMs = Date.now() - t0;
     const stranger = { firstByteIsContainerVersion: head[0] === 1, headIsVideo: sha(head) === sha(plain.subarray(0, 1024)), videoBytesFoundInWholeFile: whole.includes(plain.subarray(5 * MB, 5 * MB + 64)), wholeBytes: whole.length };
+    const strangerSeesOnlyCiphertext = !stranger.headIsVideo && !stranger.videoBytesFoundInWholeFile;
+    say(`   a stranger gets ${whole.length} bytes in ${(readMs / 1000).toFixed(1)} s (${reads.pieces} pieces, ${reads.retries} retried); video visible to them: ${!strangerSeesOnlyCiphertext}`);
+    return { stranger, strangerSeesOnlyCiphertext, readMs, reads: { ...reads } };
+  });
+  if (!whole) continue;
+  await step(`3${k}2 VideoMind opens the whole file with its secret`, async () => {
     const t1 = Date.now(); const opened = await openRange(async (a, b) => whole.subarray(a, b), SIZE, name, kek, 0, SIZE); const openMs = Date.now() - t1;
-    const seek = await openRange((a, b) => gatewayRead(name, a, b), SIZE, name, kek, 10.5 * MB, 11.5 * MB);
-    let wrongSecretOpened = true; try { await openRange((a, b) => gatewayRead(name, a, b), SIZE, name, await kekFor(crypto.randomBytes(32)), 0, 1024); } catch { wrongSecretOpened = false; }
-    const ok = { strangerSeesOnlyCiphertext: !stranger.headIsVideo && !stranger.videoBytesFoundInWholeFile, wholeOpensWithSecret: sha(opened) === sha(plain), seekOpensWithSecret: sha(seek) === sha(plain.subarray(10.5 * MB, 11.5 * MB)), wrongSecretOpened };
-    say(`   a stranger gets ${whole.length} bytes in ${(readMs / 1000).toFixed(1)} s; video visible to them: ${!ok.strangerSeesOnlyCiphertext}`);
-    say(`   with VideoMind's secret: whole file ${ok.wholeOpensWithSecret ? "opens and matches" : "DOES NOT MATCH"} (${openMs} ms), seek ${ok.seekOpensWithSecret ? "opens and matches" : "DOES NOT MATCH"}, wrong secret opens: ${wrongSecretOpened}`);
-    return { stranger, readMs, openMs, ok };
+    const matches = sha(opened) === sha(plain);
+    say(`   whole file ${matches ? "opens and matches" : "DOES NOT MATCH"} (${openMs} ms)`);
+    if (!matches) throw new Error("opened bytes differ from the original");
+    return { matches, openMs };
+  });
+  await step(`3${k}3 a seek opens from a ranged read only`, async () => {
+    Object.assign(reads, { pieces: 0, retries: 0, cuts: [] });
+    const t0 = Date.now(); const seek = await openRange((a, b) => gatewayRead(name, a, b), SIZE, name, kek, 10.5 * MB, 11.5 * MB);
+    const matches = sha(seek) === sha(plain.subarray(10.5 * MB, 11.5 * MB));
+    say(`   1 MB from the middle ${matches ? "opens and matches" : "DOES NOT MATCH"} (${((Date.now() - t0) / 1000).toFixed(1)} s, read ${reads.pieces} pieces)`);
+    if (!matches) throw new Error("seek bytes differ from the original");
+    return { matches, ms: Date.now() - t0, reads: { ...reads } };
+  });
+  await step(`3${k}4 a wrong secret cannot open it`, async () => {
+    let wrongSecretOpened = true; try { await openRange(async (a, b) => whole.subarray(a, b), SIZE, name, await kekFor(crypto.randomBytes(32)), 0, 1024); } catch { wrongSecretOpened = false; }
+    say(`   wrong secret opens: ${wrongSecretOpened}`);
+    if (wrongSecretOpened) throw new Error("a wrong secret opened the file");
+    return { wrongSecretOpened };
   });
 }
 
