@@ -27,6 +27,8 @@ import { LiveChat } from "./LiveChat";
 // vm_lang
 import { useTranslations } from "next-intl";
 import { localize } from "@/lib/errorText";
+// vm_charge: the price of captions, and a way to add credits when they stop for credits
+import { PriceTag, AddCreditsLink } from "@/components/credits/Credits";
 
 type T = ReturnType<typeof useTranslations<"live">>;
 const CHAT_CHOICES: ChatMode[] = ["anyone", "wallets", "off"];
@@ -73,6 +75,7 @@ function LiveSettings({ event, onSaved }: { event: LiveEventInfo; onSaved: () =>
             ? t("captionsHint", { minutes: event.captionLimitMinutes ?? 180 })
             : t("captionsOff")}
         </p>
+        {event.captionsAvailable && <PriceTag what="captions" className="ps-6 mt-0.5" />}
       </div>
       {err && <p className="text-[12.5px] text-error" role="alert">{err}</p>}
     </div>
@@ -124,7 +127,7 @@ export function LiveStudio({ id }: { id: string }) {
   const room = useRef<Room | null>(null);
   const bus = useRef(new EventTarget());
   const feed = useRef<(() => void) | null>(null);
-  const [capState, setCapState] = useState<{ on: boolean; text: string; note: string | null }>({ on: false, text: "", note: null });
+  const [capState, setCapState] = useState<{ on: boolean; text: string; note: string | null; credits?: boolean }>({ on: false, text: "", note: null });
   const [capTry, setCapTry] = useState(0);
   const inputs = useRef<Inputs | null>(null);
   const rec = useRef<MediaRecorder | null>(null);
@@ -204,7 +207,7 @@ export function LiveStudio({ id }: { id: string }) {
           if (m.type === "ready") setCapState({ on: true, text: "", note: null });
           else if (m.type === "partial" || m.type === "final") setCapState((c) => ({ ...c, on: true, text: m.text }));
           else if (m.type === "warning") setCapState((c) => ({ ...c, note: localize(m.message) ?? null }));
-          else if (m.type === "stopped") { feed.current = null; setCapState({ on: false, text: "", note: m.reason === "off" || m.reason === "ended" ? null : localize(m.message) ?? t("capStopped") }); }
+          else if (m.type === "stopped") { feed.current = null; setCapState({ on: false, text: "", note: m.reason === "off" || m.reason === "ended" ? null : localize(m.message) ?? t("capStopped"), credits: m.reason === "credits" }); }
           else if (m.type === "closed") { feed.current = null; setCapState((c) => ({ on: false, text: "", note: c.note ?? t("capClosed") })); }
         });
         if (cancelled) stop(); else feed.current = stop;
@@ -355,6 +358,7 @@ export function LiveStudio({ id }: { id: string }) {
           {event.captions && event.captionsAvailable && (
             <p className="text-[13px] text-paper-2" data-captions-state>
               {capState.on ? <>{t("capOn")}{capState.text ? <span className="text-dim">: <span dir="auto">{capState.text.slice(-120)}</span></span> : <span className="text-dim">{t("capListening")}</span>}</> : capState.note ?? t("capStarting")}
+              {!capState.on && capState.credits && <> <AddCreditsLink /></>}
               {!capState.on && capState.note && !feed.current && (
                 <button onClick={() => { setCapState({ on: false, text: "", note: null }); setCapTry((n) => n + 1); }} className="ms-2 text-paper-2 underline underline-offset-2 hover:text-paper no-min">{tc("tryAgain")}</button>
               )}

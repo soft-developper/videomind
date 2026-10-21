@@ -234,7 +234,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
 
             <aside className="hidden lg:block lg:sticky lg:top-[72px] lg:h-[calc(100vh-88px)]">
               <div className="panel h-full flex flex-col overflow-hidden">
-                <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={seek} />
+                <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={seek} owner={!!video.isOwner} />
               </div>
             </aside>
           </div>
@@ -279,7 +279,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
             </button>
           </div>
           <div className="flex-1 min-h-0">
-            <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={(s) => { setChat(false); seek(s); }} />
+            <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={(s) => { setChat(false); seek(s); }} owner={!!video.isOwner} />
           </div>
         </div>
       </div>

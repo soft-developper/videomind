@@ -21,6 +21,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
+// vm_charge: what processing will cost
+import { PriceTag } from "@/components/credits/Credits";
 import { useUploadBlobs } from "@shelby-protocol/react";
 import {
   createUpload, listOpenUploads, discardUpload, anchorVideo, getVideo, ApiError, type UploadInfo,
@@ -552,6 +554,7 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
           {starting ? tu("status.starting") : !file ? tu("chooseFirst") : !title.trim() ? tu("addTitle") : tu("upload")}
         </button>
       )}
+      {!anchorId && <PriceTag what="process" className="-mt-2 text-center" />}
     </div>
   );
 }

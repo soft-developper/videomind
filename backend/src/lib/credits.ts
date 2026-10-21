@@ -185,6 +185,12 @@ export async function updateActionPrice(id: string, body: unknown, adminEmail: s
   return rowToActionPrice((await getDb().execute({ sql: "SELECT * FROM action_prices WHERE id = ?", args: [id] })).rows[0]);
 }
 
+/** vm_charge: what one unit of an action costs right now: 0 while charging is off. */
+export async function currentPrice(action: string): Promise<number> {
+  const [settings, prices] = await Promise.all([getCreditSettings(), listActionPrices()]);
+  return settings.charging ? (prices.find((p) => p.id === action)?.microsPerUnit ?? 0) : 0;
+}
+
 /** The price of a quantity of an action, rounded up to a whole micro dollar. */
 export const priceFor = (microsPerUnit: number, quantity: number) => Math.ceil(Math.max(0, microsPerUnit) * Math.max(0, quantity));
 

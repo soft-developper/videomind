@@ -17,6 +17,8 @@ import { getVideos } from "@/lib/api";
 import { SHELBYNET_URLS } from "@/lib/network";
 import { WalletButton } from "./WalletButton";
 import { SignInNotice } from "./SignInNotice";
+// vm_charge: low credits
+import { CreditsNotice } from "@/components/credits/Credits";
 import { useSessionWallet } from "./AuthProvider";
 // vm_lang
 import { LanguagePicker } from "./LanguagePicker";
@@ -302,6 +304,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="lg:ps-[236px]">
         <main id="content" className="pt-[52px] lg:pt-0 min-h-screen">
+          <CreditsNotice path={path} />
           {children}
         </main>
       </div>

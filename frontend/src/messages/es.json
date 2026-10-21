@@ -1952,5 +1952,24 @@
     "title": "No se encontró esta página",
     "body": "Puede que la dirección esté mal o que la página se haya movido.",
     "home": "Abrir VideoMind"
+  },
+  "credits": {
+    "price": {
+      "process": "Procesar cuesta {price} por minuto de sonido; se cobra cuando el video está listo.",
+      "answer": "Cada respuesta te cuesta {price}, también las respuestas a tus espectadores.",
+      "search": "Cada búsqueda cuesta {price}.",
+      "paths": "Crear rutas de aprendizaje cuesta {price} cada vez.",
+      "libraryAnswer": "Cada respuesta cuesta {price}.",
+      "captions": "Los subtítulos cuestan {price} por minuto mientras están activos."
+    },
+    "have": "Tienes {amount}.",
+    "add": "Añadir créditos",
+    "low": "Te quedan pocos créditos: {amount}.",
+    "out": "Te quedaste sin créditos. Las acciones de pago esperan hasta que añadas más.",
+    "hide": "Ocultar",
+    "pathsTitle": "Crea tus rutas de aprendizaje",
+    "pathsBody": "{count, plural, one {Tienes # video listo.} many {Tienes # videos listos.} other {Tienes # videos listos.}} Las rutas de aprendizaje se crean cuando las pides, porque cuestan créditos.",
+    "makePaths": "Crear rutas de aprendizaje",
+    "pathsOld": "Tienes más videos que cuando se crearon estas rutas. Vuelve a crearlas para incluirlos."
   }
 }

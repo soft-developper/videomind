@@ -3,6 +3,9 @@ import { useState, useRef, useEffect } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { askLibrary, type LibraryAnswer } from "@/lib/api";
+// vm_charge
+import { PriceTag, AddCreditsLink, isNoCredits } from "@/components/credits/Credits";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -19,6 +22,7 @@ interface Msg {
   text: string;
   cites?: LibraryAnswer["citations"];
   failed?: boolean;
+  code?: string;
 }
 
 // Asked in the reader's language, so the answer comes back in it.
@@ -26,6 +30,7 @@ const PROMPTS = ["themes", "learned", "disagree", "often"] as const;
 
 export default function AssistantPage() {
   const t = useTranslations("assistant");
+  const qc = useQueryClient();
   const { connected } = useWallet();
   // vm_signin: questions are sent only once the wallet has signed in
   const wallet = useSessionWallet();
@@ -57,8 +62,9 @@ export default function AssistantPage() {
     try {
       const r = await askLibrary(question, wallet);
       setMsgs((m) => [...m, { role: "ai", text: r.answer, cites: r.citations }]);
+      qc.invalidateQueries({ queryKey: ["my-credits"] });
     } catch (e: any) {
-      setMsgs((m) => [...m, { role: "ai", text: e?.message || t("failed"), failed: true }]);
+      setMsgs((m) => [...m, { role: "ai", text: e?.message || t("failed"), failed: true, code: e?.code }]);
     } finally { setBusy(false); }
   };
 
@@ -107,6 +113,7 @@ export default function AssistantPage() {
                         m.failed ? "text-error" : m.role === "you" ? "text-paper" : "text-paper-2"
                       )}>
                         {m.text}
+                        {m.failed && isNoCredits(m.code) && <> <AddCreditsLink /></>}
                       </p>
                     </div>
 
@@ -183,6 +190,7 @@ export default function AssistantPage() {
                     <Send size={14} className="rtl:-scale-x-100" />
                   </button>
                 </div>
+                <PriceTag what="libraryAnswer" className="mt-2" />
               </div>
             </div>
           )}

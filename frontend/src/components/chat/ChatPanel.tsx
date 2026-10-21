@@ -1,29 +1,36 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Send, RefreshCw } from "lucide-react";
 import { chatWithVideo } from "@/lib/api";
 import { clsx } from "clsx";
 import { readableTime } from "@/lib/exports";
 // vm_lang
 import { useTranslations } from "next-intl";
+// vm_charge: the owner sees the price of an answer, and a way to add credits
+import { PriceTag, AddCreditsLink, isNoCredits } from "@/components/credits/Credits";
 
 interface Msg {
   role: "you" | "ai";
   text: string;
   sources?: Array<{ time: number; text: string }>;
   failed?: boolean;
+  code?: string;
 }
 
 // vm_lang: suggested questions, in the reader's language (message keys under "ask.prompts").
 // Asked in that language, the answer comes back in it too.
 const PROMPTS = ["summary", "points", "open", "useful"] as const;
 
-export function ChatPanel({ videoId, videoTitle, onSeek }: {
+export function ChatPanel({ videoId, videoTitle, onSeek, owner }: {
   videoId: string; videoTitle: string;
+  /** vm_charge: the owner pays for every answer, so only the owner is shown the price */
+  owner?: boolean;
   /** vm_workspace: a source in an answer plays the video from that moment */
   onSeek?: (seconds: number) => void;
 }) {
   const ta = useTranslations("ask");
+  const qc = useQueryClient();
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
@@ -69,8 +76,9 @@ export function ChatPanel({ videoId, videoTitle, onSeek }: {
     try {
       const r = await chatWithVideo(videoId, question);
       setMsgs((m) => [...m, { role: "ai", text: r.answer, sources: r.sources }]);
+      if (owner) qc.invalidateQueries({ queryKey: ["my-credits"] });
     } catch (e: any) {
-      setMsgs((m) => [...m, { role: "ai", text: e.message ?? ta("failed"), failed: true }]);
+      setMsgs((m) => [...m, { role: "ai", text: e.message ?? ta("failed"), failed: true, code: e?.code }]);
     } finally { setBusy(false); }
   };
 
@@ -114,6 +122,7 @@ export function ChatPanel({ videoId, videoTitle, onSeek }: {
                 m.failed ? "text-error" : m.role === "you" ? "text-paper" : "text-paper-2"
               )}>
                 {m.text}
+                {m.failed && isNoCredits(m.code) && <> <AddCreditsLink /></>}
               </p>
             </div>
 
@@ -190,6 +199,7 @@ export function ChatPanel({ videoId, videoTitle, onSeek }: {
             <Send size={13} className="rtl:-scale-x-100" />
           </button>
         </div>
+        {owner && <PriceTag what="answer" className="mt-2" />}
       </div>
     </div>
   );

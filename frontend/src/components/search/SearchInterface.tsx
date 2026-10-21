@@ -10,6 +10,8 @@ import { Search, RefreshCw, X } from "lucide-react";
 import Link from "next/link";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { searchAllVideos, getCollections, type SearchResult } from "@/lib/api";
+// vm_charge
+import { PriceTag, AddCreditsLink, isNoCredits } from "@/components/credits/Credits";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { readableTime } from "@/lib/exports";
 import { CATEGORIES, useLabels } from "@/lib/categories";
@@ -54,6 +56,7 @@ export function SearchInterface() {
   const [notIndexed, setNotIndexed] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [errCode, setErrCode] = useState<string | undefined>(undefined);
   const started = useRef(false);
 
   const { data: collections = [] } = useQuery({
@@ -74,7 +77,7 @@ export function SearchInterface() {
     try {
       const d = await searchAllVideos(query, { categories: a.category ? [a.category] : undefined, collectionId: a.collection || undefined });
       setHits(d.results); setNotIndexed(d.notIndexed ?? 0);
-    } catch (e: any) { setErr(e?.message ?? t("failed")); setHits(null); }
+    } catch (e: any) { setErr(e?.message ?? t("failed")); setErrCode(e?.code); setHits(null); }
     finally { setBusy(false); }
   };
 
@@ -130,6 +133,9 @@ export function SearchInterface() {
         </button>
       </form>
 
+      {/* vm_charge: what a search costs, when it costs something */}
+      <PriceTag what="search" className="-mt-4" />
+
       {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap">
         <label className="sr-only" htmlFor="search-kind">{t("kind")}</label>
@@ -168,7 +174,7 @@ export function SearchInterface() {
       {/* Error */}
       {err && (
         <div role="alert" className="rounded-md border border-error/50 bg-error/5 p-3.5 flex items-start gap-3">
-          <p className="text-[13px] font-sans text-error flex-1">{err}</p>
+          <p className="text-[13px] font-sans text-error flex-1">{err}{isNoCredits(errCode) && <> <AddCreditsLink /></>}</p>
           {asked && (
             <button onClick={() => run(asked)} aria-label={t("again")} className="tc text-error/70 hover:text-error no-min">
               <RefreshCw size={11} />

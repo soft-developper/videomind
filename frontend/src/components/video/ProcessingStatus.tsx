@@ -8,6 +8,8 @@ import { useSessionWallet } from "@/components/layout/AuthProvider";
 // vm_lang
 import { useTranslations } from "next-intl";
 import { localize } from "@/lib/errorText";
+// vm_charge: processing stopped for credits: add some, then Try again
+import { AddCreditsLink, PriceTag, isNoCredits } from "@/components/credits/Credits";
 
 // vm_lang: names and lines are message keys under "processing.steps".
 const STEPS = [{ k: "uploading" }, { k: "transcribing" }, { k: "analyzing" }, { k: "ready" }] as const;
@@ -86,6 +88,12 @@ export function ProcessingStatus({
           <p className="text-[13px] text-dim">
             {tp("kept")}
           </p>
+        )}
+        {isNoCredits(failed?.errorCode) && (
+          <div className="space-y-1" data-processing-no-credits>
+            <PriceTag what="process" />
+            <AddCreditsLink className="text-[13.5px] text-paper" />
+          </div>
         )}
         {failed?.errorCode === "too_long" && (
           <p className="text-[13px] text-dim">

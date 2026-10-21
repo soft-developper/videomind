@@ -1952,5 +1952,24 @@
     "title": "This page was not found",
     "body": "The address may be wrong, or the page was moved.",
     "home": "Open VideoMind"
+  },
+  "credits": {
+    "price": {
+      "process": "Processing costs {price} a minute of sound, charged when the video is ready.",
+      "answer": "Each answer costs you {price}, also answers to your viewers.",
+      "search": "Each search costs {price}.",
+      "paths": "Making learning paths costs {price} each time.",
+      "libraryAnswer": "Each answer costs {price}.",
+      "captions": "Captions cost {price} a minute while they run."
+    },
+    "have": "You have {amount}.",
+    "add": "Add credits",
+    "low": "Your credits are low: {amount} left.",
+    "out": "You are out of credits. Paid actions wait until you add more.",
+    "hide": "Hide",
+    "pathsTitle": "Make your learning paths",
+    "pathsBody": "{count, plural, one {You have # video ready.} other {You have # videos ready.}} Learning paths are made when you ask for them, because they cost credits.",
+    "makePaths": "Make learning paths",
+    "pathsOld": "You have more videos than when these paths were made. Build again to include them."
   }
 }

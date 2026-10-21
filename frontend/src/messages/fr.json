@@ -1952,5 +1952,24 @@
     "title": "Cette page est introuvable",
     "body": "L’adresse est sans doute erronée, ou la page a été déplacée.",
     "home": "Ouvrir VideoMind"
+  },
+  "credits": {
+    "price": {
+      "process": "Le traitement coûte {price} par minute de son, facturé quand la vidéo est prête.",
+      "answer": "Chaque réponse vous coûte {price}, y compris les réponses à vos spectateurs.",
+      "search": "Chaque recherche coûte {price}.",
+      "paths": "Créer des parcours d’apprentissage coûte {price} à chaque fois.",
+      "libraryAnswer": "Chaque réponse coûte {price}.",
+      "captions": "Les sous-titres coûtent {price} par minute tant qu’ils sont actifs."
+    },
+    "have": "Vous avez {amount}.",
+    "add": "Ajouter des crédits",
+    "low": "Il vous reste peu de crédits : {amount}.",
+    "out": "Vous n’avez plus de crédits. Les actions payantes attendent que vous en ajoutiez.",
+    "hide": "Masquer",
+    "pathsTitle": "Créez vos parcours d’apprentissage",
+    "pathsBody": "{count, plural, one {Vous avez # vidéo prête.} many {Vous avez # vidéos prêtes.} other {Vous avez # vidéos prêtes.}} Les parcours d’apprentissage sont créés quand vous les demandez, car ils coûtent des crédits.",
+    "makePaths": "Créer les parcours",
+    "pathsOld": "Vous avez plus de vidéos qu’au moment où ces parcours ont été créés. Créez de nouveaux parcours pour en tenir compte."
   }
 }

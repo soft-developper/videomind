@@ -1952,5 +1952,24 @@
     "title": "Esta página não foi encontrada",
     "body": "O endereço pode estar errado, ou a página mudou de lugar.",
     "home": "Abrir o VideoMind"
+  },
+  "credits": {
+    "price": {
+      "process": "O processamento custa {price} por minuto de som, cobrado quando o vídeo fica pronto.",
+      "answer": "Cada resposta custa {price} para você, inclusive as respostas aos seus espectadores.",
+      "search": "Cada busca custa {price}.",
+      "paths": "Criar trilhas de aprendizado custa {price} cada vez.",
+      "libraryAnswer": "Cada resposta custa {price}.",
+      "captions": "As legendas custam {price} por minuto enquanto estão ligadas."
+    },
+    "have": "Você tem {amount}.",
+    "add": "Adicionar créditos",
+    "low": "Seus créditos estão acabando: restam {amount}.",
+    "out": "Seus créditos acabaram. As ações pagas esperam até você adicionar mais.",
+    "hide": "Ocultar",
+    "pathsTitle": "Crie suas trilhas de aprendizado",
+    "pathsBody": "{count, plural, one {Você tem # vídeo pronto.} many {Você tem # vídeos prontos.} other {Você tem # vídeos prontos.}} As trilhas de aprendizado são criadas quando você pede, porque custam créditos.",
+    "makePaths": "Criar trilhas de aprendizado",
+    "pathsOld": "Você tem mais vídeos do que quando estas trilhas foram criadas. Crie as trilhas de novo para que eles entrem."
   }
 }

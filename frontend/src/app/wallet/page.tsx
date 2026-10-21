@@ -16,27 +16,10 @@ import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { explorer } from "@/lib/explorer";
 import { getMyWallet, getMyCredits, type WalletOverview, type MyCredits } from "@/lib/api";
 // vm_lang
-import { useLocale, useTranslations } from "next-intl";
-import { useFormat } from "@/lib/format";
-import { intlLocale, type Locale } from "@/i18n/config";
+import { useTranslations } from "next-intl";
+import { useFormat, useMoney, inline } from "@/lib/format";
 import { AddCredits } from "@/components/wallet/AddCredits";
 import { ExternalLink as LinkOut } from "lucide-react";
-
-// vm_credits: dollars in the reader's language, never rounded: $3.925 stays
-// $3.925 and a price of $0.006 keeps its digits. Whole cents show two digits.
-function useMoney() {
-  const locale = useLocale() as Locale;
-  // Arabic formats carry direction marks; the amounts sit in left to right
-  // boxes, so the marks are taken out (they would move the minus sign).
-  return (micros: number, sign = false) => {
-    const x = micros / 1_000_000;
-    const s = new Intl.NumberFormat(intlLocale(locale), { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 6 }).format(x).replace(/[\u200e\u200f\u061c]/g, "");
-    return sign && x > 0 ? `+${s}` : s;
-  };
-}
-
-/** An amount inside a sentence, kept left to right in every language (Unicode isolate). */
-const inline = (s: string) => `\u2066${s}\u2069`;
 
 function CreditsSection({ c }: { c: MyCredits }) {
   const t = useTranslations("walletPage.credits");

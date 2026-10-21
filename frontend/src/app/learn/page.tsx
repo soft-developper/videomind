@@ -2,7 +2,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
-import { getLearningPaths, regenerateLearningPaths, type LearningPath } from "@/lib/api";
+import { getLearningPaths, regenerateLearningPaths, ApiError, type LearningPath } from "@/lib/api";
+// vm_charge
+import { PriceTag, AddCreditsLink, isNoCredits } from "@/components/credits/Credits";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -18,6 +20,7 @@ const LEVELS = ["Beginner", "Intermediate", "Advanced"] as const;
 
 export default function LearnPage() {
   const t = useTranslations("learn");
+  const tcr = useTranslations("credits");
   const { connected } = useWallet();
   // vm_signin: data loads only once the wallet has signed in
   const wallet = useSessionWallet();
@@ -32,8 +35,9 @@ export default function LearnPage() {
 
   const regen = useMutation({
     mutationFn: () => regenerateLearningPaths(wallet!),
-    onSuccess: (d) => qc.setQueryData(["learning-paths", wallet], d),
+    onSuccess: (d) => { qc.setQueryData(["learning-paths", wallet], d); qc.invalidateQueries({ queryKey: ["my-credits"] }); },
   });
+  const regenError = regen.error as ApiError | null;
 
   return (
     <AppShell>
@@ -70,6 +74,30 @@ export default function LearnPage() {
             </EmptyState>
           )}
 
+          {/* vm_charge: a paid build that did not work, with a way to add credits */}
+          {regenError && (
+            <p className="text-[13.5px] text-error mb-4" role="alert" data-learn-error>
+              {regenError.message}{isNoCredits(regenError.code) && <> <AddCreditsLink /></>}
+            </p>
+          )}
+
+          {/* vm_charge: paths cost credits, so they are made when asked for */}
+          {connected && data && data.paths.length === 0 && data.needsBuild && !((data.minRequired ?? 0) > 0) && (
+            <EmptyState
+              title={tcr("pathsTitle")}
+              action={
+                <div className="flex flex-col items-start gap-2">
+                  <button onClick={() => regen.mutate()} disabled={regen.isPending} className="btn btn-signal h-9 px-3.5" data-make-paths>
+                    {regen.isPending ? t("building") : tcr("makePaths")}
+                  </button>
+                  <PriceTag what="paths" />
+                </div>
+              }
+            >
+              {tcr("pathsBody", { count: data.videoCount })}
+            </EmptyState>
+          )}
+
           {connected && data && data.paths.length === 0 && (data.minRequired ?? 0) > 0 && (
             <EmptyState
               title={t("notEnough")}
@@ -80,7 +108,7 @@ export default function LearnPage() {
           )}
 
           {/* vm_shell: enough videos, but no path came back. Say so and offer another try. */}
-          {connected && data && data.paths.length === 0 && !((data.minRequired ?? 0) > 0) && (
+          {connected && data && data.paths.length === 0 && !data.needsBuild && !((data.minRequired ?? 0) > 0) && (
             <EmptyState
               title={t("noneBuilt")}
               action={
@@ -108,6 +136,15 @@ export default function LearnPage() {
                   {regen.isPending ? t("building") : t("buildAgain")}
                 </button>
               </div>
+
+              {/* vm_charge: made for fewer videos than there are now; building again costs credits */}
+              {(data.needsBuild || regen.isPending) && (
+                <div className="-mt-3 space-y-1" data-paths-outdated>
+                  {data.needsBuild && <p className="text-[13px] text-paper-2">{tcr("pathsOld")}</p>}
+                  <PriceTag what="paths" />
+                </div>
+              )}
+              {!data.needsBuild && <PriceTag what="paths" className="-mt-3" />}
 
               {data.paths.map((p, i) => <Path key={i} p={p} />)}
             </div>

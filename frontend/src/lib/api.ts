@@ -345,6 +345,8 @@ export interface PathsResponse {
   minRequired?: number;
   generatedAt?: number;
   cached: boolean;
+  /** vm_charge: paths cost credits, so they are made only when asked for */
+  needsBuild?: boolean;
 }
 
 export async function getLearningPaths(wallet: string): Promise<PathsResponse> {
@@ -482,6 +484,8 @@ export interface MyCredits {
   prices: Array<{ id: CreditAction; unit: CreditUnit; microsPerUnit: number }>;
 }
 export const getMyCredits = () => call<MyCredits>(() => raw.get("/api/credits/me"));
+// vm_charge: the price of each action, for anyone
+export const getCreditPrices = () => call<{ charging: boolean; prices: MyCredits["prices"] }>(() => raw.get("/api/credits/prices"));
 // vm_topup: adding credits with ShelbyUSD
 export interface TopupInfo {
   enabled: boolean; network: string; asset: string; symbol: string; decimals: number;

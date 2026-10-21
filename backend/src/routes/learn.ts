@@ -2,6 +2,7 @@
 import { Router } from "express";
 // vm_charge: Knowledge is paid by the signed in wallet
 import { charged, creditFailure } from "../lib/charge.js";
+import { currentPrice } from "../lib/credits.js";
 import { store } from "../lib/store.js";
 import { getDb } from "../lib/db.js";
 import { generateLearningPaths, askLibrary } from "../services/learningService.js";
@@ -49,6 +50,19 @@ router.get("/paths", requireAuth, async (req, res) => {
         videoCount: videos.length,
         generatedAt: Number(cached.generated_at),
         cached: true,
+      });
+    }
+
+    // vm_charge: when learning paths cost credits, opening the page never
+    // makes them. The page shows the price and a button (regenerate below);
+    // paths made earlier for fewer videos are still shown meanwhile.
+    if ((await currentPrice("learn_paths")) > 0) {
+      return res.json({
+        paths: cached ? JSON.parse(cached.paths_json as string) : [],
+        videoCount: videos.length,
+        generatedAt: cached ? Number(cached.generated_at) : undefined,
+        cached: !!cached,
+        needsBuild: true,
       });
     }
 

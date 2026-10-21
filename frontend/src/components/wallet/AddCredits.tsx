@@ -141,7 +141,7 @@ export function AddCredits({ wallet, money }: { wallet: string; money: (micros: 
   };
 
   return (
-    <div className="mt-6 rounded-lg border border-rule p-4 sm:p-5 max-w-[640px]" data-topup="on">
+    <div id="add-credits" className="mt-6 rounded-lg border border-rule p-4 sm:p-5 max-w-[640px] scroll-mt-20" data-topup="on">
       <h3 className="text-[14px] font-semibold text-paper">{t("title")}</h3>
       <p className="text-[13px] text-dim mt-1">{t("body")}</p>
 
