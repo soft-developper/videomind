@@ -36,3 +36,8 @@ Thumbs.db
 *.bak-*
 .vercel
 .env*
+
+# vm scripts: their backups, file backups, and lock files outside a package (keep them out of git)
+.vm_*_backups/
+*.bak.*
+/package-lock.json
