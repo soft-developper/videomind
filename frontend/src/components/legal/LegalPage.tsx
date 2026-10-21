@@ -18,7 +18,7 @@ export const LEGAL = {
 };
 
 /** When each document takes effect (UTC dates). */
-export const EFFECTIVE = { privacy: "2026-10-20", terms: "2026-10-15" } as const;
+export const EFFECTIVE = { privacy: "2026-10-22", terms: "2026-10-22" } as const;
 export type LegalDoc = keyof typeof EFFECTIVE;
 export const LEGAL_DOCS: Array<{ href: string; doc: LegalDoc }> = [
   { href: "/legal/privacy", doc: "privacy" },
@@ -44,6 +44,7 @@ export function rich(mail = `mailto:${LEGAL.contact}`) {
     settings: (c: ReactNode) => <A href="/settings">{c}</A>,
     google: (c: ReactNode) => <A href="#google">{c}</A>,
     use: (c: ReactNode) => <A href="#use">{c}</A>,
+    credits: (c: ReactNode) => <A href="#credits">{c}</A>,
     gapi: (c: ReactNode) => <A href="https://developers.google.com/terms/api-services-user-data-policy">{c}</A>,
     ytterms: (c: ReactNode) => <A href="https://www.youtube.com/t/terms">{c}</A>,
     gprivacy: (c: ReactNode) => <A href="http://www.google.com/policies/privacy">{c}</A>,

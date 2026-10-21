@@ -20,7 +20,7 @@ const BODY: Array<{ id: SectionId; blocks: Block[] }> = [
   { id: "overview", blocks: [["ul", ["o1", "o2", "o3", "o4", "o5", "o6"]]] },
   { id: "collect", blocks: [
     ["h3", "giveH"], ["ul", ["give1", "give2", "give3", "give4", "give5", "give6", "give7"]],
-    ["h3", "madeH"], ["ul", ["made1", "made2", "made3", "made4", "made5"]],
+    ["h3", "madeH"], ["ul", ["made1", "made2", "made3", "made4", "made5", "made6"]],
     ["h3", "autoH"], ["ul", ["auto1", "auto2", "auto3", "auto4"]],
     ["h3", "otherH"], ["ul", ["other1", "other2"]],
   ] },

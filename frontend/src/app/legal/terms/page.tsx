@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const BODY: Array<{ id: SectionId; blocks: Block[] }> = [
-  { id: "overview", blocks: [["ul", ["o1", "o2", "o3", "o4", "o5"]]] },
+  { id: "overview", blocks: [["ul", ["o1", "o2", "o3", "o4", "o5", "o6"]]] },
   { id: "who", blocks: [["p", "whoP"]] },
   { id: "wallet", blocks: [["p", "walletP"]] },
   { id: "content", blocks: [["p", "contentP1"], ["p", "contentP2"], ["p", "contentP3"]] },
@@ -25,6 +25,8 @@ const BODY: Array<{ id: SectionId; blocks: Block[] }> = [
   { id: "live", blocks: [["ul", ["live1", "live2", "live3", "live4"]]] },
   { id: "youtube", blocks: [["p", "youtubeP"]] },
   { id: "shelby", blocks: [["p", "shelbyP"]] },
+  // vm_credits: Part 16f
+  { id: "credits", blocks: [["p", "creditsP1"], ["ul", ["credits1", "credits2", "credits3", "credits4", "credits5", "credits6"]], ["p", "creditsP2"]] },
   { id: "limits", blocks: [["p", "limitsP1"], ["p", "limitsP2"]] },
   { id: "copyright", blocks: [["p", "copyrightP"]] },
   { id: "ending", blocks: [["p", "endingP"]] },
