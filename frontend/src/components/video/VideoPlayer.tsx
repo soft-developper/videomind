@@ -71,6 +71,18 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
     const views = useViewCounter(countViewsOf);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    // vm_playfix: keep the address the video is playing from while only its signature
+    // changes (the page reloads the video's details every few seconds while it is
+    // processed). A new file, or a failed load, takes the newest address.
+    const [src, setSrc] = useState(streamUrl);
+    useEffect(() => {
+      const path = (u: string) => u.split("?")[0];
+      if (!streamUrl || !src) { setSrc(streamUrl); return; }
+      if (path(src) !== path(streamUrl)) { setSrc(streamUrl); setError(false); return; }
+      // Same file: only a load that failed (an address that ran out) moves to the newer one.
+      if (error && src !== streamUrl) { setSrc(streamUrl); setError(false); }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [streamUrl, error]);
     const [playing, setPlaying] = useState(false);
     const [muted, setMuted] = useState(false);
     const [show, setShow] = useState(true);
@@ -226,7 +238,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
 
         <video
           ref={v}
-          src={streamUrl}
+          src={src ?? undefined}
           poster={poster ?? undefined}
           className="w-full h-full object-contain"
           preload="metadata"

@@ -131,8 +131,13 @@ const limitEdit = rateLimit({
 const fileSecret = crypto.randomBytes(32);
 const fileSignature = (id: string, exp: number) =>
   crypto.createHmac("sha256", fileSecret).update(`${id}|${exp}`).digest("hex");
+// vm_playfix: the playback address is the same for everyone who asks within one
+// window, like the pictures' addresses. While a video is processed the page asks for
+// its status every 5 seconds; a new address each time made the player drop what it
+// had loaded and start again, so the video would not play until processing ended.
+// The address works for at least one window (12 hours) and at most two.
 function signedFilePath(id: string, seconds: number): string {
-  const exp = Date.now() + seconds * 1000;
+  const exp = stableWindow(seconds).end;
   return `/api/videos/${id}/file?exp=${exp}&sig=${fileSignature(id, exp)}`;
 }
 /** vm_content: where a video plays from, as the video page gets it (also for the admin dashboard's review). */
@@ -147,7 +152,7 @@ export async function playbackOf(video: VideoRecord, opts: { admin?: boolean } =
     return { streamUrl: null, source: null, storagePaused: true };
   }
   if (original) {
-    const url = (await getStorage().signedUrl(original.key, PLAY_URL_SECONDS).catch(() => null)) ?? signedFilePath(video.id, PLAY_URL_SECONDS);
+    const url = (await getStorage().signedUrlStable(original.key, PLAY_URL_SECONDS).catch(() => null)) ?? signedFilePath(video.id, PLAY_URL_SECONDS);
     return { streamUrl: url, source: "storage" };
   }
   // vm_shelbyhome: with no copy in storage, a reset or lapsed store on Shelby cannot play.
