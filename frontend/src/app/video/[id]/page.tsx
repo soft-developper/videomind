@@ -383,7 +383,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 <div className={clsx("panel flex flex-col overflow-hidden", !speechless && "h-full")}>
                   {speechless
                     ? <p className="p-5 text-[13.5px] text-dim leading-relaxed">{tv("noSpeechAsk")}</p>
-                    : <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={seek} owner={!!video.isOwner} />}
+                    : <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={seek} owner={!!video.isOwner} durationSeconds={video.meta?.durationSeconds} />}
                 </div>
               </aside>
             </div>
@@ -423,7 +423,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 </button>
               </div>
               <div className="flex-1 min-h-0">
-                <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={(s) => { setChatOpen(false); seek(s); }} owner={!!video.isOwner} />
+                <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={(s) => { setChatOpen(false); seek(s); }} owner={!!video.isOwner} durationSeconds={video.meta?.durationSeconds} />
               </div>
             </div>
           </div>

@@ -15,7 +15,7 @@ import { clsx } from "clsx";
 import { AlertTriangle, Sparkles, Plus, X } from "lucide-react";
 import { ApiError, getGenerateInfo, startGeneration, directGeneration, directStory, type ShotInput } from "@/lib/api";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
-import { useCredits, AddCreditsLink, isNoCredits } from "@/components/credits/Credits";
+import { useCredits, AddCreditsLink, isNoCredits, PriceTag } from "@/components/credits/Credits";
 import { useMoney, inline } from "@/lib/format";
 import { localize } from "@/lib/errorText";
 
@@ -158,6 +158,8 @@ export function GenerateForm() {
           {before != null && <button type="button" onClick={undo} disabled={directing || busy} className="text-[13px] text-dim underline hover:text-paper no-min mt-2" data-generate-undo>{t("undo")}</button>}
           <p className={clsx("text-[12px] mt-2.5 ms-auto tabular-nums", trimmed.length > MAX ? "text-error" : "text-dim")}>{t("count", { n: trimmed.length, max: MAX })}</p>
         </div>
+        {/* vm_priceshapes: what "Let AI write it" costs */}
+        <PriceTag what="director" className="mt-1" />
         {!many && <p className="text-[12.5px] text-dim mt-1">{t("directHint")}</p>}
         {note && (
           <p role="status" className={clsx("text-[13px] mt-2 leading-relaxed", note.kind === "problem" ? "text-warn" : "text-paper-2")} data-generate-note={note.kind}>{note.text}</p>

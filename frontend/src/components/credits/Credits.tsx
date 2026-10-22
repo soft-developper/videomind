@@ -33,25 +33,33 @@ export function useCredits() {
     storage: mine.data?.storage ?? null,
     /** The price of an action when it costs something right now, else null. */
     costOf: (a: CreditAction) => (charging && priceOf(a) > 0 ? priceOf(a) : null),
+    /** vm_priceshapes: minutes charged at least when a video is processed. */
+    processMin: prices.data?.processMinMinutes ?? 5,
   };
 }
 
-export type PriceWording = "process" | "answer" | "search" | "paths" | "libraryAnswer" | "captions";
+export type PriceWording = "process" | "answer" | "search" | "paths" | "libraryAnswer" | "captions" | "director";
 const ACTION: Record<PriceWording, CreditAction> = {
   process: "process_video", answer: "ask", search: "search", paths: "learn_paths", libraryAnswer: "learn_ask", captions: "live_captions",
+  director: "generate_direct",
 };
 
+/** vm_priceshapes: an answer costs one step for every 30 minutes of the video, at least one (as the server counts). */
+export const askSteps = (durationSeconds?: number | null) =>
+  durationSeconds && durationSeconds > 0 ? Math.max(1, Math.ceil(durationSeconds / 1800)) : 1;
+
 /** One short line with the price of an action, and what the wallet has. Shows nothing when the action is free. */
-export function PriceTag({ what, className }: { what: PriceWording; className?: string }) {
+export function PriceTag({ what, className, steps }: { what: PriceWording; className?: string; /** answers: steps of 30 minutes of this video */ steps?: number }) {
   const t = useTranslations("credits");
   const money = useMoney();
   const c = useCredits();
-  const cost = c.costOf(ACTION[what]);
-  if (cost == null) return null;
+  const unit = c.costOf(ACTION[what]);
+  if (unit == null) return null;
+  const cost = what === "answer" ? unit * Math.max(1, steps ?? 1) : unit;
   const short = c.available != null && c.available < cost;
   return (
     <p className={clsx("text-[12px] leading-relaxed", short ? "text-warn" : "text-dim", className)} data-price-tag={what}>
-      {t(`price.${what}`, { price: inline(money(cost)) })}
+      {t(`price.${what}`, { price: inline(money(cost)), unit: inline(money(unit)), min: c.processMin })}
       {c.available != null && <> {t("have", { amount: inline(money(c.available)) })}</>}
       {short && <> <Link href={ADD_CREDITS_HREF} className="underline hover:text-paper">{t("add")}</Link></>}
     </p>

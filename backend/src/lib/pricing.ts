@@ -26,7 +26,7 @@ const n = (v: unknown) => Number(v ?? 0) || 0;
 const DAY = 86400_000;
 
 /** How many units an action needs in 30 days before its measured average is used. */
-const MIN_UNITS: Record<PriceUnit, number> = { minute: 60, answer: 20, search: 20, generation: 10, second: 60, gb_month: Infinity };
+const MIN_UNITS: Record<PriceUnit, number> = { minute: 60, answer: 20, search: 20, generation: 10, second: 60, gb_month: Infinity, answer_step: 20 };
 
 // ── the platform fee ─────────────────────────────────────────────────────────
 export const DEFAULT_FEE_BPS = 30;

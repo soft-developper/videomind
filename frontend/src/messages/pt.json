@@ -1356,7 +1356,8 @@
         "storage": "Armazenamento no VideoMind",
         "generate_video": "Gerar um vídeo a partir de uma descrição",
         "translate": "Traduzir um vídeo (cada idioma)",
-        "live": "Eventos ao vivo"
+        "live": "Eventos ao vivo",
+        "generate_direct": "Deixar a IA escrever uma descrição ou planejar as cenas"
       },
       "per": {
         "minute": "{price} por minuto",
@@ -1364,7 +1365,8 @@
         "search": "{price} por busca",
         "generation": "{price} cada vez",
         "gb_month": "{price} por GB ao mês",
-        "second": "{price} por segundo"
+        "second": "{price} por segundo",
+        "answer_step": "{price} por resposta a cada 30 minutos de vídeo"
       },
       "loadFailed": "Não foi possível carregar seus créditos. Tente de novo em um minuto.",
       "add": {
@@ -1878,10 +1880,10 @@
     "live4": "A gravação de um evento ao vivo é feita no próprio navegador de quem transmite, e só vira um vídeo se essa pessoa enviar a gravação.",
     "youtubeP": "Os recursos do YouTube usam os Serviços de API do YouTube. <b>Ao usar esses recursos, você concorda em ficar vinculado aos <ytterms>Termos de Serviço do YouTube</ytterms>.</b> O tratamento dos seus dados pelo Google está descrito na <gprivacy>Política de Privacidade do Google</gprivacy>. Você é responsável pelo que publica no seu canal e por seguir as regras do YouTube. O Google pode limitar os envios, e não podemos garantir que um envio seja aceito.",
     "shelbyP": "Você pode decidir guardar vídeos na Shelby, uma rede de armazenamento descentralizada na Aptos, por meio de transações que você assina com a sua própria carteira. Tudo o que fica guardado ali é público e não pode ser excluído nem alterado por nós. As redes atuais da Shelby estão no começo: o armazenamento é pago por um período limitado, e os dados podem ser perdidos ou apagados. As taxas de rede ficam por sua conta. Não controlamos a Shelby nem a Aptos e não somos responsáveis por elas. Guarde suas próprias cópias de tudo o que for importante.",
-    "creditsP1": "Algumas ações custam créditos: processar um vídeo, respostas, buscas, trilhas de aprendizado, legendas ao vivo e guardar arquivos no VideoMind. Os créditos são contados em dólares americanos. Você os adiciona na página Carteira enviando ShelbyUSD da sua carteira para o endereço do VideoMind: 1 ShelbyUSD adiciona 1 dólar americano em créditos, e cada transferência é adicionada uma só vez. Não podemos desfazer uma transferência que você assina, e as taxas da rede são suas. Na rede de teste da Shelby, o ShelbyUSD não tem valor.",
+    "creditsP1": "Algumas ações custam créditos: processar um vídeo, respostas, buscas, trilhas de aprendizado, legendas ao vivo, eventos ao vivo, traduzir uma transcrição, gerar um vídeo e pedir à IA que escreva a descrição dele, e guardar arquivos no VideoMind. Os créditos são contados em dólares americanos. Você os adiciona na página Carteira enviando ShelbyUSD da sua carteira para o endereço do VideoMind: 1 ShelbyUSD adiciona 1 dólar americano em créditos, e cada transferência é adicionada uma só vez. Não podemos desfazer uma transferência que você assina, e as taxas da rede são suas. Na rede de teste da Shelby, o ShelbyUSD não tem valor.",
     "credits1": "<b>Preços.</b> A página Carteira mostra o preço de cada ação, e o preço aparece antes de uma ação começar. Podemos mudar os preços. Um novo preço vale só para ações iniciadas depois da mudança, e para o armazenamento a partir do dia seguinte.",
-    "credits2": "<b>Reservas.</b> Quando uma ação paga começa, o preço dela é separado dos seus créditos e só é cobrado se a ação der certo. Uma ação que falha não custa nada. Processar um vídeo é cobrado pelos minutos de som transcritos, nunca mais do que foi separado.",
-    "credits3": "<b>Quem paga.</b> Processar um vídeo e as respostas sobre ele são pagos pelo dono do vídeo, também quando quem pergunta é um espectador. Buscas e Conhecimento são pagos por quem os usa. Legendas ao vivo são pagas pelo anfitrião.",
+    "credits2": "<b>Reservas.</b> Quando uma ação paga começa, o preço dela é separado dos seus créditos e só é cobrado se a ação der certo. Uma ação que falha não custa nada. Processar um vídeo é cobrado pelos minutos de som transcritos, com um mínimo por vídeo mostrado antes do envio, nunca mais do que foi separado. Uma resposta sobre um vídeo custa mais em vídeos mais longos, como mostrado antes de perguntar. Um evento ao vivo é cobrado pelos minutos que realmente durou, nunca mais do que foi separado.",
+    "credits3": "<b>Quem paga.</b> Processar um vídeo, as respostas sobre ele e as traduções dele são pagos pelo dono do vídeo, também quando quem pergunta é um espectador. Buscas, Conhecimento, gerar um vídeo e pedir à IA que escreva a descrição dele são pagos por quem os usa. Eventos ao vivo e legendas ao vivo são pagos pelo anfitrião.",
     "credits4": "<b>Armazenamento.</b> Os arquivos que o VideoMind guarda dos seus vídeos (o original, as imagens e o som dele, e os clipes) são cobrados uma vez por dia, a um trinta avos do preço mensal por GB, pelo que você guarda acima da quantidade grátis mostrada na página Carteira. Um GB são 1.000.000.000 bytes. Um vídeo público que existe só na Shelby não conta o original.",
     "credits5": "<b>Armazenamento não pago.</b> Seu saldo nunca fica abaixo de zero. O armazenamento que você não consegue pagar fica devido, e é pago primeiro com os próximos créditos que você adicionar. Se alguma parte ainda estiver devida 14 dias depois, seus vídeos guardados no VideoMind param de tocar e os novos envios esperam até o pagamento. Não apagamos seus vídeos porque o armazenamento não foi pago.",
     "credits6": "<b>Reembolsos.</b> Os créditos não podem ser reembolsados, transferidos, vendidos nem trocados por dinheiro, exceto que corrigiremos uma cobrança feita por engano. Se o VideoMind fechar de vez, reembolsaremos os créditos não usados que você comprou com ShelbyUSD de valor real, para a carteira que os comprou. Os créditos grátis que damos (créditos de boas vindas ou concessões) não têm valor em dinheiro e podem ser retirados se foram dados por engano.",
@@ -2170,12 +2172,13 @@
   },
   "credits": {
     "price": {
-      "process": "O processamento custa {price} por minuto de som, cobrado quando o vídeo fica pronto.",
-      "answer": "Cada resposta custa {price} para você, inclusive as respostas aos seus espectadores.",
+      "process": "O processamento custa {price} por minuto de som, no mínimo {min, plural, one {# minuto} other {# minutos}} por vídeo, cobrado quando o vídeo fica pronto.",
+      "answer": "Cada resposta sobre este vídeo custa {price} para você, inclusive as respostas aos seus espectadores: {unit} a cada 30 minutos de vídeo.",
       "search": "Cada busca custa {price}.",
       "paths": "Criar trilhas de aprendizado custa {price} cada vez.",
       "libraryAnswer": "Cada resposta custa {price}.",
-      "captions": "As legendas custam {price} por minuto enquanto estão ligadas."
+      "captions": "As legendas custam {price} por minuto enquanto estão ligadas.",
+      "director": "Cada sugestão custa {price}. Nada é cobrado quando a ideia não pode ser feita."
     },
     "have": "Você tem {amount}.",
     "add": "Adicionar créditos",

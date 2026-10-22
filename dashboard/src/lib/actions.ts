@@ -12,7 +12,7 @@ export const ACTIONS: Record<string, string> = {
   credits_removed: "Removed credits", credit_refunded: "Refunded a charge",
   charging_turned_on: "Turned charging on", charging_turned_off: "Turned charging off",
   credit_fee_changed: "Changed the platform fee", credit_price_applied: "Applied a suggested price", credit_prices_applied: "Applied the suggested prices",
-  credit_estimate_changed: "Changed a cost estimate",
+  credit_estimate_changed: "Changed a cost estimate", credit_process_minimum_changed: "Changed the processing minimum",
   storage_free_changed: "Changed the free storage", storage_forgiven: "Forgave storage owed",
   generation_settings_changed: "Changed video generation", generation_model_changed: "Changed a generation model",
   generation_allowed: "Allowed a wallet to generate", generation_disallowed: "Removed a wallet from generation",
@@ -37,4 +37,4 @@ export function dollars(micros: number, exact = false): string {
 export const CREDIT_KINDS: Record<string, string> = {
   welcome: "Welcome", grant: "Given by an admin", remove: "Removed by an admin", topup: "Top up", charge: "Charge", refund: "Refund",
 };
-export const CREDIT_UNITS: Record<string, string> = { minute: "per minute", answer: "per answer", search: "per search", generation: "per generation", gb_month: "per GB month", second: "per second" };
+export const CREDIT_UNITS: Record<string, string> = { minute: "per minute", answer: "per answer", search: "per search", generation: "per generation", gb_month: "per GB month", second: "per second", answer_step: "per answer, each 30 minutes of video" };

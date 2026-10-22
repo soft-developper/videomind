@@ -10,7 +10,7 @@
 import { Router } from "express";
 import { requireAuth, authOf } from "../lib/auth.js";
 import { rateLimit } from "../lib/guard.js";
-import { myCredits, listActionPrices, publicPrice, getCreditSettings, CreditsError } from "../lib/credits.js";
+import { myCredits, listActionPrices, publicPrice, getCreditSettings, CreditsError, getProcessMinMinutes } from "../lib/credits.js";
 import { claimTopup, topupInfo, TopupError } from "../lib/topup.js";
 // vm_storagecharge: storage kept, owed and paused (Part 16e)
 import { storageStatus, collectOwed } from "../lib/storageCharge.js";
@@ -40,8 +40,9 @@ router.get("/me", requireAuth, async (req, res) => {
 
 router.get("/prices", async (_req, res) => {
   try {
-    const [prices, settings] = await Promise.all([listActionPrices(), getCreditSettings()]);
-    return res.json({ charging: settings.charging, prices: prices.map(publicPrice) });
+    const [prices, settings, processMinMinutes] = await Promise.all([listActionPrices(), getCreditSettings(), getProcessMinMinutes()]);
+    // vm_priceshapes: the minimum minutes charged for processing a video
+    return res.json({ charging: settings.charging, prices: prices.map(publicPrice), processMinMinutes });
   } catch (err: any) { return fail(res, err, "reading the prices", "The prices could not be loaded. Try again."); }
 });
 

@@ -844,6 +844,20 @@ const MIGRATIONS: Migration[] = [
       `INSERT INTO action_cost_estimates (id, usd_per_unit, note, updated_at) VALUES ('live', 0.0019, 'LiveKit Ship plan for one viewer: $0.0005 a participant minute plus about 0.011 GB at $0.12 per GB; free on the Build plan until its limits', 0)`,
     ],
   },
+  {
+    // vm_priceshapes (Part 20b): answers priced in steps of 30 minutes of video,
+    // processing charged for at least 5 minutes a video, and a price for
+    // "Let AI write it". A price an admin already set for answers now counts
+    // per step, so long videos cost more per answer.
+    id: "032_price_shapes",
+    statements: [
+      `UPDATE action_prices SET unit = 'answer_step', label = 'Answer a question about a video (each 30 minutes of video)' WHERE id = 'ask'`,
+      `INSERT INTO action_prices (id, label, unit, micros_per_unit, position, updated_at) VALUES ('generate_direct', 'Let AI write a description or plan the shots', 'generation', 0, 11, 0)`,
+      `INSERT INTO credit_settings (id, value) VALUES ('process_min_minutes', '5') ON CONFLICT(id) DO NOTHING`,
+      `UPDATE action_cost_estimates SET usd_per_unit = 0.01, note = 'Claude Sonnet 5.5 per 30 minutes of video: the first question writes the transcript to the cache (about $0.015 for 30 minutes), later ones read it for about $0.005' WHERE id = 'ask' AND updated_by IS NULL`,
+      `INSERT INTO action_cost_estimates (id, usd_per_unit, note, updated_at) VALUES ('generate_direct', 0.01, 'Claude Sonnet 5.5, about 2,000 tokens read and up to 2,000 written', 0)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

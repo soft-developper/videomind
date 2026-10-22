@@ -1356,7 +1356,8 @@
         "storage": "Almacenamiento en VideoMind",
         "generate_video": "Generar un video a partir de una descripción",
         "translate": "Traducir un video (cada idioma)",
-        "live": "Eventos en vivo"
+        "live": "Eventos en vivo",
+        "generate_direct": "Dejar que la IA escriba una descripción o planee las tomas"
       },
       "per": {
         "minute": "{price} por minuto",
@@ -1364,7 +1365,8 @@
         "search": "{price} por búsqueda",
         "generation": "{price} cada vez",
         "gb_month": "{price} por GB al mes",
-        "second": "{price} por segundo"
+        "second": "{price} por segundo",
+        "answer_step": "{price} por respuesta por cada 30 minutos de video"
       },
       "loadFailed": "No se pudieron cargar tus créditos. Vuelve a intentarlo en un minuto.",
       "add": {
@@ -1878,10 +1880,10 @@
     "live4": "La grabación de un evento en vivo se hace en el propio navegador de quien transmite, y solo se convierte en un video si esa persona la sube.",
     "youtubeP": "Las funciones de YouTube usan los servicios de API de YouTube. <b>Al usarlas, aceptas quedar obligado por los <ytterms>Términos del servicio de YouTube</ytterms>.</b> El tratamiento de tus datos por parte de Google se describe en la <gprivacy>Política de privacidad de Google</gprivacy>. Eres responsable de lo que publicas en tu canal y de cumplir las reglas de YouTube. Google puede limitar las subidas, y no podemos garantizar que una subida sea aceptada.",
     "shelbyP": "Puedes decidir guardar videos en Shelby, una red de almacenamiento descentralizada sobre Aptos, mediante transacciones que firmas con tu propia billetera. Todo lo que se guarda allí es público y no podemos borrarlo ni modificarlo. Las redes actuales de Shelby están en una fase temprana: el almacenamiento se paga por un período limitado y los datos pueden perderse o borrarse. Las comisiones de la red corren por tu cuenta. No controlamos Shelby ni Aptos y no somos responsables de ellas. Guarda tus propias copias de todo lo importante.",
-    "creditsP1": "Algunas acciones cuestan créditos: procesar un video, las respuestas, las búsquedas, las rutas de aprendizaje, los subtítulos en vivo y guardar archivos en VideoMind. Los créditos se cuentan en dólares estadounidenses. Los añades en la página Billetera enviando ShelbyUSD desde tu billetera a la dirección de VideoMind: 1 ShelbyUSD añade 1 dólar estadounidense de créditos, y cada transferencia se añade una sola vez. No podemos deshacer una transferencia que firmas, y las comisiones de la red corren por tu cuenta. En la red de prueba de Shelby, ShelbyUSD no tiene valor.",
+    "creditsP1": "Algunas acciones cuestan créditos: procesar un video, las respuestas, las búsquedas, las rutas de aprendizaje, los subtítulos en vivo, los eventos en vivo, traducir una transcripción, generar un video y pedir a la IA que escriba su descripción, y guardar archivos en VideoMind. Los créditos se cuentan en dólares estadounidenses. Los añades en la página Billetera enviando ShelbyUSD desde tu billetera a la dirección de VideoMind: 1 ShelbyUSD añade 1 dólar estadounidense de créditos, y cada transferencia se añade una sola vez. No podemos deshacer una transferencia que firmas, y las comisiones de la red corren por tu cuenta. En la red de prueba de Shelby, ShelbyUSD no tiene valor.",
     "credits1": "<b>Precios.</b> La página Billetera muestra el precio de cada acción, y el precio aparece antes de que una acción empiece. Podemos cambiar los precios. Un precio nuevo se aplica solo a las acciones iniciadas después del cambio, y al almacenamiento desde el día siguiente.",
-    "credits2": "<b>Reservas.</b> Cuando empieza una acción de pago, su precio se aparta de tus créditos y se cobra solo si la acción sale bien. Una acción que falla no cuesta nada. Procesar un video se cobra por los minutos de sonido transcritos, nunca más de lo apartado.",
-    "credits3": "<b>Quién paga.</b> Procesar un video y las respuestas sobre él los paga el dueño del video, también cuando la pregunta la hace un espectador. Las búsquedas y Conocimiento los paga quien los usa. Los subtítulos en vivo los paga el anfitrión.",
+    "credits2": "<b>Reservas.</b> Cuando empieza una acción de pago, su precio se aparta de tus créditos y se cobra solo si la acción sale bien. Una acción que falla no cuesta nada. Procesar un video se cobra por los minutos de sonido transcritos, con un mínimo por video que se muestra antes de subirlo, nunca más de lo apartado. Una respuesta sobre un video cuesta más en videos más largos, como se muestra antes de preguntar. Un evento en vivo se cobra por los minutos que de verdad duró, nunca más de lo apartado.",
+    "credits3": "<b>Quién paga.</b> Procesar un video, las respuestas sobre él y sus traducciones los paga el dueño del video, también cuando la pregunta la hace un espectador. Las búsquedas, Conocimiento, generar un video y pedir a la IA que escriba su descripción los paga quien los usa. Los eventos en vivo y los subtítulos en vivo los paga el anfitrión.",
     "credits4": "<b>Almacenamiento.</b> Los archivos que VideoMind guarda de tus videos (el original, sus imágenes y su sonido, y los clips) se cobran una vez al día, a la trigésima parte del precio mensual por GB, por lo que guardas por encima de la cantidad gratis que muestra la página Billetera. Un GB son 1.000.000.000 bytes. Un video público que solo está en Shelby no cuenta su original.",
     "credits5": "<b>Almacenamiento sin pagar.</b> Tu saldo nunca baja de cero. El almacenamiento que no puedes pagar queda debido, y se paga primero con los próximos créditos que añadas. Si una parte sigue debida 14 días después, tus videos guardados en VideoMind dejan de reproducirse y las nuevas subidas esperan hasta que se pague. No borramos tus videos porque el almacenamiento esté sin pagar.",
     "credits6": "<b>Reembolsos.</b> Los créditos no se pueden reembolsar, transferir, vender ni cambiar por dinero, salvo que corregiremos un cobro hecho por error. Si VideoMind cierra definitivamente, reembolsaremos los créditos sin usar que compraste con ShelbyUSD de valor real, a la billetera que los compró. Los créditos gratis que damos (créditos de bienvenida o regalos) no tienen valor en dinero y se pueden retirar si se dieron por error.",
@@ -2170,12 +2172,13 @@
   },
   "credits": {
     "price": {
-      "process": "Procesar cuesta {price} por minuto de sonido; se cobra cuando el video está listo.",
-      "answer": "Cada respuesta te cuesta {price}, también las respuestas a tus espectadores.",
+      "process": "Procesar cuesta {price} por minuto de sonido, al menos {min, plural, one {# minuto} other {# minutos}} por video; se cobra cuando el video está listo.",
+      "answer": "Cada respuesta sobre este video te cuesta {price}, también las respuestas a tus espectadores: {unit} por cada 30 minutos de video.",
       "search": "Cada búsqueda cuesta {price}.",
       "paths": "Crear rutas de aprendizaje cuesta {price} cada vez.",
       "libraryAnswer": "Cada respuesta cuesta {price}.",
-      "captions": "Los subtítulos cuestan {price} por minuto mientras están activos."
+      "captions": "Los subtítulos cuestan {price} por minuto mientras están activos.",
+      "director": "Cada sugerencia cuesta {price}. No se cobra nada cuando la idea no se puede hacer."
     },
     "have": "Tienes {amount}.",
     "add": "Añadir créditos",

@@ -1356,7 +1356,8 @@
         "storage": "Stockage sur VideoMind",
         "generate_video": "Générer une vidéo à partir d’une description",
         "translate": "Traduire une vidéo (chaque langue)",
-        "live": "Directs"
+        "live": "Directs",
+        "generate_direct": "Laisser l’IA écrire une description ou prévoir les plans"
       },
       "per": {
         "minute": "{price} la minute",
@@ -1364,7 +1365,8 @@
         "search": "{price} la recherche",
         "generation": "{price} à chaque fois",
         "gb_month": "{price} par Go et par mois",
-        "second": "{price} par seconde"
+        "second": "{price} par seconde",
+        "answer_step": "{price} la réponse par tranche de 30 minutes de vidéo"
       },
       "loadFailed": "Vos crédits n’ont pas pu être chargés. Réessayez dans une minute.",
       "add": {
@@ -1878,10 +1880,10 @@
     "live4": "L’enregistrement d’un direct est réalisé dans le navigateur de l’hôte, et ne devient une vidéo que si l’hôte l’envoie.",
     "youtubeP": "Les fonctions YouTube utilisent les services d’API YouTube. <b>En les utilisant, vous acceptez d’être lié par les <ytterms>Conditions d’utilisation de YouTube</ytterms>.</b> Le traitement de vos données par Google est décrit dans les <gprivacy>Règles de confidentialité de Google</gprivacy>. Vous êtes responsable de ce que vous publiez sur votre chaîne et du respect des règles de YouTube. Google peut limiter les envois, et nous ne pouvons pas garantir qu’un envoi sera accepté.",
     "shelbyP": "Vous pouvez choisir de stocker des vidéos sur Shelby, un réseau de stockage décentralisé sur Aptos, au moyen de transactions que vous signez avec votre propre portefeuille. Tout ce qui y est stocké est public et ne peut être ni supprimé ni modifié par nous. Les réseaux actuels de Shelby en sont à leurs débuts : le stockage est payé pour une durée limitée, et les données peuvent être perdues ou effacées. Les éventuels frais de réseau sont à votre charge. Nous ne contrôlons ni Shelby ni Aptos et n’en sommes pas responsables. Gardez vos propres copies de tout ce qui est important.",
-    "creditsP1": "Certaines actions coûtent des crédits : le traitement d’une vidéo, les réponses, les recherches, les parcours d’apprentissage, les sous titres en direct et la conservation de fichiers sur VideoMind. Les crédits sont comptés en dollars américains. Vous les ajoutez dans la page Portefeuille en envoyant des ShelbyUSD depuis votre portefeuille à l’adresse de VideoMind : 1 ShelbyUSD ajoute 1 dollar américain de crédits, et chaque transfert n’est ajouté qu’une fois. Nous ne pouvons pas annuler un transfert que vous signez, et les frais du réseau sont à votre charge. Sur le réseau de test de Shelby, les ShelbyUSD n’ont aucune valeur.",
+    "creditsP1": "Certaines actions coûtent des crédits : le traitement d’une vidéo, les réponses, les recherches, les parcours d’apprentissage, les sous titres en direct, les directs, la traduction d’une transcription, la génération d’une vidéo et la rédaction de sa description par l’IA, et la conservation de fichiers sur VideoMind. Les crédits sont comptés en dollars américains. Vous les ajoutez dans la page Portefeuille en envoyant des ShelbyUSD depuis votre portefeuille à l’adresse de VideoMind : 1 ShelbyUSD ajoute 1 dollar américain de crédits, et chaque transfert n’est ajouté qu’une fois. Nous ne pouvons pas annuler un transfert que vous signez, et les frais du réseau sont à votre charge. Sur le réseau de test de Shelby, les ShelbyUSD n’ont aucune valeur.",
     "credits1": "<b>Prix.</b> La page Portefeuille indique le prix de chaque action, et le prix est affiché avant qu’une action commence. Nous pouvons modifier les prix. Un nouveau prix s’applique uniquement aux actions lancées après le changement, et au stockage à partir du jour suivant.",
-    "credits2": "<b>Réserves.</b> Quand une action payante commence, son prix est mis de côté sur vos crédits et n’est prélevé que si l’action réussit. Une action qui échoue ne coûte rien. Le traitement d’une vidéo est facturé selon les minutes de son transcrites, jamais plus que le montant mis de côté.",
-    "credits3": "<b>Qui paie.</b> Le traitement d’une vidéo et les réponses à son sujet sont payés par le propriétaire de la vidéo, y compris quand c’est un spectateur qui pose la question. Les recherches et Connaissances sont payées par la personne qui les utilise. Les sous titres en direct sont payés par l’hôte.",
+    "credits2": "<b>Réserves.</b> Quand une action payante commence, son prix est mis de côté sur vos crédits et n’est prélevé que si l’action réussit. Une action qui échoue ne coûte rien. Le traitement d’une vidéo est facturé selon les minutes de son transcrites, avec un minimum par vidéo indiqué avant l’envoi, jamais plus que le montant mis de côté. Une réponse sur une vidéo coûte plus cher pour les vidéos plus longues, comme indiqué avant de poser la question. Un direct est facturé selon les minutes réellement diffusées, jamais plus que le montant mis de côté.",
+    "credits3": "<b>Qui paie.</b> Le traitement d’une vidéo, les réponses à son sujet et ses traductions sont payés par le propriétaire de la vidéo, y compris quand c’est un spectateur qui pose la question. Les recherches, Connaissances, la génération d’une vidéo et la rédaction de sa description par l’IA sont payées par la personne qui les utilise. Les directs et les sous titres en direct sont payés par l’hôte.",
     "credits4": "<b>Stockage.</b> Les fichiers que VideoMind garde pour vos vidéos (l’original, ses images et son son, et les extraits) sont facturés une fois par jour, au trentième du prix mensuel par Go, pour ce que vous gardez au delà de la quantité gratuite indiquée dans la page Portefeuille. Un Go correspond à 1 000 000 000 octets. Une vidéo publique qui n’existe que sur Shelby ne compte pas son original.",
     "credits5": "<b>Stockage impayé.</b> Votre solde ne descend jamais sous zéro. Le stockage que vous ne pouvez pas payer est dû, et il est payé en premier avec les prochains crédits que vous ajoutez. Si une partie est encore due 14 jours plus tard, vos vidéos gardées sur VideoMind ne sont plus lues et les nouveaux imports attendent jusqu’au paiement. Nous ne supprimons pas vos vidéos parce que le stockage n’est pas payé.",
     "credits6": "<b>Remboursements.</b> Les crédits ne peuvent être ni remboursés, ni transférés, ni vendus, ni échangés contre de l’argent, sauf que nous corrigerons un prélèvement fait par erreur. Si VideoMind ferme définitivement, nous rembourserons les crédits inutilisés que vous avez achetés avec des ShelbyUSD ayant une valeur réelle, au portefeuille qui les a achetés. Les crédits gratuits que nous donnons (crédits de bienvenue ou dons) n’ont aucune valeur monétaire et peuvent être retirés s’ils ont été donnés par erreur.",
@@ -2170,12 +2172,13 @@
   },
   "credits": {
     "price": {
-      "process": "Le traitement coûte {price} par minute de son, facturé quand la vidéo est prête.",
-      "answer": "Chaque réponse vous coûte {price}, y compris les réponses à vos spectateurs.",
+      "process": "Le traitement coûte {price} par minute de son, au moins {min, plural, one {# minute} other {# minutes}} par vidéo, facturé quand la vidéo est prête.",
+      "answer": "Chaque réponse sur cette vidéo vous coûte {price}, y compris les réponses à vos spectateurs : {unit} par tranche de 30 minutes de vidéo.",
       "search": "Chaque recherche coûte {price}.",
       "paths": "Créer des parcours d’apprentissage coûte {price} à chaque fois.",
       "libraryAnswer": "Chaque réponse coûte {price}.",
-      "captions": "Les sous-titres coûtent {price} par minute tant qu’ils sont actifs."
+      "captions": "Les sous-titres coûtent {price} par minute tant qu’ils sont actifs.",
+      "director": "Chaque suggestion coûte {price}. Rien n’est facturé quand l’idée ne peut pas être réalisée."
     },
     "have": "Vous avez {amount}.",
     "add": "Ajouter des crédits",

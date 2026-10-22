@@ -12,6 +12,7 @@ import { rateLimit } from "../lib/guard.js";
 import { CreditsError } from "../lib/credits.js";
 import { generateInfo, startGeneration, mayGenerate, GenError } from "../lib/generation.js";
 import { direct, directStory, DirectorError } from "../lib/director.js";
+import { charged } from "../lib/charge.js";
 import { claudeFailure } from "../services/claude.js";
 import { storagePaused, STORAGE_UNPAID } from "../lib/storageCharge.js";
 
@@ -44,8 +45,10 @@ router.post("/direct", limitDirect, requireAuth, async (req, res) => {
     if (!(await mayGenerate(wallet))) return res.status(403).json({ error: "Video generation is not open to this wallet yet.", code: "not_allowed" });
     const b = (req.body ?? {}) as Record<string, unknown>;
     // vm_generate: { mode: "story" } splits the idea into shots (Part 17c3)
-    if (b.mode === "story") return res.json(await directStory({ wallet, idea: b.idea, aspect: b.aspect, modelId: b.modelId, shots: b.shots }));
-    return res.json(await direct({ wallet, idea: b.idea, aspect: b.aspect, seconds: b.seconds, modelId: b.modelId }));
+    // vm_priceshapes: charged per answer; nothing when Claude declines the idea (problem set)
+    const freeIf = (out: { problem: string | null }) => !!out.problem;
+    if (b.mode === "story") return res.json(await charged({ wallet, action: "generate_direct", freeIf }, () => directStory({ wallet, idea: b.idea, aspect: b.aspect, modelId: b.modelId, shots: b.shots })));
+    return res.json(await charged({ wallet, action: "generate_direct", freeIf }, () => direct({ wallet, idea: b.idea, aspect: b.aspect, seconds: b.seconds, modelId: b.modelId })));
   } catch (err) { return fail(res, err, "writing a description"); }
 });
 

@@ -42,6 +42,7 @@ import { listVideos, getVideoForAdmin, removeVideo, restoreVideo, listLive, endL
 // vm_credits: the Credits section
 import {
   creditsOverview, adminLedger, updateActionPrice, setWelcome, grantCredits, removeCredits, refundCharge, walletCredits, CreditsError, MICROS, setCharging,
+  getProcessMinMinutes, setProcessMinMinutes,
 } from "../lib/credits.js";
 // vm_pricing: suggested prices and the platform fee (Part 20a)
 import { pricingReport, setFeePercent, applySuggestion, applyAllSuggestions, listEstimates, updateEstimate } from "../lib/pricing.js";
@@ -392,12 +393,13 @@ router.post("/costs/fixed/:id/delete", requireAdmin, async (req, res) => {
 //   POST /credits/prices/:id/apply          set a price to its suggestion
 //   POST /credits/prices-apply-all          set every price to its suggestion
 //   POST /credits/estimates/:id { usd }     the starting cost of one unit of an action
+//   POST /credits/process-minimum { minutes }  vm_priceshapes: minutes charged at least per processed video
 const usdOf = (micros: number) => micros / MICROS;
 router.get("/credits", requireAdmin, async (_req, res) => {
   // vm_topup: where top ups go (TOPUP_TREASURY_ADDRESS on the server, read only here).
   try {
     const [overview, storage, genCost, pricing, estimates] = await Promise.all([creditsOverview(), storageTotals(), generationUnitCost(), pricingReport(), listEstimates()]);
-    return res.json({ ...overview, costs: [...overview.costs, genCost], storage, topup: { treasury: treasuryAddress(), network: TOPUP_NETWORK }, pricing, estimates });
+    return res.json({ ...overview, costs: [...overview.costs, genCost], storage, topup: { treasury: treasuryAddress(), network: TOPUP_NETWORK }, pricing, estimates, processMinMinutes: await getProcessMinMinutes() });
   }
   catch (err) { fail(res, err, "Loading the credits"); }
 });
@@ -437,6 +439,13 @@ router.post("/credits/prices-apply-all", requireAdmin, async (_req, res) => {
     if (changed.length) await audit(me(res), "credit_prices_applied", null, { changed: changed.map((c) => ({ id: c.id, fromUsd: usdOf(c.fromMicros), toUsd: usdOf(c.toMicros) })) });
     return res.json({ changed });
   } catch (err) { fail(res, err, "Applying the suggested prices"); }
+});
+router.post("/credits/process-minimum", requireAdmin, async (req, res) => {
+  try {
+    const minutes = await setProcessMinMinutes(req.body);
+    await audit(me(res), "credit_process_minimum_changed", null, { minutes });
+    return res.json({ processMinMinutes: minutes });
+  } catch (err) { fail(res, err, "Changing the minimum"); }
 });
 router.post("/credits/estimates/:id", requireAdmin, async (req, res) => {
   try {

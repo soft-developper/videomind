@@ -217,7 +217,7 @@ export const inviteComplete = (token: string, password: string, code: string) =>
 
 // ── vm_credits ───────────────────────────────────────────────────────────────
 export type CreditKind = "welcome" | "grant" | "remove" | "topup" | "charge" | "refund";
-export type CreditUnit = "minute" | "answer" | "search" | "generation" | "gb_month" | "second";
+export type CreditUnit = "minute" | "answer" | "search" | "generation" | "gb_month" | "second" | "answer_step";
 export interface CreditEntry {
   id: string; wallet: string; at: number; kind: CreditKind; amountMicros: number;
   action: string | null; quantity: number | null; videoId: string | null; holdId: string | null;
@@ -236,6 +236,8 @@ export interface CreditsOverview {
   /** vm_pricing: cost, fee and suggested price per action, and this month's totals. */
   pricing: PricingReport;
   estimates: CostEstimate[];
+  /** vm_priceshapes: minutes charged at least when a video is processed. */
+  processMinMinutes: number;
 }
 export type CostSource = "exact" | "measured" | "estimate" | "none";
 export interface PricingRow {
@@ -274,6 +276,7 @@ export const forgiveStorage = (wallet: string) => call<{ forgivenMicros: number;
 export const setPlatformFee = (percent: string) => call<{ feeBps: number }>("POST", "/credits/fee", { percent });
 export const applySuggestedPrice = (id: string) => call<{ id: string; fromMicros: number; toMicros: number }>("POST", `/credits/prices/${encodeURIComponent(id)}/apply`);
 export const applyAllSuggestedPrices = () => call<{ changed: Array<{ id: string; fromMicros: number; toMicros: number }> }>("POST", "/credits/prices-apply-all");
+export const setProcessMinimum = (minutes: string) => call<{ processMinMinutes: number }>("POST", "/credits/process-minimum", { minutes });
 export const setCostEstimate = (id: string, usd: string) => call<CostEstimate>("POST", `/credits/estimates/${encodeURIComponent(id)}`, { usd });
 export const refundCredit = (id: string, note: string) => call<CreditEntry>("POST", `/credits/entries/${encodeURIComponent(id)}/refund`, { note });
 

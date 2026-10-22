@@ -89,6 +89,24 @@ export async function getCreditSettings(): Promise<CreditSettings> {
   return { charging: m.get("charging") === "on", welcomeMicros: Math.max(0, Math.floor(n(m.get("welcome_micros")))) };
 }
 
+// vm_priceshapes: processing is charged for at least this many minutes per video (Part 20b).
+export const DEFAULT_PROCESS_MIN_MINUTES = 5;
+export async function getProcessMinMinutes(): Promise<number> {
+  const r = await getDb().execute("SELECT value FROM credit_settings WHERE id = 'process_min_minutes'");
+  const v = r.rows[0] ? Number((r.rows[0] as any).value) : DEFAULT_PROCESS_MIN_MINUTES;
+  return Number.isFinite(v) && v >= 0 ? v : DEFAULT_PROCESS_MIN_MINUTES;
+}
+export async function setProcessMinMinutes(body: unknown): Promise<number> {
+  const raw = (body as any)?.minutes;
+  const x = typeof raw === "string" ? Number(raw.trim()) : Number(raw);
+  if (raw === "" || raw == null || !Number.isInteger(x) || x < 0 || x > 60) throw new CreditsError(400, "bad_minimum", "The minimum must be a whole number of minutes from 0 to 60.");
+  await getDb().execute({
+    sql: "INSERT INTO credit_settings (id, value) VALUES ('process_min_minutes', ?) ON CONFLICT(id) DO UPDATE SET value = excluded.value",
+    args: [String(x)],
+  });
+  return x;
+}
+
 /** vm_charge: turn charging on or off. Holds already open are settled or released as usual either way. */
 export async function setCharging(body: unknown): Promise<CreditSettings> {
   const on = (body as any)?.on;
@@ -162,7 +180,8 @@ export async function myCredits(walletIn: string) {
 }
 
 // ── prices ───────────────────────────────────────────────────────────────────
-export type PriceUnit = "minute" | "answer" | "search" | "generation" | "gb_month" | "second";
+// vm_priceshapes: answer_step is one answer for every 30 minutes of the video (Part 20b)
+export type PriceUnit = "minute" | "answer" | "search" | "generation" | "gb_month" | "second" | "answer_step";
 export interface ActionPrice { id: string; label: string; unit: PriceUnit; microsPerUnit: number; position: number; updatedAt: number; updatedBy: string | null }
 const rowToActionPrice = (r: any): ActionPrice => ({
   id: String(r.id), label: String(r.label), unit: String(r.unit) as PriceUnit, microsPerUnit: n(r.micros_per_unit),
@@ -391,15 +410,18 @@ export async function creditsTotals(now = Date.now()) {
 }
 
 /** Which usage features each action stands for, and how its units are counted, for the cost per unit. */
-const COST_BASIS: Record<string, { features: string[]; count: { feature: string; metric: string; as: "rows" | "minutes" } }> = {
+const COST_BASIS: Record<string, { features: string[]; count: { feature: string; metric: string; as: "rows" | "minutes" | "quantity" } }> = {
   process_video: { features: ["transcribe", "analyze", "embed"], count: { feature: "transcribe", metric: "audio_seconds", as: "minutes" } },
-  ask: { features: ["ask"], count: { feature: "ask", metric: "output_tokens", as: "rows" } },
+  // vm_priceshapes: answers are counted in steps of 30 minutes of the video (from the answers below)
+  ask: { features: ["ask"], count: { feature: "ask", metric: "answer_steps", as: "quantity" } },
   search: { features: ["search"], count: { feature: "search", metric: "input_tokens", as: "rows" } },
   learn_paths: { features: ["learn_paths"], count: { feature: "learn_paths", metric: "output_tokens", as: "rows" } },
   learn_ask: { features: ["learn_ask"], count: { feature: "learn_ask", metric: "output_tokens", as: "rows" } },
   live_captions: { features: ["live_captions"], count: { feature: "live_captions", metric: "audio_seconds", as: "minutes" } },
   // vm_translate: Claude's tokens for translating, per minute of video translated (counted from the translations below)
   translate: { features: ["translate"], count: { feature: "translate", metric: "minutes_translated", as: "minutes" } },
+  // vm_priceshapes: "Let AI write it", one per answer
+  generate_direct: { features: ["generate_direct"], count: { feature: "generate_direct", metric: "output_tokens", as: "rows" } },
 };
 
 export interface UnitCost { action: string; units: number; costUsd: number; perUnitUsd: number | null }
@@ -434,9 +456,17 @@ export async function unitCosts(days = 30, now = Date.now()): Promise<UnitCost[]
   const out: UnitCost[] = [];
   // vm_translate: the ledger has the tokens, the translations have the minutes
   counted.set("translate|minutes_translated", { q: (await minutesTranslated(since)) * 60, c: 0 });
+  // vm_priceshapes: each answer counts one step per 30 minutes of its video (at least one)
+  const steps = await getDb().execute({
+    sql: `SELECT COALESCE(SUM(MAX(1, CAST((COALESCE(v.duration_sec, 0) + 1799) / 1800 AS INTEGER))), 0) AS s
+            FROM usage_ledger u LEFT JOIN videos v ON v.id = u.video_id
+           WHERE u.created_at >= ? AND u.feature = 'ask' AND u.metric = 'output_tokens'`,
+    args: [since],
+  });
+  counted.set("ask|answer_steps", { q: n((steps.rows[0] as any).s), c: 0 });
   for (const [action, b] of Object.entries(COST_BASIS)) {
     const c = counted.get(`${b.count.feature}|${b.count.metric}`) ?? { q: 0, c: 0 };
-    const units = b.count.as === "minutes" ? c.q / 60 : c.c;
+    const units = b.count.as === "minutes" ? c.q / 60 : b.count.as === "quantity" ? c.q : c.c;
     const costUsd = b.features.reduce((a, f) => a + (costByFeature.get(f) ?? 0), 0);
     out.push({ action, units, costUsd, perUnitUsd: units > 0 ? costUsd / units : null });
   }

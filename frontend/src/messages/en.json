@@ -1356,7 +1356,8 @@
         "storage": "Storage on VideoMind",
         "generate_video": "Generating a video from a prompt",
         "translate": "Translating a video (each language)",
-        "live": "Live events"
+        "live": "Live events",
+        "generate_direct": "Let AI write a description or plan the shots"
       },
       "per": {
         "minute": "{price} a minute",
@@ -1364,7 +1365,8 @@
         "search": "{price} a search",
         "generation": "{price} each time",
         "gb_month": "{price} per GB a month",
-        "second": "{price} a second"
+        "second": "{price} a second",
+        "answer_step": "{price} an answer for every 30 minutes of video"
       },
       "loadFailed": "Your credits could not be loaded. Try again in a minute.",
       "add": {
@@ -1878,10 +1880,10 @@
     "live4": "The recording of a live event is made in the host’s own browser, and becomes a video only if the host uploads it.",
     "youtubeP": "The YouTube features use YouTube API Services. <b>By using them you agree to be bound by the <ytterms>YouTube Terms of Service</ytterms>.</b> Google’s handling of your data is described in the <gprivacy>Google Privacy Policy</gprivacy>. You are responsible for what you publish to your channel and for following YouTube’s rules. Google may limit uploads, and we cannot guarantee that an upload is accepted.",
     "shelbyP": "You can choose to store videos on Shelby, a decentralized storage network on Aptos, through transactions you sign with your own wallet. Anything stored there is public and cannot be deleted or changed by us. Shelby’s current networks are early: storage is paid for a limited period, and data may be lost or wiped. Any network fees are yours. We do not control Shelby or Aptos and are not responsible for them. Keep your own copies of anything important.",
-    "creditsP1": "Some actions cost credits: processing a video, answers, searches, learning paths, live captions, and keeping files on VideoMind. Credits are counted in US dollars. You add them on the Wallet page by sending ShelbyUSD from your wallet to VideoMind’s address: 1 ShelbyUSD adds 1 US dollar of credits, and each transfer is added once. We cannot undo a transfer you sign, and network fees are yours. On Shelby’s test network, ShelbyUSD has no value.",
+    "creditsP1": "Some actions cost credits: processing a video, answers, searches, learning paths, live captions, live events, translating a transcript, generating a video and asking AI to write its description, and keeping files on VideoMind. Credits are counted in US dollars. You add them on the Wallet page by sending ShelbyUSD from your wallet to VideoMind’s address: 1 ShelbyUSD adds 1 US dollar of credits, and each transfer is added once. We cannot undo a transfer you sign, and network fees are yours. On Shelby’s test network, ShelbyUSD has no value.",
     "credits1": "<b>Prices.</b> The Wallet page lists the price of each action, and the price is shown before an action starts. We may change prices. A new price applies only to actions started after the change, and to storage from the next day.",
-    "credits2": "<b>Holds.</b> When a paid action starts, its price is set aside from your credits and charged only if the action succeeds. A failed action costs nothing. Processing a video is charged for the minutes of sound transcribed, never more than was set aside.",
-    "credits3": "<b>Who pays.</b> Processing a video and answers about it are paid by the video’s owner, also when a viewer asks the question. Searches and Knowledge are paid by the person using them. Live captions are paid by the host.",
+    "credits2": "<b>Holds.</b> When a paid action starts, its price is set aside from your credits and charged only if the action succeeds. A failed action costs nothing. Processing a video is charged for the minutes of sound transcribed, with a minimum per video shown before you upload, never more than was set aside. An answer about a video costs more for longer videos, as shown before you ask. A live event is charged for the minutes it really ran, never more than was set aside.",
+    "credits3": "<b>Who pays.</b> Processing a video, answers about it and its translations are paid by the video’s owner, also when a viewer asks the question. Searches, Knowledge, generating a video and asking AI to write its description are paid by the person using them. Live events and live captions are paid by the host.",
     "credits4": "<b>Storage.</b> The files VideoMind keeps for your videos (the original, its pictures and sound, and clips) are charged once a day, at a thirtieth of the monthly price per GB, for what you keep above any free amount shown on the Wallet page. A GB is 1,000,000,000 bytes. A public video that lives on Shelby only does not count its original.",
     "credits5": "<b>Unpaid storage.</b> Your balance never goes below zero. Storage you cannot pay is owed, and it is paid first from the next credits you add. If any of it is still owed 14 days later, your videos kept on VideoMind stop playing and new uploads wait until it is paid. We do not delete your videos because storage is unpaid.",
     "credits6": "<b>Refunds.</b> Credits cannot be refunded, transferred, sold or exchanged for money, except that we will correct a charge we made by mistake. If VideoMind closes for good, we will refund the unused credits you bought with ShelbyUSD of real value, to the wallet that bought them. Free credits we give (welcome credits or grants) have no cash value and may be removed if given by mistake.",
@@ -2170,12 +2172,13 @@
   },
   "credits": {
     "price": {
-      "process": "Processing costs {price} a minute of sound, charged when the video is ready.",
-      "answer": "Each answer costs you {price}, also answers to your viewers.",
+      "process": "Processing costs {price} a minute of sound, at least {min, plural, one {# minute} other {# minutes}} a video, charged when the video is ready.",
+      "answer": "Each answer on this video costs you {price}, also answers to your viewers: {unit} for every 30 minutes of video.",
       "search": "Each search costs {price}.",
       "paths": "Making learning paths costs {price} each time.",
       "libraryAnswer": "Each answer costs {price}.",
-      "captions": "Captions cost {price} a minute while they run."
+      "captions": "Captions cost {price} a minute while they run.",
+      "director": "Each suggestion costs {price}. Nothing is charged when the idea cannot be made."
     },
     "have": "You have {amount}.",
     "add": "Add credits",

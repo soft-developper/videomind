@@ -16,7 +16,7 @@ import { useAdmin } from "@/components/Shell";
 import { Note } from "@/components/AuthCard";
 import {
   ApiError, getCredits, getCreditLedger, setCreditPrice, setWelcome, grantCredits, removeCredits, refundCredit, setCharging, setStorageFree,
-  setPlatformFee, applySuggestedPrice, applyAllSuggestedPrices, setCostEstimate,
+  setPlatformFee, applySuggestedPrice, applyAllSuggestedPrices, setCostEstimate, setProcessMinimum,
   type CreditsOverview, type CreditEntry, type CreditKind, type ActionPrice, type PricingRow, type CostEstimate,
 } from "@/lib/api";
 import { dollars, CREDIT_KINDS, CREDIT_UNITS } from "@/lib/actions";
@@ -24,7 +24,7 @@ import { num, when, short, gb } from "@/lib/format";
 
 const msg = (e: unknown) => (e instanceof ApiError ? e.message : "That did not work. Try again.");
 const asInput = (micros: number) => String(micros / 1_000_000);
-const unitWord: Record<string, string> = { minute: "minutes", answer: "answers", search: "searches", generation: "generations", gb_month: "GB months", second: "seconds" };
+const unitWord: Record<string, string> = { minute: "minutes", answer: "answers", search: "searches", generation: "generations", gb_month: "GB months", second: "seconds", answer_step: "answer steps" };
 
 function Tile({ label, value, sub, test }: { label: string; value: string; sub?: string; test: string }) {
   return (
@@ -48,9 +48,29 @@ function Panel({ title, children, hint, id }: { title: string; children: React.R
 const SOURCE: Record<string, string> = { exact: "Exact", measured: "Measured", estimate: "Estimate", none: "No cost yet" };
 const usd = (x: number) => `$${x.toLocaleString("en-US", { maximumFractionDigits: 6 })}`;
 
-function PriceRow({ p, row, est, charging, onSaved, onError }: {
+/** vm_priceshapes: the minutes processing is charged for at least, under the processing price. */
+function ProcessMinimum({ minutes, onSaved, onError }: { minutes: number; onSaved: (m: string) => void; onError: (m: string) => void }) {
+  const [v, setV] = useState(String(minutes));
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setV(String(minutes)); }, [minutes]);
+  const save = async () => {
+    setBusy(true);
+    try { const r = await setProcessMinimum(v.trim()); onSaved(r.processMinMinutes ? `Processing is now charged for at least ${r.processMinMinutes} minutes a video.` : "Processing is charged for the real minutes only."); }
+    catch (e) { onError(msg(e)); } finally { setBusy(false); }
+  };
+  return (
+    <div className="flex items-center gap-1.5 mt-2" data-process-minimum>
+      <span className="text-[12.5px] text-dim">At least</span>
+      <input value={v} onChange={(e) => setV(e.target.value)} inputMode="numeric" className="h-7 px-2 w-14 text-[12.5px] tabular-nums" aria-label="Minimum minutes charged per video" />
+      <span className="text-[12.5px] text-dim">minutes a video</span>
+      <button onClick={() => void save()} disabled={busy || v.trim() === String(minutes)} className="btn btn-ghost h-7 px-2 text-[12px] no-min">Save</button>
+    </div>
+  );
+}
+
+function PriceRow({ p, row, est, charging, onSaved, onError, processMin }: {
   p: ActionPrice; row: PricingRow | undefined; est: CostEstimate | undefined; charging: boolean;
-  onSaved: (message: string) => void; onError: (m: string) => void;
+  onSaved: (message: string) => void; onError: (m: string) => void; processMin?: number;
 }) {
   const [v, setV] = useState(asInput(p.microsPerUnit));
   const [busy, setBusy] = useState(false);
@@ -130,6 +150,7 @@ function PriceRow({ p, row, est, charging, onSaved, onError }: {
           <button onClick={() => void save()} disabled={!changed || busy} className="btn btn-ghost h-8 px-3 text-[13px] no-min">{busy ? "Saving" : "Save"}</button>
         </div>
         <p className="text-[12.5px] text-dim mt-1">{p.microsPerUnit === 0 ? "Free" : `${dollars(p.microsPerUnit, true)} ${CREDIT_UNITS[p.unit] ?? ""}`}{p.updatedBy ? `, changed ${when(p.updatedAt)} by ${p.updatedBy}` : ""}</p>
+        {p.id === "process_video" && processMin != null && <ProcessMinimum minutes={processMin} onSaved={onSaved} onError={onError} />}
       </td>
       <td className={clsx("py-2 pr-4 text-[13px] tabular-nums whitespace-nowrap", margin != null && margin < 0 ? "text-error" : "text-paper-2")} data-credit-margin>
         {margin == null ? <span className="text-dim">-</span> : `${margin}%`}
@@ -366,7 +387,7 @@ export default function CreditsPage() {
               <table className="w-full text-[13.5px] min-w-[980px]" data-credit-prices>
                 <thead><tr className="text-left text-dim border-b border-rule"><th className="font-normal py-2.5 px-4">Action</th><th className="font-normal py-2.5 pr-4">Cost to VideoMind, per unit</th><th className="font-normal py-2.5 pr-4">Suggested, with {o.pricing.feeBps / 100}% fee</th><th className="font-normal py-2.5 pr-4">Price now</th><th className="font-normal py-2.5 pr-4">Margin</th></tr></thead>
                 <tbody>{o.prices.map((p) => (
-                  <PriceRow key={p.id} p={p} row={o.pricing.rows.find((r) => r.action === p.id)} est={o.estimates.find((e) => e.id === p.id)} charging={o.settings.charging}
+                  <PriceRow key={p.id} p={p} row={o.pricing.rows.find((r) => r.action === p.id)} est={o.estimates.find((e) => e.id === p.id)} charging={o.settings.charging} processMin={o.processMinMinutes}
                     onError={(m) => { setDone(null); setErr(m); }} onSaved={(m) => void refresh(m)} />
                 ))}</tbody>
               </table>

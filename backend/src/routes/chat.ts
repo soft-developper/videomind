@@ -26,7 +26,7 @@ import { withUsage, ownerOf } from "../lib/usage.js";
 import { askBudgetPerVideo, visitorAnswersToday } from "../lib/usage.js";
 import { sameWallet } from "../lib/auth.js";
 // vm_charge: answers are paid by the video's owner, searches by the searcher
-import { charged, creditFailure } from "../lib/charge.js";
+import { charged, askSteps, creditFailure } from "../lib/charge.js";
 
 const VIDEO_BUDGET = {
   error: "This video has had many questions today. Try again tomorrow.",
@@ -65,7 +65,9 @@ router.post("/:videoId", limitAi, optionalAuth, async (req, res) => {
 
     // A question on a video counts against the video's owner. The asker
     // is recorded too, or left empty for a visitor.
-    const result = await charged({ wallet: owner, action: "ask", videoId: video.id }, () => withUsage(
+    // vm_priceshapes: one step per 30 minutes of the video
+    const steps = askSteps(video.meta?.durationSeconds ?? video.ai.transcript.at(-1)?.end);
+    const result = await charged({ wallet: owner, action: "ask", quantity: steps, videoId: video.id }, () => withUsage(
       { feature: "ask", ownerWallet: ownerOf(video), actorWallet: authOf(req)?.wallet ?? null, videoId: video.id },
       () => chatWithVideo(video.ai!.transcript!, question, video.title)));
     return res.json(result);

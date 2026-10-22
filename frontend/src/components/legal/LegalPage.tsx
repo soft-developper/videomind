@@ -18,7 +18,7 @@ export const LEGAL = {
 };
 
 /** When each document takes effect (UTC dates). */
-export const EFFECTIVE = { privacy: "2026-10-22", terms: "2026-10-22" } as const;
+export const EFFECTIVE = { privacy: "2026-10-22", terms: "2026-10-23" } as const;
 export type LegalDoc = keyof typeof EFFECTIVE;
 export const LEGAL_DOCS: Array<{ href: string; doc: LegalDoc }> = [
   { href: "/legal/privacy", doc: "privacy" },

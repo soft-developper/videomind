@@ -8,7 +8,7 @@ import { readableTime } from "@/lib/exports";
 // vm_lang
 import { useTranslations } from "next-intl";
 // vm_charge: the owner sees the price of an answer, and a way to add credits
-import { PriceTag, AddCreditsLink, isNoCredits } from "@/components/credits/Credits";
+import { PriceTag, askSteps, AddCreditsLink, isNoCredits } from "@/components/credits/Credits";
 
 interface Msg {
   role: "you" | "ai";
@@ -22,7 +22,9 @@ interface Msg {
 // Asked in that language, the answer comes back in it too.
 const PROMPTS = ["summary", "points", "open", "useful"] as const;
 
-export function ChatPanel({ videoId, videoTitle, onSeek, owner }: {
+export function ChatPanel({ videoId, videoTitle, onSeek, owner, durationSeconds }: {
+  /** vm_priceshapes: the video's length, for the price of an answer */
+  durationSeconds?: number | null;
   videoId: string; videoTitle: string;
   /** vm_charge: the owner pays for every answer, so only the owner is shown the price */
   owner?: boolean;
@@ -199,7 +201,7 @@ export function ChatPanel({ videoId, videoTitle, onSeek, owner }: {
             <Send size={13} className="rtl:-scale-x-100" />
           </button>
         </div>
-        {owner && <PriceTag what="answer" className="mt-2" />}
+        {owner && <PriceTag what="answer" steps={askSteps(durationSeconds)} className="mt-2" />}
       </div>
     </div>
   );

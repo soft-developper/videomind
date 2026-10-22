@@ -512,7 +512,7 @@ export const getMyWallet = () => call<WalletOverview>(() => raw.get("/api/me/wal
 
 // ── vm_credits: the wallet's credits, in micro dollars (1 dollar = 1,000,000) ──
 export type CreditKind = "welcome" | "grant" | "remove" | "topup" | "charge" | "refund";
-export type CreditAction = "process_video" | "ask" | "search" | "learn_paths" | "learn_ask" | "live_captions" | "storage" | "generate_video" | "translate" | "live";
+export type CreditAction = "process_video" | "ask" | "search" | "learn_paths" | "learn_ask" | "live_captions" | "storage" | "generate_video" | "translate" | "live" | "generate_direct";
 export type CreditUnit = "minute" | "answer" | "search" | "generation" | "gb_month" | "second";
 export interface CreditEntry { id: string; at: number; kind: CreditKind; amountMicros: number; action: string | null; quantity: number | null; videoId: string | null; refunded: boolean; txHash: string | null }
 export interface MyCredits {
@@ -528,7 +528,8 @@ export interface StorageStatus {
 }
 export const getMyCredits = () => call<MyCredits>(() => raw.get("/api/credits/me"));
 // vm_charge: the price of each action, for anyone
-export const getCreditPrices = () => call<{ charging: boolean; prices: MyCredits["prices"] }>(() => raw.get("/api/credits/prices"));
+// vm_priceshapes: processMinMinutes, the minutes charged at least per processed video
+export const getCreditPrices = () => call<{ charging: boolean; prices: MyCredits["prices"]; processMinMinutes?: number }>(() => raw.get("/api/credits/prices"));
 // vm_topup: adding credits with ShelbyUSD
 export interface TopupInfo {
   enabled: boolean; network: string; asset: string; symbol: string; decimals: number;

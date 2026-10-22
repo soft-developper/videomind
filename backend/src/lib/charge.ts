@@ -11,12 +11,22 @@
 //   live_captions  the event's host, per minute, in blocks
 //   translate      the video's owner, per minute, once per language (lib/translate.ts)
 //   live           the event's host, per minute of the length chosen, extension held apart (lib/live.ts)
+//   generate_direct "Let AI write it", the wallet asking, nothing charged when Claude declines the idea
+// vm_priceshapes (Part 20b): processing is held for at least process_min_minutes,
+// and an answer costs one step per 30 minutes of the video (askSteps).
 // A settle that fails after the work is done is logged and the hold
 // expires: the user is never refused something already delivered.
 import { getDb } from "./db.js";
-import { reserve, settle, release, CreditsError, type Hold } from "./credits.js";
+import { reserve, settle, release, CreditsError, getProcessMinMinutes, type Hold } from "./credits.js";
 
-export type PaidAction = "process_video" | "ask" | "search" | "learn_paths" | "learn_ask" | "live_captions";
+export type PaidAction = "process_video" | "ask" | "search" | "learn_paths" | "learn_ask" | "live_captions" | "generate_direct";
+
+/** vm_priceshapes: steps of 30 minutes of video an answer costs, at least 1. */
+export const ASK_STEP_SECONDS = 1800;
+export function askSteps(durationSeconds: number | null | undefined): number {
+  const d = Number(durationSeconds);
+  return Number.isFinite(d) && d > 0 ? Math.max(1, Math.ceil(d / ASK_STEP_SECONDS)) : 1;
+}
 
 const log = (what: string) => (e: any) => console.error(`[charge] ${what}: ${e?.message ?? e}`);
 
@@ -25,7 +35,7 @@ const log = (what: string) => (e: any) => console.error(`[charge] ${what}: ${e?.
  * before any work starts when the payer cannot pay. With no payer (a
  * video that belongs to nobody) the work runs free.
  */
-export async function charged<T>(a: { wallet: string | null | undefined; action: PaidAction; quantity?: number; videoId?: string | null }, fn: () => Promise<T>): Promise<T> {
+export async function charged<T>(a: { wallet: string | null | undefined; action: PaidAction; quantity?: number; videoId?: string | null; freeIf?: (out: T) => boolean }, fn: () => Promise<T>): Promise<T> {
   if (!a.wallet) return fn();
   const r = await reserve({ wallet: a.wallet, action: a.action, quantity: a.quantity ?? 1, videoId: a.videoId ?? null });
   let out: T;
@@ -34,7 +44,11 @@ export async function charged<T>(a: { wallet: string | null | undefined; action:
     if (!r.free) await release(r.hold.id).catch(log(`releasing ${a.action}`));
     throw e;
   }
-  if (!r.free) await settle(r.hold.id).catch(log(`settling ${a.action}`));
+  // vm_priceshapes: an answer that delivers nothing (Claude declined) is not charged.
+  if (!r.free) {
+    if (a.freeIf?.(out)) await release(r.hold.id).catch(log(`releasing ${a.action}`));
+    else await settle(r.hold.id).catch(log(`settling ${a.action}`));
+  }
   return out;
 }
 
@@ -78,7 +92,9 @@ export async function holdProcessing(a: { videoId: string; wallet: string | null
   if (!a.wallet || !(a.seconds > 0)) return null;
   if (await openHold(a.videoId, "process_video")) return null;
   if (await alreadyPaid(a.videoId)) return null;
-  const r = await reserve({ wallet: a.wallet, action: "process_video", quantity: a.seconds / 60, videoId: a.videoId, jobId: a.jobId ?? null, ttlMs: PROCESS_HOLD_MS });
+  // vm_priceshapes: never less than the minimum per video
+  const minutes = Math.max(a.seconds / 60, await getProcessMinMinutes());
+  const r = await reserve({ wallet: a.wallet, action: "process_video", quantity: minutes, videoId: a.videoId, jobId: a.jobId ?? null, ttlMs: PROCESS_HOLD_MS });
   return r.free ? null : r.hold;
 }
 
