@@ -36,6 +36,7 @@ import { reserve, settle, release, CreditsError } from "./credits.js";
 /** Minutes held at a time for captions. The next block is held a minute before this one runs out. */
 const BLOCK_MIN = 10;
 export const CAPTIONS_NO_CREDITS = "Captions stopped: not enough credits. Add credits on the Wallet page, then turn captions on again.";
+export const CAPTIONS_CAP = "Captions stopped: your monthly spending limit is reached. Raise it on the Wallet page, then turn captions on again.";
 
 const RATE = 24_000;
 export const captionsUrl = () => process.env.LIVE_CAPTIONS_URL?.trim() || "wss://api.openai.com/v1/realtime?intent=transcription";
@@ -140,10 +141,10 @@ export class CaptionSession {
       this.holds.push(r.hold.id);
       this.heldMs += BLOCK_MIN * 60_000;
     } catch (err: any) {
-      if (err instanceof CreditsError && err.code === "not_enough_credits") {
+      if (err instanceof CreditsError && (err.code === "not_enough_credits" || err.code === "monthly_cap")) {
         // The minutes already held are paid for: use them, then stop.
         if (this.holds.length) this.lastBlock = true;
-        else { this.tell({ type: "stopped", reason: "credits", message: CAPTIONS_NO_CREDITS }); this.close("no_credits"); }
+        else { this.tell({ type: "stopped", reason: "credits", message: err.code === "monthly_cap" ? CAPTIONS_CAP : CAPTIONS_NO_CREDITS }); this.close("no_credits"); }
       } else {
         console.error(`[captions] ${this.e.id}: holding credits failed: ${err?.message ?? err}`);
       }

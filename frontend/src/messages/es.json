@@ -1410,6 +1410,21 @@
         "how": "Se cobra una vez al día por los archivos que VideoMind guarda de tus videos. Un video público que solo está en Shelby cuenta solo sus imágenes.",
         "owed": "Debes {amount} por almacenamiento. Se paga primero con los créditos que añadas. Si aún se debe el {date}, tus videos guardados en VideoMind se pausan y las nuevas subidas esperan.",
         "paused": "Debes {amount} por almacenamiento, así que tus videos guardados en VideoMind están en pausa y las nuevas subidas esperan. Añade créditos para pagarlo; no se borró nada."
+      },
+      "cap": {
+        "title": "Límite de gasto mensual",
+        "hint": "Las acciones de pago se detienen cuando el gasto del mes llega a tu límite. El almacenamiento no cuenta y nunca se detiene. El mes empieza el día 1 (UTC).",
+        "none": "Sin límite",
+        "set": "Un límite de",
+        "perMonth": "dólares estadounidenses al mes",
+        "save": "Guardar",
+        "saved": "Guardado.",
+        "removed": "Se quitó el límite.",
+        "spent": "Este mes: {spent} gastados, {held} apartados.",
+        "of": "Usaste {used} de tu límite de {limit} este mes.",
+        "reached": "Llegaste a tu límite: las acciones de pago están detenidas.",
+        "bad": "Escribe el límite en dólares estadounidenses, de 0 a 10.000.",
+        "failed": "No se pudo guardar el límite. Inténtalo de nuevo."
       }
     }
   },
@@ -1887,7 +1902,7 @@
     "shelbyP": "Puedes decidir guardar videos en Shelby, una red de almacenamiento descentralizada sobre Aptos, mediante transacciones que firmas con tu propia billetera. Todo lo que se guarda allí es público y no podemos borrarlo ni modificarlo. Las redes actuales de Shelby están en una fase temprana: el almacenamiento se paga por un período limitado y los datos pueden perderse o borrarse. Las comisiones de la red corren por tu cuenta. No controlamos Shelby ni Aptos y no somos responsables de ellas. Guarda tus propias copias de todo lo importante.",
     "creditsP1": "Algunas acciones cuestan créditos: procesar un video, las respuestas, las búsquedas, las rutas de aprendizaje, los subtítulos en vivo, los eventos en vivo, traducir una transcripción, generar un video y pedir a la IA que escriba su descripción, y guardar archivos en VideoMind. Los créditos se cuentan en dólares estadounidenses. Los añades en la página Billetera enviando ShelbyUSD desde tu billetera a la dirección de VideoMind: 1 ShelbyUSD añade 1 dólar estadounidense de créditos, y cada transferencia se añade una sola vez. No podemos deshacer una transferencia que firmas, y las comisiones de la red corren por tu cuenta. En la red de prueba de Shelby, ShelbyUSD no tiene valor.",
     "credits1": "<b>Precios.</b> La página Billetera muestra el precio de cada acción, y el precio aparece antes de que una acción empiece. Podemos cambiar los precios. Un precio nuevo se aplica solo a las acciones iniciadas después del cambio, y al almacenamiento desde el día siguiente.",
-    "credits2": "<b>Reservas.</b> Cuando empieza una acción de pago, su precio se aparta de tus créditos y se cobra solo si la acción sale bien. Una acción que falla no cuesta nada. Procesar un video se cobra por los minutos de sonido transcritos, con un mínimo por video que se muestra antes de subirlo, nunca más de lo apartado. Una respuesta sobre un video cuesta más en videos más largos, como se muestra antes de preguntar. Un evento en vivo se cobra por los minutos que sus espectadores de verdad miraron, hasta el máximo de espectadores que eligió el anfitrión, nunca más de lo apartado.",
+    "credits2": "<b>Reservas.</b> Cuando empieza una acción de pago, su precio se aparta de tus créditos y se cobra solo si la acción sale bien. Una acción que falla no cuesta nada. Procesar un video se cobra por los minutos de sonido transcritos, con un mínimo por video que se muestra antes de subirlo, nunca más de lo apartado. Una respuesta sobre un video cuesta más en videos más largos, como se muestra antes de preguntar. Un evento en vivo se cobra por los minutos que sus espectadores de verdad miraron, hasta el máximo de espectadores que eligió el anfitrión, nunca más de lo apartado. Puedes poner un límite de gasto mensual en la página Billetera: las acciones de pago se detienen al alcanzarlo, y el almacenamiento no cuenta ni se detiene.",
     "credits3": "<b>Quién paga.</b> Procesar un video, las respuestas sobre él y sus traducciones los paga el dueño del video, también cuando la pregunta la hace un espectador. Las búsquedas, Conocimiento, generar un video y pedir a la IA que escriba su descripción los paga quien los usa. Los eventos en vivo y los subtítulos en vivo los paga el anfitrión.",
     "credits4": "<b>Almacenamiento.</b> Los archivos que VideoMind guarda de tus videos (el original, sus imágenes y su sonido, y los clips) se cobran una vez al día, a la trigésima parte del precio mensual por GB, por lo que guardas por encima de la cantidad gratis que muestra la página Billetera. Un GB son 1.000.000.000 bytes. Un video público que solo está en Shelby no cuenta su original.",
     "credits5": "<b>Almacenamiento sin pagar.</b> Tu saldo nunca baja de cero. El almacenamiento que no puedes pagar queda debido, y se paga primero con los próximos créditos que añadas. Si una parte sigue debida 14 días después, tus videos guardados en VideoMind dejan de reproducirse y las nuevas subidas esperan hasta que se pague. No borramos tus videos porque el almacenamiento esté sin pagar.",
@@ -2170,7 +2185,11 @@
     "liveTooLong": "Un evento en vivo puede durar como máximo {max} minutos.",
     "liveTimeUp": "El evento en vivo llegó a su hora de fin.",
     "liveFull": "Este evento en vivo está lleno. Inténtalo de nuevo en un momento.",
-    "liveBadViewers": "Elige el máximo de espectadores: {list}."
+    "liveBadViewers": "Elige el máximo de espectadores: {list}.",
+    "capReached": "Llegaste a tu límite de gasto mensual de {amount}. Súbelo en la página Billetera.",
+    "capProcessing": "Llegaste a tu límite de gasto mensual, así que este video no se procesó. Sube el límite en la página Billetera y vuelve a intentarlo.",
+    "capCaptions": "Subtítulos detenidos: llegaste a tu límite de gasto mensual. Súbelo en la página Billetera y vuelve a activar los subtítulos.",
+    "capGeneration": "Se alcanzó el límite de gasto mensual."
   },
   "notFound": {
     "title": "No se encontró esta página",
@@ -2197,6 +2216,8 @@
     "makePaths": "Crear rutas de aprendizaje",
     "pathsOld": "Tienes más videos que cuando se crearon estas rutas. Vuelve a crearlas para incluirlos.",
     "storageOwed": "Debes {amount} por almacenamiento. Tus videos guardados en VideoMind se pausan el {date} si no añades créditos.",
-    "storagePaused": "Tus videos guardados en VideoMind están en pausa: debes {amount} por almacenamiento."
+    "storagePaused": "Tus videos guardados en VideoMind están en pausa: debes {amount} por almacenamiento.",
+    "raiseLimit": "Subir el límite",
+    "capReached": "Llegaste a tu límite de gasto mensual de {amount}. Las acciones de pago se detienen hasta el próximo mes, o hasta que subas el límite."
   }
 }

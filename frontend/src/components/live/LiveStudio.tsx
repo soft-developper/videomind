@@ -145,7 +145,7 @@ function SessionClock({ event, left, onExtended }: { event: LiveEventInfo; left:
   const money = useMoney();
   const c = useCredits();
   const [busy, setBusy] = useState<number | null>(null);
-  const [err, setErr] = useState<{ text: string; credits: boolean } | null>(null);
+  const [err, setErr] = useState<{ text: string; credits: boolean; code?: string } | null>(null);
   const [added, setAdded] = useState<number | null>(null);
   if (!event.endsAt) return null;
   const at = f.date(event.endsAt, { timeStyle: "short" });
@@ -156,7 +156,7 @@ function SessionClock({ event, left, onExtended }: { event: LiveEventInfo; left:
   const add = async (m: number) => {
     setBusy(m); setErr(null);
     try { const r = await extendLive(event.id, m); setAdded(m); onExtended(r.event); }
-    catch (x) { setErr({ text: x instanceof ApiError ? x.message : t("addFailed"), credits: x instanceof ApiError && isNoCredits(x.code) }); }
+    catch (x) { setErr({ text: x instanceof ApiError ? x.message : t("addFailed"), credits: x instanceof ApiError && isNoCredits(x.code), code: x instanceof ApiError ? x.code : undefined }); }
     finally { setBusy(null); }
   };
   return (
@@ -178,7 +178,7 @@ function SessionClock({ event, left, onExtended }: { event: LiveEventInfo; left:
           {per != null && <span className="text-[12px] text-dim">{t("addPrice", { price: inline(money(per * (event.viewerLimit ?? 1))) })}</span>}
         </div>
       )}
-      {err && <p className="text-[12.5px] text-error" role="alert">{err.text}{err.credits && <> <AddCreditsLink /></>}</p>}
+      {err && <p className="text-[12.5px] text-error" role="alert">{err.text}{err.credits && <> <AddCreditsLink code={err.code} /></>}</p>}
     </div>
   );
 }
@@ -355,7 +355,7 @@ export function LiveStudio({ id }: { id: string }) {
   }, [elapsed, left, serverEnded, phase, end, t]);
 
   const goLive = async () => {
-    setErr(null); setNote(null); setNoCredits(false);
+    setErr(null); setNote(null); setNoCredits(null);
     const type = pickType();
     if (!type) { setErr(t("noRecorder")); return; }
     let ins: Inputs;
@@ -403,11 +403,12 @@ export function LiveStudio({ id }: { id: string }) {
     } catch (e) {
       void cleanup();
       setErr(reason(e, source, t));
-      setNoCredits(e instanceof ApiError && isNoCredits(e.code));
+      setNoCredits(e instanceof ApiError && isNoCredits(e.code) ? e.code ?? "not_enough_credits" : null);
       setPhase({ at: "setup" });
     }
   };
-  const [noCredits, setNoCredits] = useState(false);
+  // vm_spendcap: the refusal's code, so the link says add credits or raise the limit
+  const [noCredits, setNoCredits] = useState<string | null>(null);
 
   const onUploaded = useCallback((videoId: string) => {
     linkLiveRecording(id, videoId).then(() => refetch()).catch(() => {});
@@ -564,7 +565,7 @@ export function LiveStudio({ id }: { id: string }) {
 
       <div className="space-y-2">
         <button onClick={() => void goLive()} disabled={!support?.recorder} className="btn btn-signal h-10 px-5">{t("goLive")}</button>
-        {err && <p className="text-[13.5px] text-error" role="alert">{err}{noCredits && <> <AddCreditsLink /></>}</p>}
+        {err && <p className="text-[13.5px] text-error" role="alert">{err}{noCredits && <> <AddCreditsLink code={noCredits} /></>}</p>}
       </div>
     </div>
   );

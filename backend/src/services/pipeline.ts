@@ -96,6 +96,10 @@ export function makeHandlers(deps: PipelineDeps) {
         if (err instanceof CreditsError && err.code === "not_enough_credits") {
           throw new PermanentJobError("no_credits", "Not enough credits to process this video. Add credits on the Wallet page, then try again.");
         }
+        // vm_spendcap
+        if (err instanceof CreditsError && err.code === "monthly_cap") {
+          throw new PermanentJobError("monthly_cap", "Your monthly spending limit is reached, so this video was not processed. Raise the limit on the Wallet page, then try again.");
+        }
         classify(err, "Transcription");
       }
       await store.update(job.videoId, { ai: { transcript: transcript! } });

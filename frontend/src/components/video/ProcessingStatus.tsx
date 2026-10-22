@@ -113,7 +113,7 @@ export function ProcessingStatus({
         {isNoCredits(failed?.errorCode) && (
           <div className="space-y-1" data-processing-no-credits>
             <PriceTag what="process" />
-            <AddCreditsLink className="text-[13.5px] text-paper" />
+            <AddCreditsLink className="text-[13.5px] text-paper" code={failed?.errorCode} />
           </div>
         )}
         {failed?.errorCode === "too_long" && (

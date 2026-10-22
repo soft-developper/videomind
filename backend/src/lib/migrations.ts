@@ -871,6 +871,18 @@ const MIGRATIONS: Migration[] = [
       `UPDATE action_cost_estimates SET note = 'LiveKit Ship plan, per viewer minute: $0.0005 a participant minute plus about 0.011 GB of video at $0.12 per GB; free on the Build plan until its limits' WHERE id = 'live' AND updated_by IS NULL`,
     ],
   },
+  {
+    // vm_spendcap (Part 20d): a monthly spending limit each wallet can set on its
+    // Wallet page. No row means no limit.
+    id: "034_spending_caps",
+    statements: [
+      `CREATE TABLE spending_caps (
+        wallet          TEXT PRIMARY KEY,
+        monthly_micros  INTEGER NOT NULL,
+        updated_at      INTEGER NOT NULL
+      )`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

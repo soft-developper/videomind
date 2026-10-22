@@ -113,7 +113,7 @@ export default function AssistantPage() {
                         m.failed ? "text-error" : m.role === "you" ? "text-paper" : "text-paper-2"
                       )}>
                         {m.text}
-                        {m.failed && isNoCredits(m.code) && <> <AddCreditsLink /></>}
+                        {m.failed && isNoCredits(m.code) && <> <AddCreditsLink code={m.code} /></>}
                       </p>
                     </div>
 

@@ -144,6 +144,45 @@ export async function ensureWelcome(wallet: string): Promise<void> {
   });
 }
 
+// ── vm_spendcap: the monthly spending limit each wallet sets (Part 20d) ─────────
+// Counted per UTC month: charges for actions (storage left out) less refunds,
+// plus every open hold. Storage is never counted and never refused by it.
+export const MAX_CAP_MICROS = 10_000 * MICROS;
+const monthStartOf = (now: number) => { const d = new Date(now); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1); };
+const SPENT_MONTH_SQL = "(SELECT COALESCE(-SUM(amount_micros), 0) FROM credit_entries WHERE wallet = ? AND kind IN ('charge', 'refund') AND COALESCE(action, '') != 'storage' AND at >= ?)";
+const CAP_SQL = "(SELECT monthly_micros FROM spending_caps WHERE wallet = ?)";
+const capMessage = (micros: number) => `You reached your monthly spending limit of $${(micros / MICROS).toFixed(2)}. Raise it on the Wallet page.`;
+
+export interface SpendingCap { monthlyMicros: number | null; spentMonthMicros: number; heldMicros: number; reached: boolean }
+
+export async function spendingCapOf(walletIn: string, now = Date.now()): Promise<SpendingCap> {
+  const wallet = walletOf(walletIn);
+  const r = await getDb().execute({
+    sql: `SELECT ${CAP_SQL} AS cap, ${SPENT_MONTH_SQL} AS spent, ${HELD_SQL} AS held`,
+    args: [wallet, wallet, monthStartOf(now), wallet, now],
+  });
+  const row = r.rows[0] as any;
+  const cap = row.cap == null ? null : n(row.cap);
+  const spent = Math.max(0, n(row.spent)), held = n(row.held);
+  return { monthlyMicros: cap, spentMonthMicros: spent, heldMicros: held, reached: cap != null && spent + held >= cap };
+}
+
+/** Set the limit in dollars as typed ("25", 25), or null for no limit. 0 stops every paid action. */
+export async function setSpendingCap(walletIn: string, body: unknown, now = Date.now()): Promise<SpendingCap> {
+  const wallet = walletOf(walletIn);
+  const raw = (body as any)?.usd;
+  if (raw === null) {
+    await getDb().execute({ sql: "DELETE FROM spending_caps WHERE wallet = ?", args: [wallet] });
+  } else {
+    const micros = dollarsToMicros(raw, "The monthly limit", MAX_CAP_MICROS / MICROS);
+    await getDb().execute({
+      sql: "INSERT INTO spending_caps (wallet, monthly_micros, updated_at) VALUES (?, ?, ?) ON CONFLICT(wallet) DO UPDATE SET monthly_micros = excluded.monthly_micros, updated_at = excluded.updated_at",
+      args: [wallet, micros, now],
+    });
+  }
+  return spendingCapOf(wallet, now);
+}
+
 // ── balances ─────────────────────────────────────────────────────────────────
 const BALANCE_SQL = "(SELECT COALESCE(SUM(amount_micros), 0) FROM credit_entries WHERE wallet = ?)";
 const HELD_SQL = "(SELECT COALESCE(SUM(amount_micros), 0) FROM credit_holds WHERE wallet = ? AND status = 'held' AND expires_at > ?)";
@@ -173,10 +212,10 @@ export async function entriesOf(walletIn: string, limit = 30): Promise<Entry[]> 
 export async function myCredits(walletIn: string) {
   const wallet = walletOf(walletIn);
   await ensureWelcome(wallet);
-  const [balance, entries, settings, prices] = await Promise.all([balanceOf(wallet), entriesOf(wallet, 30), getCreditSettings(), listActionPrices()]);
+  const [balance, entries, settings, prices, cap] = await Promise.all([balanceOf(wallet), entriesOf(wallet, 30), getCreditSettings(), listActionPrices(), spendingCapOf(wallet)]);
   // Admin emails and notes are for the dashboard, not the wallet page.
   const shown = entries.map((e) => ({ id: e.id, at: e.at, kind: e.kind, amountMicros: e.amountMicros, action: e.action, quantity: e.quantity, videoId: e.videoId, refunded: e.refunded, txHash: e.kind === "topup" ? e.ref : null }));
-  return { wallet, ...balance, charging: settings.charging, entries: shown, prices: prices.map(publicPrice) };
+  return { wallet, ...balance, charging: settings.charging, entries: shown, prices: prices.map(publicPrice), cap };
 }
 
 // ── prices ───────────────────────────────────────────────────────────────────
@@ -307,17 +346,26 @@ export async function reserve(a: ReserveArgs): Promise<Reservation> {
   const ttl = Math.max(60_000, Math.min(MAX_HOLD_MS, Math.floor(a.ttlMs ?? DEFAULT_HOLD_MS)));
   const id = crypto.randomUUID();
   const key = a.key ? String(a.key).slice(0, 200) : null;
+  // vm_spendcap: the monthly limit is checked in the same statement as the balance, so two
+  // actions at once cannot pass it together.
   const r = await getDb().execute({
     sql: `INSERT INTO credit_holds (id, wallet, action, quantity, amount_micros, unit_micros, status, video_id, job_id, created_at, expires_at, idempotency_key)
           SELECT ?, ?, ?, ?, ?, ?, 'held', ?, ?, ?, ?, ? WHERE ${BALANCE_SQL} - ${HELD_SQL} >= ?
+            AND (${CAP_SQL} IS NULL OR ${SPENT_MONTH_SQL} + ${HELD_SQL} + ? <= ${CAP_SQL})
           ON CONFLICT(idempotency_key) DO NOTHING`,
     args: [id, wallet, price.id, quantity, amount, price.microsPerUnit, a.videoId ?? null, a.jobId ?? null, now, now + ttl, key,
-      wallet, wallet, now, amount],
+      wallet, wallet, now, amount,
+      wallet, wallet, monthStartOf(now), wallet, now, amount, wallet],
   });
   if (r.rowsAffected === 0) {
     if (key) {
       const prev = await getDb().execute({ sql: "SELECT * FROM credit_holds WHERE idempotency_key = ?", args: [key] });
       if (prev.rows.length) { const h = rowToHold(prev.rows[0]); return { free: false, hold: h, amountMicros: h.amountMicros }; }
+    }
+    // Which one refused: the balance first, then the monthly limit.
+    const [b, cap] = await Promise.all([balanceOf(wallet, now), spendingCapOf(wallet, now)]);
+    if (b.availableMicros >= amount && cap.monthlyMicros != null && cap.spentMonthMicros + cap.heldMicros + amount > cap.monthlyMicros) {
+      throw new CreditsError(402, "monthly_cap", capMessage(cap.monthlyMicros));
     }
     throw new CreditsError(402, "not_enough_credits", "Not enough credits for this. Add credits on the Wallet page and try again.");
   }
@@ -485,6 +533,6 @@ export async function creditsOverview() {
 /** One wallet, for its page in the dashboard. */
 export async function walletCredits(walletIn: string) {
   const wallet = walletOf(walletIn);
-  const [balance, entries] = await Promise.all([balanceOf(wallet), entriesOf(wallet, 10)]);
-  return { wallet, ...balance, entries };
+  const [balance, entries, cap] = await Promise.all([balanceOf(wallet), entriesOf(wallet, 10), spendingCapOf(wallet)]);
+  return { wallet, ...balance, entries, cap };
 }

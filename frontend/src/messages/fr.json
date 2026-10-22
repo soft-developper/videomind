@@ -1410,6 +1410,21 @@
         "how": "Facturé une fois par jour pour les fichiers que VideoMind garde pour vos vidéos. Une vidéo publique qui n’existe que sur Shelby ne compte que ses images.",
         "owed": "{amount} est dû pour le stockage. Il est payé en premier avec les crédits que vous ajoutez. S’il est encore dû le {date}, vos vidéos gardées sur VideoMind sont mises en pause et les nouveaux imports attendent.",
         "paused": "{amount} est dû pour le stockage : vos vidéos gardées sur VideoMind sont en pause et les nouveaux imports attendent. Ajoutez des crédits pour le payer ; rien n’a été supprimé."
+      },
+      "cap": {
+        "title": "Limite de dépenses mensuelle",
+        "hint": "Les actions payantes s’arrêtent quand les dépenses du mois atteignent votre limite. Le stockage n’est pas compté et ne s’arrête jamais. Le mois commence le 1er (UTC).",
+        "none": "Aucune limite",
+        "set": "Une limite de",
+        "perMonth": "dollars américains par mois",
+        "save": "Enregistrer",
+        "saved": "Enregistré.",
+        "removed": "La limite est supprimée.",
+        "spent": "Pour ce mois : {spent} dépensés, {held} réservés.",
+        "of": "{used} utilisés sur votre limite de {limit} pour ce mois.",
+        "reached": "Votre limite est atteinte : les actions payantes sont arrêtées.",
+        "bad": "Indiquez la limite en dollars américains, de 0 à 10 000.",
+        "failed": "La limite n’a pas pu être enregistrée. Réessayez."
       }
     }
   },
@@ -1887,7 +1902,7 @@
     "shelbyP": "Vous pouvez choisir de stocker des vidéos sur Shelby, un réseau de stockage décentralisé sur Aptos, au moyen de transactions que vous signez avec votre propre portefeuille. Tout ce qui y est stocké est public et ne peut être ni supprimé ni modifié par nous. Les réseaux actuels de Shelby en sont à leurs débuts : le stockage est payé pour une durée limitée, et les données peuvent être perdues ou effacées. Les éventuels frais de réseau sont à votre charge. Nous ne contrôlons ni Shelby ni Aptos et n’en sommes pas responsables. Gardez vos propres copies de tout ce qui est important.",
     "creditsP1": "Certaines actions coûtent des crédits : le traitement d’une vidéo, les réponses, les recherches, les parcours d’apprentissage, les sous titres en direct, les directs, la traduction d’une transcription, la génération d’une vidéo et la rédaction de sa description par l’IA, et la conservation de fichiers sur VideoMind. Les crédits sont comptés en dollars américains. Vous les ajoutez dans la page Portefeuille en envoyant des ShelbyUSD depuis votre portefeuille à l’adresse de VideoMind : 1 ShelbyUSD ajoute 1 dollar américain de crédits, et chaque transfert n’est ajouté qu’une fois. Nous ne pouvons pas annuler un transfert que vous signez, et les frais du réseau sont à votre charge. Sur le réseau de test de Shelby, les ShelbyUSD n’ont aucune valeur.",
     "credits1": "<b>Prix.</b> La page Portefeuille indique le prix de chaque action, et le prix est affiché avant qu’une action commence. Nous pouvons modifier les prix. Un nouveau prix s’applique uniquement aux actions lancées après le changement, et au stockage à partir du jour suivant.",
-    "credits2": "<b>Réserves.</b> Quand une action payante commence, son prix est mis de côté sur vos crédits et n’est prélevé que si l’action réussit. Une action qui échoue ne coûte rien. Le traitement d’une vidéo est facturé selon les minutes de son transcrites, avec un minimum par vidéo indiqué avant l’envoi, jamais plus que le montant mis de côté. Une réponse sur une vidéo coûte plus cher pour les vidéos plus longues, comme indiqué avant de poser la question. Un direct est facturé selon les minutes réellement regardées par ses spectateurs, dans la limite de spectateurs choisie par l’hôte, jamais plus que le montant mis de côté.",
+    "credits2": "<b>Réserves.</b> Quand une action payante commence, son prix est mis de côté sur vos crédits et n’est prélevé que si l’action réussit. Une action qui échoue ne coûte rien. Le traitement d’une vidéo est facturé selon les minutes de son transcrites, avec un minimum par vidéo indiqué avant l’envoi, jamais plus que le montant mis de côté. Une réponse sur une vidéo coûte plus cher pour les vidéos plus longues, comme indiqué avant de poser la question. Un direct est facturé selon les minutes réellement regardées par ses spectateurs, dans la limite de spectateurs choisie par l’hôte, jamais plus que le montant mis de côté. Vous pouvez fixer une limite de dépenses mensuelle dans la page Portefeuille : les actions payantes s’arrêtent quand elle est atteinte, et le stockage n’est pas compté et ne s’arrête pas.",
     "credits3": "<b>Qui paie.</b> Le traitement d’une vidéo, les réponses à son sujet et ses traductions sont payés par le propriétaire de la vidéo, y compris quand c’est un spectateur qui pose la question. Les recherches, Connaissances, la génération d’une vidéo et la rédaction de sa description par l’IA sont payées par la personne qui les utilise. Les directs et les sous titres en direct sont payés par l’hôte.",
     "credits4": "<b>Stockage.</b> Les fichiers que VideoMind garde pour vos vidéos (l’original, ses images et son son, et les extraits) sont facturés une fois par jour, au trentième du prix mensuel par Go, pour ce que vous gardez au delà de la quantité gratuite indiquée dans la page Portefeuille. Un Go correspond à 1 000 000 000 octets. Une vidéo publique qui n’existe que sur Shelby ne compte pas son original.",
     "credits5": "<b>Stockage impayé.</b> Votre solde ne descend jamais sous zéro. Le stockage que vous ne pouvez pas payer est dû, et il est payé en premier avec les prochains crédits que vous ajoutez. Si une partie est encore due 14 jours plus tard, vos vidéos gardées sur VideoMind ne sont plus lues et les nouveaux imports attendent jusqu’au paiement. Nous ne supprimons pas vos vidéos parce que le stockage n’est pas payé.",
@@ -2170,7 +2185,11 @@
     "liveTooLong": "Un direct peut durer au plus {max} minutes.",
     "liveTimeUp": "Le direct a atteint son heure de fin.",
     "liveFull": "Ce direct est complet. Réessayez dans un instant.",
-    "liveBadViewers": "Choisissez le nombre maximal de spectateurs : {list}."
+    "liveBadViewers": "Choisissez le nombre maximal de spectateurs : {list}.",
+    "capReached": "Vous avez atteint votre limite de dépenses mensuelle de {amount}. Vous pouvez la relever dans la page Portefeuille.",
+    "capProcessing": "Votre limite de dépenses mensuelle est atteinte, cette vidéo n’a donc pas été traitée. Relevez la limite dans la page Portefeuille, puis réessayez.",
+    "capCaptions": "Sous titres arrêtés : votre limite de dépenses mensuelle est atteinte. Relevez votre limite dans la page Portefeuille, puis réactivez les sous titres.",
+    "capGeneration": "Limite de dépenses mensuelle atteinte."
   },
   "notFound": {
     "title": "Cette page est introuvable",
@@ -2197,6 +2216,8 @@
     "makePaths": "Créer les parcours",
     "pathsOld": "Vous avez plus de vidéos qu’au moment où ces parcours ont été créés. Créez de nouveaux parcours pour en tenir compte.",
     "storageOwed": "{amount} est dû pour le stockage. Vos vidéos gardées sur VideoMind seront en pause le {date} si vous n’ajoutez pas de crédits.",
-    "storagePaused": "Vos vidéos gardées sur VideoMind sont en pause : {amount} est dû pour le stockage."
+    "storagePaused": "Vos vidéos gardées sur VideoMind sont en pause : {amount} est dû pour le stockage.",
+    "raiseLimit": "Relever la limite",
+    "capReached": "Vous avez atteint votre limite de dépenses mensuelle de {amount}. Les actions payantes sont arrêtées jusqu’au mois prochain, ou jusqu’à ce que vous releviez la limite."
   }
 }

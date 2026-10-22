@@ -256,7 +256,11 @@ export interface StorageStatus {
   bytes: number; freeBytes: number; microsPerGbMonth: number; dailyMicros: number;
   owedMicros: number; owedSince: number | null; pausesAt: number | null; paused: boolean; graceDays: number;
 }
-export interface WalletCredits { wallet: string; balanceMicros: number; heldMicros: number; availableMicros: number; entries: CreditEntry[]; storage: StorageStatus }
+export interface WalletCredits {
+  wallet: string; balanceMicros: number; heldMicros: number; availableMicros: number; entries: CreditEntry[]; storage: StorageStatus;
+  /** vm_spendcap: the wallet's own monthly limit (null: none) and this month's spending. */
+  cap?: { monthlyMicros: number | null; spentMonthMicros: number; heldMicros: number; reached: boolean };
+}
 export const getCredits = () => call<CreditsOverview>("GET", "/credits");
 export function getCreditLedger(o: { wallet?: string; kind?: CreditKind | ""; before?: string | null }) {
   const p = new URLSearchParams();

@@ -204,7 +204,9 @@ export async function startGeneration(a: StartArgs): Promise<{ videoId: string; 
     const r = await reserve({ wallet, action: "generate_video", quantity: seconds, videoId, key: `generate:${generationId}`, ttlMs: GIVE_UP_MS * (shots?.length ?? 1) + 2 * 3600_000, now });
     if (!r.free) { holdId = r.hold.id; costMicros = r.amountMicros; }
   } catch (e) {
-    await getDb().execute({ sql: "UPDATE generations SET status = 'failed', error_code = 'no_credits', error = ?, finished_at = ?, updated_at = ? WHERE id = ?", args: ["Not enough credits.", now, now, generationId] });
+    // vm_spendcap: the monthly limit is told apart from an empty balance
+    const cap = (e as any)?.code === "monthly_cap";
+    await getDb().execute({ sql: "UPDATE generations SET status = 'failed', error_code = ?, error = ?, finished_at = ?, updated_at = ? WHERE id = ?", args: [cap ? "monthly_cap" : "no_credits", cap ? "Monthly spending limit reached." : "Not enough credits.", now, now, generationId] });
     throw e;
   }
   const record: VideoRecord = {

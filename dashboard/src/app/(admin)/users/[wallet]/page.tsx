@@ -136,6 +136,12 @@ export default function UserPage({ params }: { params: { wallet: string } }) {
               <div className="flex items-baseline gap-6 flex-wrap" data-user-credits>
                 <p className="text-[13.5px] text-dim">Balance <span className="text-[17px] text-paper tabular-nums ml-1">{dollars(credits.balanceMicros, true)}</span></p>
                 {credits.heldMicros > 0 && <p className="text-[13.5px] text-dim">On hold <span className="text-paper tabular-nums ml-1">{dollars(credits.heldMicros, true)}</span></p>}
+                {credits.cap && (
+                  <p className="text-[13.5px] text-dim" data-user-cap>
+                    Monthly limit <span className="text-paper tabular-nums ml-1">{credits.cap.monthlyMicros == null ? "none" : dollars(credits.cap.monthlyMicros, true)}</span>
+                    <span className="ml-2">spent this month {dollars(credits.cap.spentMonthMicros, true)}{credits.cap.reached ? ", limit reached" : ""}</span>
+                  </p>
+                )}
                 <Link href={`/credits?wallet=${encodeURIComponent(credits.wallet)}`} className="text-[13.5px] text-paper-2 underline hover:text-paper ml-auto">Give credits, refunds and the full ledger</Link>
               </div>
               {credits.storage && (

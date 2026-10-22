@@ -58,7 +58,7 @@ export function TranslationsPanel({ videoId, text }: { videoId: string; text: Vi
   const qc = useQueryClient();
   const credits = useCredits();
   const [busy, setBusy] = useState<TextLang | null>(null);
-  const [err, setErr] = useState<{ lang: TextLang; text: string; noCredits: boolean } | null>(null);
+  const [err, setErr] = useState<{ lang: TextLang; text: string; noCredits: boolean; code?: string } | null>(null);
   const [confirm, setConfirm] = useState<TextLang | null>(null);
   const list = text.list;
   if (!list || list.canTranslate === undefined) return null;
@@ -76,7 +76,7 @@ export function TranslationsPanel({ videoId, text }: { videoId: string; text: Vi
     try { await startTranslation(videoId, l); after(); }
     catch (e) {
       const code = e instanceof ApiError ? e.code : undefined;
-      setErr({ lang: l, noCredits: isNoCredits(code), text: code === "same_language" ? t("same", { name: nameOf(l) ?? LOCALE_NAMES[l] }) : e instanceof Error ? e.message : t("failed") });
+      setErr({ lang: l, noCredits: isNoCredits(code), code, text: code === "same_language" ? t("same", { name: nameOf(l) ?? LOCALE_NAMES[l] }) : e instanceof Error ? e.message : t("failed") });
     } finally { setBusy(null); }
   };
   const remove = async (l: TextLang) => {
@@ -160,7 +160,7 @@ export function TranslationsPanel({ videoId, text }: { videoId: string; text: Vi
               )}
               {err?.lang === l && (
                 <p role="alert" className="text-[12.5px] text-error mt-1.5">
-                  {err.text}{err.noCredits && <> <AddCreditsLink /></>}
+                  {err.text}{err.noCredits && <> <AddCreditsLink code={err.code} /></>}
                 </p>
               )}
             </li>

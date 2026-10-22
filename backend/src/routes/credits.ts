@@ -7,10 +7,11 @@
 //   GET  /api/credits/topup    where to send ShelbyUSD, and the wallet's ShelbyUSD
 //   POST /api/credits/topup    { hash }  add the credits a transfer paid for, once
 //                              (then pays what is owed for storage first, Part 16e)
+//   PUT  /api/credits/cap      { usd: number | null }  vm_spendcap: the monthly spending limit, or none
 import { Router } from "express";
 import { requireAuth, authOf } from "../lib/auth.js";
 import { rateLimit } from "../lib/guard.js";
-import { myCredits, listActionPrices, publicPrice, getCreditSettings, CreditsError, getProcessMinMinutes } from "../lib/credits.js";
+import { myCredits, listActionPrices, publicPrice, getCreditSettings, CreditsError, getProcessMinMinutes, setSpendingCap } from "../lib/credits.js";
 import { claimTopup, topupInfo, TopupError } from "../lib/topup.js";
 // vm_storagecharge: storage kept, owed and paused (Part 16e)
 import { storageStatus, collectOwed } from "../lib/storageCharge.js";
@@ -28,6 +29,17 @@ function fail(res: any, err: any, what: string, message: string) {
   console.error(`[credits] ${what}: ${err?.message ?? err}`);
   return res.status(500).json({ error: message, code: "server_error" });
 }
+
+const limitCap = rateLimit({
+  name: "spending_cap", label: "changes to the monthly limit",
+  perClient: { max: Number(process.env.LIMIT_CAP_PER_CLIENT_10MIN) || 30, windowMs: 10 * 60_000 },
+  global: { max: Number(process.env.LIMIT_CAP_GLOBAL_10MIN) || 3000, windowMs: 10 * 60_000 },
+});
+
+router.put("/cap", limitCap, requireAuth, async (req, res) => {
+  try { return res.json({ cap: await setSpendingCap(authOf(req)!.wallet, req.body ?? {}) }); }
+  catch (err: any) { return fail(res, err, "setting the monthly limit", "The limit could not be saved. Try again."); }
+});
 
 router.get("/me", requireAuth, async (req, res) => {
   try {

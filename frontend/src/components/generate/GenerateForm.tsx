@@ -255,7 +255,7 @@ export function GenerateForm() {
       {err && (
         <div role="alert" className="rounded-md border border-error/50 bg-error/5 p-3.5 flex items-start gap-3">
           <AlertTriangle size={15} className="text-error shrink-0 mt-0.5" />
-          <p className="text-[13.5px] text-error leading-relaxed">{err.text}{(isNoCredits(err.code) || err.code === "storage_unpaid") && <> <AddCreditsLink /></>}</p>
+          <p className="text-[13.5px] text-error leading-relaxed">{err.text}{(isNoCredits(err.code) || err.code === "storage_unpaid") && <> <AddCreditsLink code={err.code} /></>}</p>
         </div>
       )}
       {info.data.budgetReached && <p className="text-[13.5px] text-warn" data-generate="budget">{t("budget")}</p>}

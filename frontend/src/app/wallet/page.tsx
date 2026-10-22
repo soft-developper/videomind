@@ -4,7 +4,7 @@
 // and what it used in the last 30 days.
 import Link from "next/link";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { Copy, Check, ExternalLink } from "lucide-react";
 import { clsx } from "clsx";
@@ -14,7 +14,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { WalletButton } from "@/components/layout/WalletButton";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { explorer } from "@/lib/explorer";
-import { getMyWallet, getMyCredits, type WalletOverview, type MyCredits } from "@/lib/api";
+import { getMyWallet, getMyCredits, setSpendingCap, ApiError, type WalletOverview, type MyCredits } from "@/lib/api";
 // vm_lang
 import { useTranslations } from "next-intl";
 import { useFormat, useMoney, inline } from "@/lib/format";
@@ -48,6 +48,63 @@ function StorageLine({ s }: { s: NonNullable<MyCredits["storage"]> }) {
   );
 }
 
+/** vm_spendcap: the monthly spending limit (Part 20d). Storage is never counted or stopped by it. */
+function SpendingCapPanel({ c }: { c: MyCredits }) {
+  const t = useTranslations("walletPage.credits.cap");
+  const money = useMoney();
+  const qc = useQueryClient();
+  const cap = c.cap;
+  const [mode, setMode] = useState<"none" | "set">(cap?.monthlyMicros != null ? "set" : "none");
+  const [v, setV] = useState(cap?.monthlyMicros != null ? String(cap.monthlyMicros / 1_000_000) : "");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  if (!cap) return null;
+  const save = async () => {
+    setMsg(null);
+    let usd: string | null = null;
+    if (mode === "set") {
+      const x = Number(v.trim());
+      if (v.trim() === "" || !Number.isFinite(x) || x < 0 || x > 10_000) { setMsg({ ok: false, text: t("bad") }); return; }
+      usd = v.trim();
+    }
+    setBusy(true);
+    try {
+      await setSpendingCap(usd);
+      setMsg({ ok: true, text: usd == null ? t("removed") : t("saved") });
+      await qc.invalidateQueries({ queryKey: ["my-credits"] });
+    } catch (e) { setMsg({ ok: false, text: e instanceof ApiError ? e.message : t("failed") }); }
+    finally { setBusy(false); }
+  };
+  const used = cap.spentMonthMicros + cap.heldMicros;
+  return (
+    <div className="mt-6 max-w-[640px]" data-spending-cap={cap.reached ? "reached" : cap.monthlyMicros != null ? "set" : "none"}>
+      <h3 className="eyebrow mb-2">{t("title")}</h3>
+      <p className="text-[13px] text-dim mb-3">{t("hint")}</p>
+      <div className="flex items-center gap-x-5 gap-y-2 flex-wrap">
+        <label className="inline-flex items-center gap-2 text-[14px] text-paper-2 cursor-pointer">
+          <input type="radio" name="cap-mode" checked={mode === "none"} onChange={() => setMode("none")} /> {t("none")}
+        </label>
+        <label className="inline-flex items-center gap-2 text-[14px] text-paper-2 cursor-pointer">
+          <input type="radio" name="cap-mode" checked={mode === "set"} onChange={() => setMode("set")} /> {t("set")}
+        </label>
+        <span className="inline-flex items-center gap-2">
+          <input value={v} onChange={(e) => { setV(e.target.value); setMode("set"); }} inputMode="decimal" dir="ltr" placeholder="25"
+            aria-label={t("perMonth")} className="h-9 px-3 w-24 text-[14px] tabular-nums" data-cap-input />
+          <span className="text-[13px] text-dim">{t("perMonth")}</span>
+        </span>
+        <button onClick={() => void save()} disabled={busy} className="btn btn-ghost h-9 px-3.5" data-cap-save>{t("save")}</button>
+      </div>
+      <p className="text-[13px] text-paper-2 mt-3" data-cap-usage>
+        {cap.monthlyMicros != null
+          ? t("of", { used: inline(money(used)), limit: inline(money(cap.monthlyMicros)) })
+          : t("spent", { spent: inline(money(cap.spentMonthMicros)), held: inline(money(cap.heldMicros)) })}
+      </p>
+      {cap.reached && <p className="text-[13px] text-warn mt-1" role="status">{t("reached")}</p>}
+      {msg && <p className={clsx("text-[13px] mt-2", msg.ok ? "text-marker" : "text-error")} role={msg.ok ? "status" : "alert"}>{msg.text}</p>}
+    </div>
+  );
+}
+
 function CreditsSection({ c }: { c: MyCredits }) {
   const t = useTranslations("walletPage.credits");
   const tw = useTranslations("walletPage");
@@ -70,6 +127,7 @@ function CreditsSection({ c }: { c: MyCredits }) {
       <p className="text-[13px] text-dim mt-2 max-w-[70ch]">{c.charging ? t("charging") : t("notCharging")}</p>
       <AddCredits wallet={c.wallet} money={money} />
       {c.storage && <StorageLine s={c.storage} />}
+      <SpendingCapPanel c={c} />
 
       <div className="grid md:grid-cols-2 gap-x-10 gap-y-8 mt-6">
         <div className="min-w-0">
@@ -95,8 +153,9 @@ function CreditsSection({ c }: { c: MyCredits }) {
           <dl className="divide-y divide-rule border-y border-rule">
             {c.prices.map((p) => (
               <div key={p.id} className="flex items-baseline justify-between gap-4 py-2.5" data-credit-price={p.id}>
-                <dt className="text-[14px] text-paper-2">{t(`action.${p.id}`)}</dt>
-                <dd className="text-[13.5px] text-paper text-end shrink-0">{p.microsPerUnit === 0 ? t("free") : t(`per.${p.unit}`, { price: inline(money(p.microsPerUnit)) })}</dd>
+                <dt className="text-[14px] text-paper-2 min-w-0">{t(`action.${p.id}`)}</dt>
+                {/* vm_spendcap: long price lines (per 30 minutes of video) wrap instead of widening the page */}
+                <dd className="text-[13.5px] text-paper text-end min-w-0 max-w-[55%]">{p.microsPerUnit === 0 ? t("free") : t(`per.${p.unit}`, { price: inline(money(p.microsPerUnit)) })}</dd>
               </div>
             ))}
           </dl>

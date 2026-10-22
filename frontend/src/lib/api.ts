@@ -521,7 +521,11 @@ export interface MyCredits {
   prices: Array<{ id: CreditAction; unit: CreditUnit; microsPerUnit: number }>;
   /** vm_storagecharge: what this wallet keeps on VideoMind's storage and owes for it (Part 16e). */
   storage?: StorageStatus;
+  /** vm_spendcap: the monthly spending limit (null: none) and this month's spending (Part 20d). */
+  cap?: SpendingCap;
 }
+export interface SpendingCap { monthlyMicros: number | null; spentMonthMicros: number; heldMicros: number; reached: boolean }
+export const setSpendingCap = (usd: string | null) => call<{ cap: SpendingCap }>(() => raw.put("/api/credits/cap", { usd }));
 export interface StorageStatus {
   bytes: number; freeBytes: number; microsPerGbMonth: number; dailyMicros: number;
   owedMicros: number; owedSince: number | null; pausesAt: number | null; paused: boolean; graceDays: number;

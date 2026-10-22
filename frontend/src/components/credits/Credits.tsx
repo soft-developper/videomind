@@ -18,7 +18,8 @@ export const LOW_MICROS = 500_000;
 // No jump to a section: Add credits sits near the top of the Wallet page.
 export const ADD_CREDITS_HREF = "/wallet";
 /** Server codes that mean the signed in wallet has to add credits. */
-export const isNoCredits = (code?: string | null) => code === "not_enough_credits" || code === "no_credits";
+// vm_spendcap: monthly_cap is the wallet's own monthly limit; the link then says to raise it.
+export const isNoCredits = (code?: string | null) => code === "not_enough_credits" || code === "no_credits" || code === "monthly_cap";
 
 export function useCredits() {
   const wallet = useSessionWallet();
@@ -31,6 +32,8 @@ export function useCredits() {
     available: mine.data?.availableMicros ?? null,
     /** vm_storagecharge: what is owed for storage, and whether it has paused this wallet's videos. */
     storage: mine.data?.storage ?? null,
+    /** vm_spendcap: the monthly limit and this month's spending. */
+    cap: mine.data?.cap ?? null,
     /** The price of an action when it costs something right now, else null. */
     costOf: (a: CreditAction) => (charging && priceOf(a) > 0 ? priceOf(a) : null),
     /** vm_priceshapes: minutes charged at least when a video is processed. */
@@ -67,9 +70,10 @@ export function PriceTag({ what, className, steps }: { what: PriceWording; class
 }
 
 /** The link to add credits, put after a "not enough credits" message. */
-export function AddCreditsLink({ className }: { className?: string }) {
+export function AddCreditsLink({ className, code }: { className?: string; /** vm_spendcap: "monthly_cap" says to raise the limit */ code?: string | null }) {
   const t = useTranslations("credits");
-  return <Link href={ADD_CREDITS_HREF} className={clsx("underline underline-offset-2 hover:text-paper", className)} data-add-credits-link>{t("add")}</Link>;
+  const cap = code === "monthly_cap";
+  return <Link href={ADD_CREDITS_HREF} className={clsx("underline underline-offset-2 hover:text-paper", className)} data-add-credits-link={cap ? "cap" : ""}>{cap ? t("raiseLimit") : t("add")}</Link>;
 }
 
 const DISMISS = "vm.credits.low.hidden";
@@ -96,6 +100,17 @@ export function CreditsNotice({ path }: { path: string }) {
           : t("storageOwed", { amount: inline(money(st.owedMicros)), date: st.pausesAt ? f.date(st.pausesAt) : "" })}</span>
         <AddCreditsLink className="font-medium" />
         {!st.paused && <button type="button" onClick={() => { try { sessionStorage.setItem(DISMISS, String(-st.owedMicros)); } catch {} setHidden(-st.owedMicros); }} className="text-dim hover:text-paper no-min">{t("hide")}</button>}
+      </div>
+    );
+  }
+  // vm_spendcap: the monthly limit reached stops paid actions; said on every page, and it can be hidden for the tab.
+  const cap = c.cap;
+  if (c.charging && cap?.reached && cap.monthlyMicros != null && hidden !== -1 - cap.monthlyMicros) {
+    return (
+      <div role="status" className="border-b px-4 sm:px-6 py-2 text-[13px] flex items-center gap-3 flex-wrap border-warn/30 bg-warn/5 text-warn" data-credits-notice="cap">
+        <span className="flex-1 min-w-0">{t("capReached", { amount: inline(money(cap.monthlyMicros)) })}</span>
+        <AddCreditsLink className="font-medium" code="monthly_cap" />
+        <button type="button" onClick={() => { try { sessionStorage.setItem(DISMISS, String(-1 - cap.monthlyMicros!)); } catch {} setHidden(-1 - cap.monthlyMicros!); }} className="text-dim hover:text-paper no-min">{t("hide")}</button>
       </div>
     );
   }

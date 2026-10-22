@@ -118,6 +118,7 @@ export async function deleteAccountData(wallet: string): Promise<Record<string, 
   await db.batch([
     { sql: "DELETE FROM profiles WHERE wallet = ?", args: [me] },
     { sql: "DELETE FROM user_settings WHERE wallet = ?", args: [me] },
+    { sql: "DELETE FROM spending_caps WHERE wallet = ?", args: [me] },   // vm_spendcap
     { sql: "DELETE FROM clips WHERE wallet = ?", args: [me] },
     { sql: "DELETE FROM anchors WHERE wallet = ?", args: [me] },
   ], "write");

@@ -77,7 +77,7 @@ export default function LearnPage() {
           {/* vm_charge: a paid build that did not work, with a way to add credits */}
           {regenError && (
             <p className="text-[13.5px] text-error mb-4" role="alert" data-learn-error>
-              {regenError.message}{isNoCredits(regenError.code) && <> <AddCreditsLink /></>}
+              {regenError.message}{isNoCredits(regenError.code) && <> <AddCreditsLink code={regenError.code} /></>}
             </p>
           )}
 

@@ -58,7 +58,8 @@ export const OWNER_OUT = "The owner of this video is out of credits, so it canno
 /** A route's answer for a credits refusal, or null for any other error. */
 export function creditFailure(err: unknown, opts: { visitor?: boolean } = {}): { status: number; body: { error: string; code: string } } | null {
   if (!(err instanceof CreditsError)) return null;
-  if (err.code === "not_enough_credits" && opts.visitor) return { status: 402, body: { error: OWNER_OUT, code: "owner_out_of_credits" } };
+  // vm_spendcap: a visitor is not told about the owner's monthly limit either
+  if ((err.code === "not_enough_credits" || err.code === "monthly_cap") && opts.visitor) return { status: 402, body: { error: OWNER_OUT, code: "owner_out_of_credits" } };
   return { status: err.status, body: { error: err.message, code: err.code } };
 }
 

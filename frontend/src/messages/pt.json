@@ -1410,6 +1410,21 @@
         "how": "Cobrado uma vez por dia pelos arquivos que o VideoMind guarda dos seus vídeos. Um vídeo público que existe só na Shelby conta só as imagens dele.",
         "owed": "Você deve {amount} de armazenamento. Isso é pago primeiro com os créditos que você adicionar. Se ainda estiver devendo em {date}, seus vídeos guardados no VideoMind são pausados e os novos envios esperam.",
         "paused": "Você deve {amount} de armazenamento, então seus vídeos guardados no VideoMind estão pausados e os novos envios esperam. Adicione créditos para pagar; nada foi apagado."
+      },
+      "cap": {
+        "title": "Limite de gastos mensal",
+        "hint": "As ações pagas param quando os gastos do mês atingem seu limite. O armazenamento não conta e nunca para. O mês começa no dia 1 (UTC).",
+        "none": "Sem limite",
+        "set": "Um limite de",
+        "perMonth": "dólares americanos por mês",
+        "save": "Salvar",
+        "saved": "Salvo.",
+        "removed": "O limite foi removido.",
+        "spent": "Este mês: {spent} gastos, {held} reservados.",
+        "of": "Você usou {used} do seu limite de {limit} este mês.",
+        "reached": "Seu limite foi atingido: as ações pagas estão paradas.",
+        "bad": "Escreva o limite em dólares americanos, de 0 a 10.000.",
+        "failed": "Não foi possível salvar o limite. Tente de novo."
       }
     }
   },
@@ -1887,7 +1902,7 @@
     "shelbyP": "Você pode decidir guardar vídeos na Shelby, uma rede de armazenamento descentralizada na Aptos, por meio de transações que você assina com a sua própria carteira. Tudo o que fica guardado ali é público e não pode ser excluído nem alterado por nós. As redes atuais da Shelby estão no começo: o armazenamento é pago por um período limitado, e os dados podem ser perdidos ou apagados. As taxas de rede ficam por sua conta. Não controlamos a Shelby nem a Aptos e não somos responsáveis por elas. Guarde suas próprias cópias de tudo o que for importante.",
     "creditsP1": "Algumas ações custam créditos: processar um vídeo, respostas, buscas, trilhas de aprendizado, legendas ao vivo, eventos ao vivo, traduzir uma transcrição, gerar um vídeo e pedir à IA que escreva a descrição dele, e guardar arquivos no VideoMind. Os créditos são contados em dólares americanos. Você os adiciona na página Carteira enviando ShelbyUSD da sua carteira para o endereço do VideoMind: 1 ShelbyUSD adiciona 1 dólar americano em créditos, e cada transferência é adicionada uma só vez. Não podemos desfazer uma transferência que você assina, e as taxas da rede são suas. Na rede de teste da Shelby, o ShelbyUSD não tem valor.",
     "credits1": "<b>Preços.</b> A página Carteira mostra o preço de cada ação, e o preço aparece antes de uma ação começar. Podemos mudar os preços. Um novo preço vale só para ações iniciadas depois da mudança, e para o armazenamento a partir do dia seguinte.",
-    "credits2": "<b>Reservas.</b> Quando uma ação paga começa, o preço dela é separado dos seus créditos e só é cobrado se a ação der certo. Uma ação que falha não custa nada. Processar um vídeo é cobrado pelos minutos de som transcritos, com um mínimo por vídeo mostrado antes do envio, nunca mais do que foi separado. Uma resposta sobre um vídeo custa mais em vídeos mais longos, como mostrado antes de perguntar. Um evento ao vivo é cobrado pelos minutos que os espectadores realmente assistiram, até o máximo de espectadores escolhido pelo anfitrião, nunca mais do que foi separado.",
+    "credits2": "<b>Reservas.</b> Quando uma ação paga começa, o preço dela é separado dos seus créditos e só é cobrado se a ação der certo. Uma ação que falha não custa nada. Processar um vídeo é cobrado pelos minutos de som transcritos, com um mínimo por vídeo mostrado antes do envio, nunca mais do que foi separado. Uma resposta sobre um vídeo custa mais em vídeos mais longos, como mostrado antes de perguntar. Um evento ao vivo é cobrado pelos minutos que os espectadores realmente assistiram, até o máximo de espectadores escolhido pelo anfitrião, nunca mais do que foi separado. Você pode definir um limite de gastos mensal na página Carteira: as ações pagas param quando ele é atingido, e o armazenamento não conta e não para.",
     "credits3": "<b>Quem paga.</b> Processar um vídeo, as respostas sobre ele e as traduções dele são pagos pelo dono do vídeo, também quando quem pergunta é um espectador. Buscas, Conhecimento, gerar um vídeo e pedir à IA que escreva a descrição dele são pagos por quem os usa. Eventos ao vivo e legendas ao vivo são pagos pelo anfitrião.",
     "credits4": "<b>Armazenamento.</b> Os arquivos que o VideoMind guarda dos seus vídeos (o original, as imagens e o som dele, e os clipes) são cobrados uma vez por dia, a um trinta avos do preço mensal por GB, pelo que você guarda acima da quantidade grátis mostrada na página Carteira. Um GB são 1.000.000.000 bytes. Um vídeo público que existe só na Shelby não conta o original.",
     "credits5": "<b>Armazenamento não pago.</b> Seu saldo nunca fica abaixo de zero. O armazenamento que você não consegue pagar fica devido, e é pago primeiro com os próximos créditos que você adicionar. Se alguma parte ainda estiver devida 14 dias depois, seus vídeos guardados no VideoMind param de tocar e os novos envios esperam até o pagamento. Não apagamos seus vídeos porque o armazenamento não foi pago.",
@@ -2170,7 +2185,11 @@
     "liveTooLong": "Um evento ao vivo pode durar no máximo {max} minutos.",
     "liveTimeUp": "O evento ao vivo chegou ao horário de término.",
     "liveFull": "Este evento ao vivo está lotado. Tente de novo em instantes.",
-    "liveBadViewers": "Escolha o máximo de espectadores: {list}."
+    "liveBadViewers": "Escolha o máximo de espectadores: {list}.",
+    "capReached": "Você atingiu seu limite de gastos mensal de {amount}. Aumente na página Carteira.",
+    "capProcessing": "Seu limite de gastos mensal foi atingido, então este vídeo não foi processado. Aumente o limite na página Carteira e tente de novo.",
+    "capCaptions": "Legendas paradas: seu limite de gastos mensal foi atingido. Aumente na página Carteira e ligue as legendas de novo.",
+    "capGeneration": "Limite de gastos mensal atingido."
   },
   "notFound": {
     "title": "Esta página não foi encontrada",
@@ -2197,6 +2216,8 @@
     "makePaths": "Criar trilhas de aprendizado",
     "pathsOld": "Você tem mais vídeos do que quando estas trilhas foram criadas. Crie as trilhas de novo para que eles entrem.",
     "storageOwed": "Você deve {amount} de armazenamento. Seus vídeos guardados no VideoMind são pausados em {date} se você não adicionar créditos.",
-    "storagePaused": "Seus vídeos guardados no VideoMind estão pausados: você deve {amount} de armazenamento."
+    "storagePaused": "Seus vídeos guardados no VideoMind estão pausados: você deve {amount} de armazenamento.",
+    "raiseLimit": "Aumentar o limite",
+    "capReached": "Você atingiu seu limite de gastos mensal de {amount}. As ações pagas param até o próximo mês, ou até você aumentar o limite."
   }
 }

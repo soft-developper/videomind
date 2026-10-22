@@ -174,7 +174,7 @@ export function SearchInterface() {
       {/* Error */}
       {err && (
         <div role="alert" className="rounded-md border border-error/50 bg-error/5 p-3.5 flex items-start gap-3">
-          <p className="text-[13px] font-sans text-error flex-1">{err}{isNoCredits(errCode) && <> <AddCreditsLink /></>}</p>
+          <p className="text-[13px] font-sans text-error flex-1">{err}{isNoCredits(errCode) && <> <AddCreditsLink code={errCode} /></>}</p>
           {asked && (
             <button onClick={() => run(asked)} aria-label={t("again")} className="tc text-error/70 hover:text-error no-min">
               <RefreshCw size={11} />
