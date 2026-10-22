@@ -265,127 +265,117 @@ export default function VideoPage({ params }: { params: { id: string } }) {
             </div>
           )}
 
-          {/* vm_upload: the video plays as soon as it is uploaded, even while
-              it is being processed or after a step has failed. */}
-          {(working || failed) && !unfinished && (
-            <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
-              <div className="min-w-0 space-y-5">
-                {video.streamUrl && (
+          {/* vm_playerkeep: ONE player for both states. While the video is processed
+              (or a step failed) and once it is ready, the player stays at the same
+              place in the page, so React keeps the same player: when processing
+              ends during playback, playing goes on from the same moment. Only the
+              panels around it change. The video plays as soon as it is uploaded. */}
+          {!unfinished && (
+            <div className={clsx("grid lg:grid-cols-[1fr_380px] gap-6", !ready && "items-start")}>
+              <div className="space-y-5 min-w-0">
+                {(ready || video.streamUrl) ? (
                   <VideoPlayer
                     ref={player}
-                    streamUrl={video.streamUrl}
+                    streamUrl={video.streamUrl ?? null}
                     source={video.source}
-                  shelbyGone={video.shelbyGone ?? null}
-                  storagePaused={video.storagePaused ? (mine ? "owner" : "visitor") : null}
-                  storeHref={mine ? `/upload?anchor=${video.id}` : null}
+                    shelbyGone={video.shelbyGone ?? null}
+                    storagePaused={video.storagePaused ? (mine ? "owner" : "visitor") : null}
+                    storeHref={mine ? `/upload?anchor=${video.id}` : null}
                     poster={video.posterUrl}
                     format={video.media && video.media.playable !== "yes" ? formatLabel(video.media) : null}
                     title={video.title}
+                    shelbyAddress={ready ? video.shelby.accountAddress : undefined}
+                    blobName={ready ? video.shelby.videoBlobName : undefined}
+                    captions={ready ? text.captions : undefined}
+                    captionsLang={ready ? text.lang : undefined}
+                    chapters={ready ? text.ai?.chapters : undefined}
+                    startAt={ready ? startAt ?? progress.resumeAt : undefined}
+                    resumed={ready && startAt == null && progress.resumeAt != null}
+                    onStartOver={ready ? progress.startOver : undefined}
+                    onProgress={ready ? progress.report : undefined}
+                    upNext={ready && video.course?.next ? { title: video.course.next.title, href: `/video/${video.course.next.id}` } : null}
                     onDuration={onDuration}
                     onTimeUpdate={setT}
+                    countViewsOf={ready ? video.id : undefined}
                   />
-                )}
-                {/* vm_generate: nothing to store on Shelby until the model has made the video */}
-                {video.status !== "generating" && <OnChainProof
-                  videoId={video.id}
-                  isOwner={!!mine}
-                  storeHref={mine ? `/upload?anchor=${video.id}` : undefined}
-                />}
-              </div>
-              <ProcessingStatus videoId={params.id} onReady={() => refetch()} />
-            </div>
-          )}
-
-          {ready && (
-            <div className="grid lg:grid-cols-[1fr_380px] gap-6">
-              <div className="space-y-5 min-w-0">
-
-                <VideoPlayer
-                  ref={player}
-                  streamUrl={video.streamUrl ?? null}
-                  source={video.source}
-                  shelbyGone={video.shelbyGone ?? null}
-                  storagePaused={video.storagePaused ? (mine ? "owner" : "visitor") : null}
-                  storeHref={mine ? `/upload?anchor=${video.id}` : null}
-                  poster={video.posterUrl}
-                  format={video.media && video.media.playable !== "yes" ? formatLabel(video.media) : null}
-                  title={video.title}
-                  shelbyAddress={video.shelby.accountAddress}
-                  blobName={video.shelby.videoBlobName}
-                  captions={text.captions}
-                  captionsLang={text.lang}
-                  chapters={text.ai?.chapters}
-                  startAt={startAt ?? progress.resumeAt}
-                  resumed={startAt == null && progress.resumeAt != null}
-                  onStartOver={progress.startOver}
-                  onProgress={progress.report}
-                  upNext={video.course?.next ? { title: video.course.next.title, href: `/video/${video.course.next.id}` } : null}
-                  onDuration={onDuration}
-                  onTimeUpdate={setT}
-                  countViewsOf={video.id}
-                />
-
-                {/* ★ THE SIGNATURE - sits directly under the frame ★ */}
-                <IntelligenceStrip
-                  duration={duration}
-                  currentTime={t}
-                  transcript={text.ai?.transcript}
-                  chapters={text.ai?.chapters}
-                  highlights={text.ai?.highlights}
-                  onSeek={seek}
-                />
-
-                {speechless ? (
-                  <div className="panel p-5">
-                    <p className="text-[14.5px] font-medium text-paper">{tv("noSpeech")}</p>
-                    <p className="text-[13.5px] text-dim mt-1 leading-relaxed max-w-[62ch]">
-                      {video.media && !video.media.hasAudio
-                        ? tv("noSound")
-                        : tv("noWords")}{" "}
-                      {tv("noSpeechMeans")}
-                    </p>
-                  </div>
-                ) : (
-                  <InsightsPanel video={text.lang ? { ...video, ai: text.ai } : video} onSeek={seek} owner={mine && !text.lang} currentTime={t} duration={duration || undefined} onChaptersSaved={() => refetch()} />
-                )}
-
-                <OnChainProof
-                  videoId={video.id}
-                  isOwner={!!mine}
-                  storeHref={mine ? `/upload?anchor=${video.id}` : undefined}
-                />
-
-                {video.ai?.transcript?.length ? (
-                  <TranscriptPanel
-                    transcript={text.lines ?? video.ai.transcript}
-                    currentTime={t}
-                    onSeek={seek}
-                  chapters={text.ai?.chapters}
-                />
                 ) : null}
 
-                {/* vm_translate: the owner's translations */}
-                {mine && !speechless && <TranslationsPanel videoId={params.id} text={text} />}
+                {ready ? (
+                  <>
+                    {/* ★ THE SIGNATURE - sits directly under the frame ★ */}
+                    <IntelligenceStrip
+                      duration={duration}
+                      currentTime={t}
+                      transcript={text.ai?.transcript}
+                      chapters={text.ai?.chapters}
+                      highlights={text.ai?.highlights}
+                      onSeek={seek}
+                    />
 
-                {/* vm_notes: this wallet's own bookmarks and notes */}
-                <NotesPanel videoId={params.id} title={video.title} currentTime={t} onSeek={seek} />
+                    {speechless ? (
+                      <div className="panel p-5">
+                        <p className="text-[14.5px] font-medium text-paper">{tv("noSpeech")}</p>
+                        <p className="text-[13.5px] text-dim mt-1 leading-relaxed max-w-[62ch]">
+                          {video.media && !video.media.hasAudio
+                            ? tv("noSound")
+                            : tv("noWords")}{" "}
+                          {tv("noSpeechMeans")}
+                        </p>
+                      </div>
+                    ) : (
+                      <InsightsPanel video={text.lang ? { ...video, ai: text.ai } : video} onSeek={seek} owner={mine && !text.lang} currentTime={t} duration={duration || undefined} onChaptersSaved={() => refetch()} />
+                    )}
 
-                {/* vm_clips: the owner's clips of this video */}
-                {mine && (
-                  <ClipsPanel videoId={params.id} currentTime={t} duration={video.meta.durationSeconds ?? dur} chapters={video.ai?.chapters} onSeek={seek} />
+                    <OnChainProof
+                      videoId={video.id}
+                      isOwner={!!mine}
+                      storeHref={mine ? `/upload?anchor=${video.id}` : undefined}
+                    />
+
+                    {video.ai?.transcript?.length ? (
+                      <TranscriptPanel
+                        transcript={text.lines ?? video.ai.transcript}
+                        currentTime={t}
+                        onSeek={seek}
+                      chapters={text.ai?.chapters}
+                    />
+                    ) : null}
+
+                    {/* vm_translate: the owner's translations */}
+                    {mine && !speechless && <TranslationsPanel videoId={params.id} text={text} />}
+
+                    {/* vm_notes: this wallet's own bookmarks and notes */}
+                    <NotesPanel videoId={params.id} title={video.title} currentTime={t} onSeek={seek} />
+
+                    {/* vm_clips: the owner's clips of this video */}
+                    {mine && (
+                      <ClipsPanel videoId={params.id} currentTime={t} duration={video.meta.durationSeconds ?? dur} chapters={video.ai?.chapters} onSeek={seek} />
+                    )}
+
+                    {/* vm_youtube: send the video or a clip to the owner's channel */}
+                    {mine && !video.removed && <PublishPanel videoId={params.id} duration={video.meta.durationSeconds ?? dur} />}
+                  </>
+                ) : (
+                  /* vm_generate: nothing to store on Shelby until the model has made the video */
+                  video.status !== "generating" && <OnChainProof
+                    videoId={video.id}
+                    isOwner={!!mine}
+                    storeHref={mine ? `/upload?anchor=${video.id}` : undefined}
+                  />
                 )}
-
-                {/* vm_youtube: send the video or a clip to the owner's channel */}
-                {mine && !video.removed && <PublishPanel videoId={params.id} duration={video.meta.durationSeconds ?? dur} />}
               </div>
 
-              <aside className="hidden lg:block lg:sticky lg:top-6 lg:h-[calc(100vh-48px)]">
-                <div className={clsx("panel flex flex-col overflow-hidden", !speechless && "h-full")}>
-                  {speechless
-                    ? <p className="p-5 text-[13.5px] text-dim leading-relaxed">{tv("noSpeechAsk")}</p>
-                    : <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={seek} owner={!!video.isOwner} durationSeconds={video.meta?.durationSeconds} />}
-                </div>
-              </aside>
+              {ready ? (
+                <aside className="hidden lg:block lg:sticky lg:top-6 lg:h-[calc(100vh-48px)]">
+                  <div className={clsx("panel flex flex-col overflow-hidden", !speechless && "h-full")}>
+                    {speechless
+                      ? <p className="p-5 text-[13.5px] text-dim leading-relaxed">{tv("noSpeechAsk")}</p>
+                      : <ChatPanel videoId={params.id} videoTitle={video.title} onSeek={seek} owner={!!video.isOwner} durationSeconds={video.meta?.durationSeconds} />}
+                  </div>
+                </aside>
+              ) : (
+                <ProcessingStatus videoId={params.id} onReady={() => refetch()} />
+              )}
             </div>
           )}
         </div>
