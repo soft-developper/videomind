@@ -20,7 +20,8 @@
 //     prompt field, so exclusions go in the text; English is fully supported.
 import { askClaude, obj, str, num, ClaudeError } from "../services/claude.js";
 import { withUsage } from "./usage.js";
-import { listModels, type ModelRow } from "./generation.js";
+import { listModels, MAX_SHOTS, maxTotalSeconds, type ModelRow } from "./generation.js";
+import { list } from "../services/claude.js";
 
 export interface Direction {
   modelId: string; seconds: number; aspect: "16:9" | "9:16";
@@ -103,6 +104,66 @@ export async function direct(a: { wallet: string; idea: unknown; aspect?: unknow
     why: String(raw.why ?? "").trim().slice(0, 400),
     problem: problem ? problem.slice(0, 600) : null,
   };
+}
+
+// ── vm_generate: a story of several shots (Part 17c3) ────────────────────────
+export interface StoryDirection {
+  modelId: string; aspect: "16:9" | "9:16"; title: string; why: string; problem: string | null;
+  shots: Array<{ prompt: string; seconds: number }>;
+}
+type RawStory = { modelId: string; aspect: string; title: string; why: string; problem: string; shots: Array<{ prompt: string; seconds: number }> };
+
+const STORY = (models: ModelRow[]) => SYSTEM(models) + `
+
+This time the person wants a longer video told in several shots, made one after another with the same model and joined in order.
+- Write from 2 to ${MAX_SHOTS} shots; all shots together at most ${maxTotalSeconds()} seconds, each inside the chosen model's range.
+- Each shot is made on its own, without seeing the others, so each description must stand alone: repeat the same description of every person (age, hair, clothes) and of the place, word for word, in every shot where they appear. Keep the light, colors and camera style the same across shots.
+- One clear moment per shot; the shots together tell the idea from start to end.
+- Write each shot the way the chosen model responds to, as above.`;
+
+const STORY_SCHEMA = obj({
+  modelId: str("One of the model ids listed."),
+  aspect: { type: "string", enum: ["16:9", "9:16"] },
+  title: str("A short title in the person's language."),
+  why: str("One sentence in the person's language: why this model and shape, and how the shots tell the idea."),
+  problem: str("Empty, or why this idea cannot be made, in the person's language."),
+  shots: list(obj({ prompt: str("This shot's description for the model, in English, standing alone."), seconds: num("This shot's length in seconds.") })),
+});
+
+/** Ask Claude to split an idea into shots. Checked against what the server allows. */
+export async function directStory(a: { wallet: string; idea: unknown; aspect?: unknown; modelId?: unknown; shots?: unknown }, ask: Ask = askClaude): Promise<StoryDirection> {
+  const idea = typeof a.idea === "string" ? a.idea.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, " ").trim() : "";
+  if (idea.length < 3) throw new DirectorError(400, "bad_prompt", "Describe the video you want.");
+  if (idea.length > 2000) throw new DirectorError(400, "bad_prompt", "Keep the description under 2,000 characters.");
+  const models = (await listModels()).filter((m) => m.enabled && m.ready);
+  if (!models.length) throw new DirectorError(503, "model_unavailable", "That model cannot be used right now. Try another one.");
+  const wishes: string[] = [];
+  if (a.modelId && models.some((m) => m.id === a.modelId)) wishes.push(`The person picked the model "${a.modelId}"; keep it unless it cannot make this idea.`);
+  if (a.aspect === "16:9" || a.aspect === "9:16") wishes.push(`The person picked the shape ${a.aspect}.`);
+  const want = Math.round(Number(a.shots));
+  if (Number.isFinite(want) && want >= 2 && want <= MAX_SHOTS) wishes.push(`The person wants ${want} shots.`);
+  const raw = await withUsage({ feature: "generate_direct", ownerWallet: a.wallet, actorWallet: a.wallet }, () => ask<RawStory>({
+    purpose: "direct a video of several shots",
+    system: STORY(models),
+    user: `${wishes.length ? wishes.join(" ") + "\n\n" : ""}The person's idea:\n<idea>\n${idea}\n</idea>`,
+    schema: STORY_SCHEMA, maxTokens: 6000,
+  }));
+  const model = models.find((m) => m.id === raw.modelId) ?? models[0];
+  const problem = String(raw.problem ?? "").trim();
+  const base = { modelId: model.id, aspect: (raw.aspect === "9:16" ? "9:16" : "16:9") as "16:9" | "9:16", title: String(raw.title ?? "").trim().slice(0, 120), why: String(raw.why ?? "").trim().slice(0, 400) };
+  if (problem) return { ...base, problem: problem.slice(0, 600), shots: [] };
+  // Each shot inside the model's range; shots past the total are dropped, and at least two are kept.
+  const shots: Array<{ prompt: string; seconds: number }> = [];
+  let total = 0;
+  for (const x of (Array.isArray(raw.shots) ? raw.shots : []).slice(0, MAX_SHOTS)) {
+    const prompt = String(x?.prompt ?? "").trim().slice(0, 2000);
+    if (prompt.length < 3) continue;
+    const secs = Math.min(model.maxSeconds, Math.max(model.minSeconds, Math.round(Number(x?.seconds)) || model.minSeconds));
+    if (total + secs > maxTotalSeconds()) break;
+    shots.push({ prompt, seconds: secs }); total += secs;
+  }
+  if (shots.length < 2) throw new DirectorError(503, "try_again", "The answer did not come back whole. Please try again.");
+  return { ...base, problem: null, shots };
 }
 
 export { ClaudeError };

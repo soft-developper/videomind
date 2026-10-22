@@ -29,6 +29,8 @@ import {
   // vm_anchors
   startAnchor,
   getMySettings,
+  // vm_generate: the library copy's address
+  apiAddress,
 } from "@/lib/api";
 import { ResumableUpload, StorageBlockedError, UploadStopped, type UploadProgress } from "@/lib/uploader";
 import { localize } from "@/lib/errorText";
@@ -266,6 +268,30 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
     runner.current = null; info.current = null;
   };
 
+  // ── vm_generate: storing the copy already in the library ──────────────────
+  // A generated video (or any video whose original VideoMind keeps) can be
+  // stored on Shelby without choosing the file again: the browser reads the
+  // library copy through its playback address and hands it to the same step.
+  const [fromLibrary, setFromLibrary] = useState<"idle" | "reading">("idle");
+  const readLibraryCopy = async () => {
+    const v = anchorVideoQ.data;
+    if (!v?.streamUrl || v.source !== "storage" || fromLibrary === "reading") return;
+    setErr(null); setFromLibrary("reading");
+    try {
+      const res = await fetch(apiAddress(v.streamUrl));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      if (v.meta.sizeBytes && blob.size !== v.meta.sizeBytes) throw new Error(`size ${blob.size} instead of ${v.meta.sizeBytes}`);
+      const f = new File([blob], `${v.id}.mp4`, { type: blob.type || v.meta.mimeType || "video/mp4" });
+      const t: Target = { videoId: v.id, videoBlobName: v.shelby.videoBlobName, title: v.title, size: f.size };
+      setFile(f); setTarget(t); setStep({ at: "uploaded" });
+      void storeOnShelby(f, t);
+    } catch (e) {
+      console.error("[VideoMind] reading the library copy failed:", e);
+      setErr(tu("libraryFailed"));
+    } finally { setFromLibrary("idle"); }
+  };
+
   // ── choosing a file ───────────────────────────────────────────────────────
   const onDrop = useCallback((files: File[]) => {
     const f = files[0];
@@ -483,6 +509,15 @@ export function UploadZone({ initialFile, initialTitle, onUploaded }: {
             <p className="text-[13.5px] text-warn mt-2 leading-relaxed">
               {tu("anchorPrivate")}
             </p>
+          )}
+          {/* vm_generate: no need to choose the file when the library already has it */}
+          {anchorVideoQ.data?.source === "storage" && anchorVideoQ.data.streamUrl && anchorVideoQ.data.meta.sizeBytes <= SHELBY_LIMIT && (
+            <div className="mt-3 flex items-center gap-3 flex-wrap" data-library-copy>
+              <button type="button" onClick={() => void readLibraryCopy()} disabled={fromLibrary === "reading" || shelby.at === "wallet"} className="btn btn-signal h-9 px-3.5">
+                {fromLibrary === "reading" ? tu("readingLibrary") : tu("useLibrary")}
+              </button>
+              <span className="text-[13px] text-dim">{tu("libraryOr")}</span>
+            </div>
           )}
           {/* vm_shelbyhome: said before the file is even chosen */}
           {anchorVideoQ.data?.visibility === "public" && (

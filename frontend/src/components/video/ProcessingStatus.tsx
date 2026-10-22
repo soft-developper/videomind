@@ -175,6 +175,9 @@ export function ProcessingStatus({
                   {tp(`steps.${s.k}.n`)}
                 </p>
                 <p className="text-[13px] font-sans text-dim mt-0.5">{s.k === "generating" && gen ? tp("steps.generating.d", { model: gen.model }) : tp(`steps.${s.k}.d` as "steps.ready.d")}</p>
+                {on && s.k === "generating" && gen && (gen.shots ?? 1) > 1 && (
+                  <p className="tc text-paper-2 mt-1.5" data-shot-progress>{tp("gen.shotOf", { n: Math.min((gen.shotsDone ?? 0) + 1, gen.shots!), total: gen.shots! })}</p>
+                )}
                 {on && s.k === "transcribing" && pieces && pieces.total > 1 && (
                   <p className="tc text-paper-2 mt-1.5">
                     {tp("part", { n: Math.min(pieces.done + 1, pieces.total), total: pieces.total })}

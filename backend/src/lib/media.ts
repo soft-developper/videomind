@@ -365,3 +365,47 @@ export async function measureDuration(input: string, timeoutMs = 20 * 60_000): P
   const sec = Number(last[1]) * 3600 + Number(last[2]) * 60 + Number(last[3]);
   return sec > 0 ? Math.round(sec * 1000) / 1000 : undefined;
 }
+
+// ── vm_generate: shots joined into one video (Part 17c3) ───────────────────────
+/**
+ * Join video files end to end. Shots from the same model share their format,
+ * so the first try copies them without encoding again (fast). If that does
+ * not work it encodes them together, with their sound, and then without it.
+ */
+export async function joinShots(inputs: string[], outPath: string, dir: string, timeoutMs = 30 * 60_000): Promise<"copied" | "encoded" | "encoded_silent"> {
+  if (inputs.length < 2) throw new MediaError("unreadable", "Joining needs at least two shots.", false);
+  const list = path.join(dir, "shots.txt");
+  await fs.writeFile(list, inputs.map((f) => `file '${f.replace(/'/g, "'\\''")}'`).join("\n") + "\n");
+  const ok = async (r: Ran) => r.code === 0 && ((await fs.stat(outPath).catch(() => null))?.size ?? 0) > 0;
+  // Copying only works when every shot has the same picture size, codecs and sound; FFmpeg
+  // does not refuse a mismatch, it writes a broken file, so it is checked first.
+  const all = await Promise.all(inputs.map((f) => probeFile(f).catch(() => null)));
+  const sig = (m: MediaFacts | null) => (m ? [m.width, m.height, m.videoCodec, m.pixelFormat, m.hasAudio, m.audioCodec].join("|") : null);
+  let r: Ran | null = null;
+  if (all.every((m) => m && sig(m) === sig(all[0]))) {
+    r = await run("ffmpeg", ["-hide_banner", "-nostdin", "-loglevel", "error", "-y",
+      "-protocol_whitelist", "file", "-f", "concat", "-safe", "0", "-i", list,
+      "-c", "copy", "-movflags", "+faststart", outPath], timeoutMs);
+    if (await ok(r)) return "copied";
+  }
+  // Encoded together, scaled to the first shot's size.
+  const facts = all[0];
+  const w = facts?.width ?? 1280, h = facts?.height ?? 720;
+  const ins = inputs.flatMap((f) => ["-i", f]);
+  const scaled = inputs.map((_, i) => `[${i}:v]scale=${w}:${h}:force_original_aspect_ratio=decrease,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24[v${i}]`).join(";");
+  // Sound: each shot's own, and silence of the same length for a shot that has none.
+  const sounds = all.map((m, i) => m?.hasAudio
+    ? `[${i}:a]aresample=48000,aformat=channel_layouts=stereo[a${i}]`
+    : `anullsrc=r=48000:cl=stereo,atrim=duration=${(m?.durationSeconds ?? 1).toFixed(3)}[a${i}]`).join(";");
+  const withSound = `${scaled};${sounds};${inputs.map((_, i) => `[v${i}][a${i}]`).join("")}concat=n=${inputs.length}:v=1:a=1[v][a]`;
+  const anySound = all.some((m) => m?.hasAudio);
+  if (anySound) r = await run("ffmpeg", ["-hide_banner", "-nostdin", "-loglevel", "error", "-y", "-protocol_whitelist", "file", ...ins,
+    "-filter_complex", withSound, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-c:a", "aac", "-b:a", "160k",
+    "-movflags", "+faststart", outPath], timeoutMs);
+  if (r && anySound && (await ok(r))) return "encoded";
+  const silent = `${scaled};${inputs.map((_, i) => `[v${i}]`).join("")}concat=n=${inputs.length}:v=1:a=0[v]`;
+  r = await run("ffmpeg", ["-hide_banner", "-nostdin", "-loglevel", "error", "-y", "-protocol_whitelist", "file", ...ins,
+    "-filter_complex", silent, "-map", "[v]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-movflags", "+faststart", outPath], timeoutMs);
+  if (await ok(r)) return "encoded_silent";
+  throw failure(r!, "Joining the shots");
+}

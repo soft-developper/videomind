@@ -11,7 +11,7 @@ import { requireAuth, authOf } from "../lib/auth.js";
 import { rateLimit } from "../lib/guard.js";
 import { CreditsError } from "../lib/credits.js";
 import { generateInfo, startGeneration, mayGenerate, GenError } from "../lib/generation.js";
-import { direct, DirectorError } from "../lib/director.js";
+import { direct, directStory, DirectorError } from "../lib/director.js";
 import { claudeFailure } from "../services/claude.js";
 import { storagePaused, STORAGE_UNPAID } from "../lib/storageCharge.js";
 
@@ -43,6 +43,8 @@ router.post("/direct", limitDirect, requireAuth, async (req, res) => {
     const wallet = authOf(req)!.wallet;
     if (!(await mayGenerate(wallet))) return res.status(403).json({ error: "Video generation is not open to this wallet yet.", code: "not_allowed" });
     const b = (req.body ?? {}) as Record<string, unknown>;
+    // vm_generate: { mode: "story" } splits the idea into shots (Part 17c3)
+    if (b.mode === "story") return res.json(await directStory({ wallet, idea: b.idea, aspect: b.aspect, modelId: b.modelId, shots: b.shots }));
     return res.json(await direct({ wallet, idea: b.idea, aspect: b.aspect, seconds: b.seconds, modelId: b.modelId }));
   } catch (err) { return fail(res, err, "writing a description"); }
 });
@@ -58,7 +60,7 @@ router.post("/", limitGenerate, requireAuth, async (req, res) => {
     // vm_storagecharge: a new video waits while storage is unpaid, as an upload does.
     if (await storagePaused(wallet)) return res.status(402).json({ error: STORAGE_UNPAID, code: "storage_unpaid" });
     const b = (req.body ?? {}) as Record<string, unknown>;
-    const r = await startGeneration({ wallet, prompt: b.prompt, modelId: b.modelId, seconds: b.seconds, aspect: b.aspect, title: b.title, visibility: b.visibility });
+    const r = await startGeneration({ wallet, prompt: b.prompt, modelId: b.modelId, seconds: b.seconds, aspect: b.aspect, title: b.title, visibility: b.visibility, shots: b.shots });
     return res.status(201).json(r);
   } catch (err) { return fail(res, err, "starting a generation"); }
 });

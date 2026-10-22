@@ -25,6 +25,9 @@ import { store } from "./store.js";
 import { enqueueJob, type Job } from "./jobs.js";
 import { PermanentJobError, nudgeRunner } from "./runner.js";
 import { saveOriginal } from "./assets.js";
+// vm_generate: shots of a longer video wait in storage until they are joined (Part 17c3)
+import { getStorage } from "./storage.js";
+import { joinShots } from "./media.js";
 import { reserve, settle, release, CreditsError } from "./credits.js";
 import { submit, check, download, cancel, keySet, GenRefused, type GenModel, type ProviderRef, type ProviderId } from "./genProviders.js";
 import type { VideoRecord } from "../types/video.js";
@@ -143,25 +146,45 @@ export async function spentToday(now = Date.now()): Promise<number> {
 }
 
 // ── starting one ─────────────────────────────────────────────────────────────
-export interface StartArgs { wallet: string; prompt: unknown; modelId: unknown; seconds?: unknown; aspect?: unknown; title?: unknown; visibility?: unknown; now?: number }
+export interface StartArgs { wallet: string; prompt: unknown; modelId: unknown; seconds?: unknown; aspect?: unknown; title?: unknown; visibility?: unknown; now?: number;
+  /** vm_generate: several shots, made one after another and joined into one video. */
+  shots?: unknown }
+export interface Shot { prompt: string; seconds: number }
+export const MAX_SHOTS = 6;
+/** The longest a video of several shots may be, in seconds. */
+export function maxTotalSeconds(): number { const x = Number(process.env.GEN_MAX_TOTAL_SECONDS); return Number.isFinite(x) && x > 0 ? x : 60; }
+const clean = (v: unknown) => (typeof v === "string" ? v.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, " ").trim() : "");
 
 export async function startGeneration(a: StartArgs): Promise<{ videoId: string; generationId: string; costMicros: number }> {
   const wallet = walletOf(a.wallet);
   const now = a.now ?? Date.now();
   if (!(await mayGenerate(wallet))) throw new GenError(403, "not_allowed", "Video generation is not open to this wallet yet.");
-  const prompt = typeof a.prompt === "string" ? a.prompt.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, " ").trim() : "";
-  if (prompt.length < 3) throw new GenError(400, "bad_prompt", "Describe the video you want.");
-  if (prompt.length > 2000) throw new GenError(400, "bad_prompt", "Keep the description under 2,000 characters.");
   const model = await modelById(a.modelId);
   if (!model || !model.enabled) throw new GenError(400, "bad_model", "That model is not available.");
   if (!model.ready) throw new GenError(503, "model_unavailable", "That model cannot be used right now. Try another one.");
-  const seconds = model.minSeconds === model.maxSeconds ? model.maxSeconds : Math.round(Number(a.seconds ?? Math.min(8, model.maxSeconds)));
-  if (!Number.isFinite(seconds) || seconds < model.minSeconds || seconds > model.maxSeconds) {
-    throw new GenError(400, "bad_seconds", `Choose a length from ${model.minSeconds} to ${model.maxSeconds} seconds.`);
+  const lengthOf = (v: unknown) => {
+    const x = model.minSeconds === model.maxSeconds ? model.maxSeconds : Math.round(Number(v ?? Math.min(8, model.maxSeconds)));
+    if (!Number.isFinite(x) || x < model.minSeconds || x > model.maxSeconds) throw new GenError(400, "bad_seconds", `Choose a length from ${model.minSeconds} to ${model.maxSeconds} seconds.`);
+    return x;
+  };
+  const checkText = (t: string) => {
+    if (t.length < 3) throw new GenError(400, "bad_prompt", "Describe the video you want.");
+    if (t.length > 2000) throw new GenError(400, "bad_prompt", "Keep the description under 2,000 characters.");
+    return t;
+  };
+  // vm_generate: one shot, or several joined into one video.
+  let shots: Shot[] | null = null;
+  if (Array.isArray(a.shots) && a.shots.length > 1) {
+    if (a.shots.length > MAX_SHOTS) throw new GenError(400, "bad_shots", `A video can have at most ${MAX_SHOTS} shots.`);
+    shots = a.shots.map((x: any) => ({ prompt: checkText(clean(x?.prompt)), seconds: lengthOf(x?.seconds) }));
+    const total = shots.reduce((t, x) => t + x.seconds, 0);
+    if (total > maxTotalSeconds()) throw new GenError(400, "bad_seconds", `All shots together can be at most ${maxTotalSeconds()} seconds.`);
   }
+  const prompt = shots ? shots.map((x, i) => `Shot ${i + 1} (${x.seconds} s): ${x.prompt}`).join("\n\n") : checkText(clean(a.prompt));
+  const seconds = shots ? shots.reduce((t, x) => t + x.seconds, 0) : lengthOf(a.seconds);
   const aspect = a.aspect === "9:16" ? "9:16" : "16:9";
   const visibility = a.visibility === "public" || a.visibility === "unlisted" ? a.visibility : "private";
-  const title = (typeof a.title === "string" && a.title.trim() ? a.title.trim() : prompt).replace(/\s+/g, " ").slice(0, 120);
+  const title = (typeof a.title === "string" && a.title.trim() ? a.title.trim() : shots ? shots[0].prompt : prompt).replace(/\s+/g, " ").slice(0, 120);
   const costUsd = Math.round(seconds * model.costUsdPerSecond * 10_000) / 10_000;
 
   const videoId = crypto.randomUUID();
@@ -169,16 +192,16 @@ export async function startGeneration(a: StartArgs): Promise<{ videoId: string; 
   const { dailyUsd } = await getGenSettings();
   // The budget is checked and taken in one statement, so two at once cannot pass it together.
   const ins = await getDb().execute({
-    sql: `INSERT INTO generations (id, wallet, video_id, model_id, prompt, seconds, aspect, status, cost_usd, created_at, updated_at)
-          SELECT ?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?, ? WHERE (${SPENT_SQL}) + ? <= ?`,
-    args: [generationId, wallet, videoId, model.id, prompt, seconds, aspect, costUsd, now, now, startOfUtcDay(now), costUsd, dailyUsd],
+    sql: `INSERT INTO generations (id, wallet, video_id, model_id, prompt, seconds, aspect, status, cost_usd, shots_json, created_at, updated_at)
+          SELECT ?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ? WHERE (${SPENT_SQL}) + ? <= ?`,
+    args: [generationId, wallet, videoId, model.id, prompt, seconds, aspect, costUsd, shots ? JSON.stringify(shots) : null, now, now, startOfUtcDay(now), costUsd, dailyUsd],
   });
   if (!ins.rowsAffected) throw new GenError(429, "budget_reached", "Video generation has reached today's limit. Try again tomorrow.");
 
   // Credits: the price per second, held until the video arrives.
   let holdId: string | null = null, costMicros = 0;
   try {
-    const r = await reserve({ wallet, action: "generate_video", quantity: seconds, videoId, key: `generate:${generationId}`, ttlMs: GIVE_UP_MS + 2 * 3600_000, now });
+    const r = await reserve({ wallet, action: "generate_video", quantity: seconds, videoId, key: `generate:${generationId}`, ttlMs: GIVE_UP_MS * (shots?.length ?? 1) + 2 * 3600_000, now });
     if (!r.free) { holdId = r.hold.id; costMicros = r.amountMicros; }
   } catch (e) {
     await getDb().execute({ sql: "UPDATE generations SET status = 'failed', error_code = 'no_credits', error = ?, finished_at = ?, updated_at = ? WHERE id = ?", args: ["Not enough credits.", now, now, generationId] });
@@ -207,11 +230,17 @@ export async function startGeneration(a: StartArgs): Promise<{ videoId: string; 
 interface GenRow {
   id: string; wallet: string; videoId: string; modelId: string; prompt: string; seconds: number; aspect: "16:9" | "9:16";
   status: string; ref: ProviderRef | null; holdId: string | null; submittedAt: number | null; createdAt: number;
+  shots: Shot[] | null; shotState: ShotState | null;
 }
+/** Where a video of several shots has got to (kept on the generation row). */
+interface ShotState { i: number; refs: Array<ProviderRef | null>; stored: boolean[]; submittedAt: Array<number | null>; secs: number[] }
+const shotKey = (videoId: string, i: number) => `videos/${videoId.toLowerCase()}/shots/${i}.mp4`;
+const shotPrefix = (videoId: string) => `videos/${videoId.toLowerCase()}/shots/`;
 const rowToGen = (r: any): GenRow => ({
   id: String(r.id), wallet: String(r.wallet), videoId: String(r.video_id), modelId: String(r.model_id), prompt: String(r.prompt),
   seconds: n(r.seconds), aspect: r.aspect === "9:16" ? "9:16" : "16:9", status: String(r.status),
   ref: r.provider_ref ? JSON.parse(String(r.provider_ref)) : null, holdId: s(r.hold_id), submittedAt: r.submitted_at == null ? null : n(r.submitted_at), createdAt: n(r.created_at),
+  shots: r.shots_json ? JSON.parse(String(r.shots_json)) : null, shotState: r.shot_state ? JSON.parse(String(r.shot_state)) : null,
 });
 async function genOfVideo(videoId: string): Promise<GenRow | null> {
   const r = await getDb().execute({ sql: "SELECT * FROM generations WHERE video_id = ?", args: [videoId] });
@@ -225,12 +254,13 @@ async function markGen(id: string, fields: Record<string, unknown>) {
 /** A generation that ended without a video: nothing charged, the video marked. */
 async function endWithout(g: GenRow, code: string, message: string) {
   const now = Date.now();
+  if (g.shots) await getStorage().deletePrefix(shotPrefix(g.videoId)).catch(() => {});
   await release(g.holdId).catch(() => {});
   await markGen(g.id, { status: "failed", error_code: code, error: message.slice(0, 1000), finished_at: now });
   await store.update(g.videoId, { status: "error" }).catch(() => {});
 }
 
-export function makeGenerateHandler(deps = { submit, check, download, cancel, now: () => Date.now(), sleep: (ms: number) => new Promise<void>((r) => setTimeout(r, ms)) }) {
+export function makeGenerateHandler(deps: Deps = defaultDeps()) {
   return async function generate(job: Job): Promise<void> {
     const g = await genOfVideo(job.videoId);
     if (!g) throw new PermanentJobError("video_gone", "This generation no longer exists.");
@@ -238,12 +268,14 @@ export function makeGenerateHandler(deps = { submit, check, download, cancel, no
     const video = await store.get(g.videoId);
     if (!video) {
       if (g.ref) await deps.cancel(g.ref).catch(() => {});
+      if (g.shots) await getStorage().deletePrefix(shotPrefix(g.videoId)).catch(() => {});
       await release(g.holdId).catch(() => {});
       await markGen(g.id, { status: "failed", error_code: "video_gone", error: "The video was deleted while it was being made.", finished_at: deps.now() });
       return;
     }
     const model = await modelById(g.modelId);
     if (!model) throw new PermanentJobError("bad_model", "The model of this generation was removed.");
+    if (g.shots) return runShots(g, model, video, job, deps);
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vm-generate-"));
     const file = path.join(dir, "generated.mp4");
     try {
@@ -292,6 +324,87 @@ export function makeGenerateHandler(deps = { submit, check, download, cancel, no
   };
 }
 
+type Deps = ReturnType<typeof defaultDeps>;
+function defaultDeps() { return { submit, check, download, cancel, now: () => Date.now(), sleep: (ms: number) => new Promise<void>((r) => setTimeout(r, ms)) }; }
+
+/**
+ * vm_generate: a video of several shots. The shots are made one after
+ * another with the same model and shape; each finished shot waits in
+ * storage, so a restart loses nothing. When all are there they are joined
+ * into the video's original and processing starts as for one shot.
+ */
+async function runShots(g: GenRow, model: ModelRow, video: VideoRecord, job: Job, deps: Deps): Promise<void> {
+  const shots = g.shots!;
+  const st: ShotState = g.shotState ?? { i: 0, refs: shots.map(() => null), stored: shots.map(() => false), submittedAt: shots.map(() => null), secs: shots.map((x) => x.seconds) };
+  const save = (extra: Record<string, unknown> = {}) => markGen(g.id, { shot_state: JSON.stringify(st), provider_ref: st.refs[st.i] ? JSON.stringify(st.refs[st.i]) : null, ...extra });
+  const storage = getStorage();
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vm-generate-"));
+  const until = deps.now() + SLICE_MS;
+  try {
+    try {
+      while (st.i < shots.length) {
+        const i = st.i, file = path.join(dir, `shot${i}.mp4`);
+        if (st.stored[i]) { st.i++; continue; }
+        let written = false;
+        if (!st.refs[i]) {
+          const r = await deps.submit(model, { prompt: shots[i].prompt, seconds: shots[i].seconds, aspect: g.aspect }, file);
+          st.refs[i] = r.ref; st.submittedAt[i] = deps.now(); written = r.written;
+          await save(g.submittedAt == null && i === 0 ? { status: "running", submitted_at: deps.now() } : { status: "running" });
+        }
+        if (!written) {
+          let state = await deps.check(st.refs[i]!);
+          while (state.state === "running" && deps.now() < until) { await deps.sleep(CHECK_EVERY_MS); state = await deps.check(st.refs[i]!); }
+          if (state.state === "running") {
+            if (deps.now() - (st.submittedAt[i] ?? deps.now()) > GIVE_UP_MS) {
+              await deps.cancel(st.refs[i]!).catch(() => {});
+              throw new PermanentJobError("timeout", `The provider did not finish shot ${i + 1} in 30 minutes.`);
+            }
+            const round = Number(job.payload?.round ?? 0) + 1;
+            await enqueueJob({ videoId: g.videoId, kind: GENERATE_JOB, key: `${g.videoId}:${GENERATE_JOB}:${round}`, payload: { round }, runAfter: deps.now() + 10_000 });
+            return;
+          }
+          const got = await deps.download(st.refs[i]!, file);
+          if (got.seconds != null) st.secs[i] = Math.min(shots[i].seconds, Math.ceil(got.seconds));
+        }
+        if (!(await fs.stat(file).catch(() => null))?.size) throw new Error(`The provider sent an empty file for shot ${i + 1}.`);
+        await storage.moveIn(shotKey(g.videoId, i), file, { contentType: "video/mp4" });
+        st.stored[i] = true; st.i++;
+        await save();
+        // Another shot is started straight away while there is time left in this job.
+        if (st.i < shots.length && deps.now() >= until) {
+          const round = Number(job.payload?.round ?? 0) + 1;
+          await enqueueJob({ videoId: g.videoId, kind: GENERATE_JOB, key: `${g.videoId}:${GENERATE_JOB}:${round}`, payload: { round }, runAfter: deps.now() + 1000 });
+          return;
+        }
+      }
+      // All shots are in storage: join them.
+      const files: string[] = [];
+      for (let i = 0; i < shots.length; i++) {
+        const local = path.join(dir, `in${i}.mp4`);
+        await storage.withLocalFile(shotKey(g.videoId, i), (f) => fs.copyFile(f, local));
+        files.push(local);
+      }
+      const out = path.join(dir, "joined.mp4");
+      const how = await joinShots(files, out, dir);
+      const stat = await fs.stat(out);
+      await saveOriginal({ videoId: g.videoId, filePath: out, ext: ".mp4", contentType: "video/mp4", ownerWallet: g.wallet });
+      await storage.deletePrefix(shotPrefix(g.videoId)).catch((e) => console.error(`[generate] removing the shots of ${g.videoId}: ${e?.message ?? e}`));
+      const secs = st.secs.reduce((t, x) => t + x, 0);
+      await settle(g.holdId, { quantity: secs }).catch((e) => console.error(`[generate] settling ${g.id}: ${e?.message ?? e}`));
+      await markGen(g.id, { status: "succeeded", finished_at: deps.now(), bytes: stat.size, shot_state: JSON.stringify(st), expanded_prompt: `joined: ${how}` });
+      await enqueueJob({ videoId: g.videoId, kind: "inspect" });
+      const { created } = await enqueueJob({ videoId: g.videoId, kind: "transcribe" });
+      await store.update(g.videoId, { status: created ? "transcribing" : video.status, meta: { ...video.meta, sizeBytes: stat.size } });
+      nudgeRunner();
+    } catch (e: any) {
+      if (e instanceof GenRefused) throw new PermanentJobError(e.code, `Shot ${st.i + 1}: ${e.message}`);
+      throw e;
+    }
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 /** The job failed for good: nothing charged, the video shows the failure. Called by the pipeline's final failure hook. */
 export async function generationGaveUp(job: Job, f: { error: string; code: string }) {
   const g = await genOfVideo(job.videoId);
@@ -304,6 +417,7 @@ export async function releaseGeneration(videoId: string) {
   const g = await genOfVideo(videoId);
   if (!g || g.status === "succeeded" || g.status === "failed") return;
   if (g.ref) await cancel(g.ref).catch(() => {});
+  if (g.shots) await getStorage().deletePrefix(shotPrefix(g.videoId)).catch(() => {});
   await release(g.holdId).catch(() => {});
   await markGen(g.id, { status: "failed", error_code: "video_gone", error: "The video was deleted while it was being made.", finished_at: Date.now() });
 }
@@ -314,8 +428,12 @@ export async function generationOf(videoId: string, forOwner: boolean) {
   const g = await getDb().execute({ sql: "SELECT g.*, m.label FROM generations g LEFT JOIN gen_models m ON m.id = g.model_id WHERE g.video_id = ?", args: [videoId] });
   const r = g.rows[0] as any;
   if (!r) return null;
+  const shots = r.shots_json ? (JSON.parse(String(r.shots_json)) as Shot[]).length : 1;
+  const st = r.shot_state ? (JSON.parse(String(r.shot_state)) as ShotState) : null;
   return { model: s(r.label) ?? String(r.model_id), seconds: n(r.seconds), aspect: String(r.aspect), status: String(r.status),
-    prompt: forOwner ? String(r.prompt) : null, errorCode: forOwner ? s(r.error_code) : null, createdAt: n(r.created_at) };
+    prompt: forOwner ? String(r.prompt) : null, errorCode: forOwner ? s(r.error_code) : null, createdAt: n(r.created_at),
+    // vm_generate: a video of several shots says how far it has got
+    shots, shotsDone: st ? st.stored.filter(Boolean).length : r.status === "succeeded" ? shots : 0 };
 }
 
 /** What the generate page needs: may this wallet generate, the models, and the price. */
@@ -325,6 +443,8 @@ export async function generateInfo(walletIn: string | null | undefined) {
     allowed,
     budgetReached: settings.dailyUsd <= spent,
     models: models.filter((m) => m.enabled && m.ready).map((m) => ({ id: m.id, label: m.label, minSeconds: m.minSeconds, maxSeconds: m.maxSeconds, resolution: m.resolution })),
+    // vm_generate: the limits of a video of several shots
+    maxShots: MAX_SHOTS, maxTotalSeconds: maxTotalSeconds(),
   };
 }
 

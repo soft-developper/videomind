@@ -437,7 +437,26 @@
       }
     },
     "example": "Las descripciones cortas y concretas funcionan mejor que largas listas de estilos.",
-    "after": "El modelo tarda entre un minuto y unos minutos. Puedes salir de la página; el video aparece en tu biblioteca."
+    "after": "El modelo tarda entre un minuto y unos minutos. Puedes salir de la página; el video aparece en tu biblioteca.",
+    "modeLabel": "Una toma o varias",
+    "modeOne": "Una toma",
+    "modeShots": "Varias tomas",
+    "ideaLabel": "Tu idea",
+    "ideaHint": "Describe el video completo. Se crea en hasta {max} tomas, como mucho {total} segundos en total, y se unen en orden.",
+    "directShots": "Que la IA planee las tomas",
+    "howMany": "Tomas:",
+    "aiDecides": "La IA decide",
+    "chosenShots": "La IA eligió {model}, {count} tomas, {n} segundos en total, {shape}. {why}",
+    "shotsTitle": "Tomas",
+    "shotsEmpty": "Deja que la IA planee las tomas a partir de tu idea, o añádelas tú.",
+    "shot": "Toma {n}",
+    "shotLength": "Duración de la toma {n}",
+    "removeShot": "Quitar la toma {n}",
+    "addShot": "Añadir una toma",
+    "total": "{n} de {max} segundos",
+    "shotsHint": "Cada toma se crea por separado, así que describe a las mismas personas y el mismo lugar igual en cada toma.",
+    "shotsFirst": "Añade al menos dos tomas",
+    "startShots": "Crear el video ({count} tomas)"
   },
   "upload": {
     "wallet": {
@@ -498,7 +517,11 @@
     "chooseFirst": "Primero elige un video",
     "addTitle": "Añade un título",
     "upload": "Subir",
-    "shelbyOnlyWarning": "Este video es público, así que cuando Shelby lo confirme, VideoMind borrará su propia copia y el video se reproducirá solo desde Shelby. La red de prueba de Shelby se reinicia más o menos una vez por semana y el almacenamiento dura 30 días: después de un reinicio o cuando terminen los 30 días, el video no se podrá reproducir hasta que lo guardes de nuevo desde tu propia copia del archivo. Conserva tu archivo."
+    "shelbyOnlyWarning": "Este video es público, así que cuando Shelby lo confirme, VideoMind borrará su propia copia y el video se reproducirá solo desde Shelby. La red de prueba de Shelby se reinicia más o menos una vez por semana y el almacenamiento dura 30 días: después de un reinicio o cuando terminen los 30 días, el video no se podrá reproducir hasta que lo guardes de nuevo desde tu propia copia del archivo. Conserva tu archivo.",
+    "useLibrary": "Usar la copia de tu biblioteca",
+    "readingLibrary": "Leyendo la copia de tu biblioteca",
+    "libraryOr": "o elige el mismo archivo de tu dispositivo abajo.",
+    "libraryFailed": "No se pudo leer la copia de tu biblioteca. Elige el archivo de tu dispositivo."
   },
   "info": {
     "removeTag": "Quitar la etiqueta {tag}",
@@ -904,7 +927,8 @@
       },
       "yourPrompt": "Tu descripción: {prompt}",
       "again": "Escribir una nueva descripción",
-      "updates": "Esto se actualiza solo. Crear un video tarda entre un minuto y unos minutos."
+      "updates": "Esto se actualiza solo. Crear un video tarda entre un minuto y unos minutos.",
+      "shotOf": "Toma {n} de {total}"
     }
   },
   "proof": {

@@ -5,6 +5,8 @@ import { getSession, setSession } from "./session";
 import { localize } from "./errorText";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+/** vm_generate: an address the API gave, made absolute (local storage answers with a path). */
+export const apiAddress = (u: string) => new URL(u, BASE).toString();
 
 export const api = axios.create({ baseURL: BASE, timeout: 120_000 });
 
@@ -636,10 +638,15 @@ export const getAnalytics = (days: AnalyticsRange, videoId?: string | null) =>
   call<Analytics>(() => raw.get("/api/me/analytics", { params: { days, ...(videoId ? { video: videoId } : {}) } }));
 
 // ── vm_generate: videos made from a prompt (Part 17b2) ─────────────────────
-export interface Generated { model: string; seconds: number; aspect: string; status: "queued" | "running" | "succeeded" | "failed"; prompt: string | null; errorCode: string | null; createdAt: number }
-export interface GenerateInfo { allowed: boolean; budgetReached: boolean; models: Array<{ id: string; label: string; minSeconds: number; maxSeconds: number; resolution: string }> }
+export interface Generated { model: string; seconds: number; aspect: string; status: "queued" | "running" | "succeeded" | "failed"; prompt: string | null; errorCode: string | null; createdAt: number;
+  /** vm_generate: how many shots, and how many are made */
+  shots?: number; shotsDone?: number }
+export interface GenerateInfo { allowed: boolean; budgetReached: boolean; models: Array<{ id: string; label: string; minSeconds: number; maxSeconds: number; resolution: string }>; maxShots?: number; maxTotalSeconds?: number }
+export interface ShotInput { prompt: string; seconds: number }
 export const getGenerateInfo = () => call<GenerateInfo>(() => raw.get("/api/generate"));
-export const startGeneration = (b: { prompt: string; modelId: string; seconds: number; aspect: "16:9" | "9:16"; title?: string; visibility: "private" | "unlisted" | "public" }) =>
+export const startGeneration = (b: { prompt: string; modelId: string; seconds: number; aspect: "16:9" | "9:16"; title?: string; visibility: "private" | "unlisted" | "public"; shots?: ShotInput[] }) =>
   call<{ videoId: string; generationId: string; costMicros: number }>(() => raw.post("/api/generate", b));
 export interface Direction { modelId: string; seconds: number; aspect: "16:9" | "9:16"; prompt: string; title: string; why: string; problem: string | null }
 export const directGeneration = (b: { idea: string; aspect?: string; seconds?: number; modelId?: string }) => call<Direction>(() => raw.post("/api/generate/direct", b));
+export interface StoryDirection { modelId: string; aspect: "16:9" | "9:16"; title: string; why: string; problem: string | null; shots: ShotInput[] }
+export const directStory = (b: { idea: string; aspect?: string; modelId?: string; shots?: number }) => call<StoryDirection>(() => raw.post("/api/generate/direct", { ...b, mode: "story" }));

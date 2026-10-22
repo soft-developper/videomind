@@ -437,7 +437,26 @@
       }
     },
     "example": "Short, concrete descriptions work better than long lists of styles.",
-    "after": "The model takes from about a minute to a few minutes. You can leave the page; the video appears in your library."
+    "after": "The model takes from about a minute to a few minutes. You can leave the page; the video appears in your library.",
+    "modeLabel": "One shot or several",
+    "modeOne": "One shot",
+    "modeShots": "Several shots",
+    "ideaLabel": "Your idea",
+    "ideaHint": "Describe the whole video. It is made in up to {max} shots, at most {total} seconds together, and joined in order.",
+    "directShots": "Let AI plan the shots",
+    "howMany": "Shots:",
+    "aiDecides": "AI decides",
+    "chosenShots": "AI chose {model}, {count} shots, {n} seconds in all, {shape}. {why}",
+    "shotsTitle": "Shots",
+    "shotsEmpty": "Let AI plan the shots from your idea, or add them yourself.",
+    "shot": "Shot {n}",
+    "shotLength": "Length of shot {n}",
+    "removeShot": "Remove shot {n}",
+    "addShot": "Add a shot",
+    "total": "{n} of {max} seconds",
+    "shotsHint": "Each shot is made on its own, so describe the same people and place the same way in every shot.",
+    "shotsFirst": "Add at least two shots",
+    "startShots": "Make the video ({count} shots)"
   },
   "upload": {
     "wallet": {
@@ -498,7 +517,11 @@
     "chooseFirst": "Choose a video first",
     "addTitle": "Add a title",
     "upload": "Upload",
-    "shelbyOnlyWarning": "This video is public, so once Shelby confirms it, VideoMind deletes its own copy and the video plays from Shelby only. Shelby's test network is reset about once a week and storage lasts 30 days: after a reset or when the 30 days end, the video cannot play until you store it again from your own copy of the file. Keep your file."
+    "shelbyOnlyWarning": "This video is public, so once Shelby confirms it, VideoMind deletes its own copy and the video plays from Shelby only. Shelby's test network is reset about once a week and storage lasts 30 days: after a reset or when the 30 days end, the video cannot play until you store it again from your own copy of the file. Keep your file.",
+    "useLibrary": "Use the copy in your library",
+    "readingLibrary": "Reading the copy in your library",
+    "libraryOr": "or choose the same file from your device below.",
+    "libraryFailed": "The copy in your library could not be read. Choose the file from your device instead."
   },
   "info": {
     "removeTag": "Remove tag {tag}",
@@ -904,7 +927,8 @@
       },
       "yourPrompt": "Your description: {prompt}",
       "again": "Write a new description",
-      "updates": "This updates by itself. Making a video takes from about a minute to a few minutes."
+      "updates": "This updates by itself. Making a video takes from about a minute to a few minutes.",
+      "shotOf": "Shot {n} of {total}"
     }
   },
   "proof": {

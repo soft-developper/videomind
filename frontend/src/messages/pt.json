@@ -437,7 +437,26 @@
       }
     },
     "example": "Descrições curtas e concretas funcionam melhor do que longas listas de estilos.",
-    "after": "O modelo leva de cerca de um minuto a alguns minutos. Você pode sair da página; o vídeo aparece na sua biblioteca."
+    "after": "O modelo leva de cerca de um minuto a alguns minutos. Você pode sair da página; o vídeo aparece na sua biblioteca.",
+    "modeLabel": "Uma cena ou várias",
+    "modeOne": "Uma cena",
+    "modeShots": "Várias cenas",
+    "ideaLabel": "Sua ideia",
+    "ideaHint": "Descreva o vídeo inteiro. Ele é criado em até {max} cenas, no máximo {total} segundos ao todo, e unido na ordem.",
+    "directShots": "Deixar a IA planejar as cenas",
+    "howMany": "Cenas:",
+    "aiDecides": "A IA decide",
+    "chosenShots": "A IA escolheu {model}, {count} cenas, {n} segundos ao todo, {shape}. {why}",
+    "shotsTitle": "Cenas",
+    "shotsEmpty": "Deixe a IA planejar as cenas a partir da sua ideia, ou adicione você mesmo.",
+    "shot": "Cena {n}",
+    "shotLength": "Duração da cena {n}",
+    "removeShot": "Remover a cena {n}",
+    "addShot": "Adicionar uma cena",
+    "total": "{n} de {max} segundos",
+    "shotsHint": "Cada cena é criada separadamente, então descreva as mesmas pessoas e o mesmo lugar do mesmo jeito em todas as cenas.",
+    "shotsFirst": "Adicione pelo menos duas cenas",
+    "startShots": "Criar o vídeo ({count} cenas)"
   },
   "upload": {
     "wallet": {
@@ -498,7 +517,11 @@
     "chooseFirst": "Escolha um vídeo primeiro",
     "addTitle": "Adicione um título",
     "upload": "Enviar",
-    "shelbyOnlyWarning": "Este vídeo é público, então quando a Shelby o confirmar, o VideoMind apaga a própria cópia e o vídeo passa a ser reproduzido só pela Shelby. A rede de teste da Shelby é reiniciada mais ou menos uma vez por semana e o armazenamento dura 30 dias: depois de um reinício ou quando os 30 dias terminarem, o vídeo não poderá ser reproduzido até você guardar o vídeo de novo a partir da sua própria cópia do arquivo. Guarde o seu arquivo."
+    "shelbyOnlyWarning": "Este vídeo é público, então quando a Shelby o confirmar, o VideoMind apaga a própria cópia e o vídeo passa a ser reproduzido só pela Shelby. A rede de teste da Shelby é reiniciada mais ou menos uma vez por semana e o armazenamento dura 30 dias: depois de um reinício ou quando os 30 dias terminarem, o vídeo não poderá ser reproduzido até você guardar o vídeo de novo a partir da sua própria cópia do arquivo. Guarde o seu arquivo.",
+    "useLibrary": "Usar a cópia da sua biblioteca",
+    "readingLibrary": "Lendo a cópia da sua biblioteca",
+    "libraryOr": "ou escolha o mesmo arquivo do seu dispositivo abaixo.",
+    "libraryFailed": "Não foi possível ler a cópia da sua biblioteca. Escolha o arquivo do seu dispositivo."
   },
   "info": {
     "removeTag": "Remover a tag {tag}",
@@ -904,7 +927,8 @@
       },
       "yourPrompt": "Sua descrição: {prompt}",
       "again": "Escrever uma nova descrição",
-      "updates": "Isto se atualiza sozinho. Criar um vídeo leva de cerca de um minuto a alguns minutos."
+      "updates": "Isto se atualiza sozinho. Criar um vídeo leva de cerca de um minuto a alguns minutos.",
+      "shotOf": "Cena {n} de {total}"
     }
   },
   "proof": {

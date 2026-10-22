@@ -437,7 +437,26 @@
       }
     },
     "example": "Des descriptions courtes et concrètes marchent mieux que de longues listes de styles.",
-    "after": "Le modèle met d’environ une minute à quelques minutes. Vous pouvez quitter la page ; la vidéo apparaît dans votre bibliothèque."
+    "after": "Le modèle met d’environ une minute à quelques minutes. Vous pouvez quitter la page ; la vidéo apparaît dans votre bibliothèque.",
+    "modeLabel": "Un plan ou plusieurs",
+    "modeOne": "Un plan",
+    "modeShots": "Plusieurs plans",
+    "ideaLabel": "Votre idée",
+    "ideaHint": "Décrivez la vidéo entière. Elle est créée en {max} plans au plus, {total} secondes au total au maximum, puis assemblée dans l’ordre.",
+    "directShots": "Laisser l’IA prévoir les plans",
+    "howMany": "Plans :",
+    "aiDecides": "L’IA décide",
+    "chosenShots": "L’IA a choisi {model}, {count} plans, {n} secondes en tout, {shape}. {why}",
+    "shotsTitle": "Plans",
+    "shotsEmpty": "Laissez l’IA prévoir les plans à partir de votre idée, ou ajoutez les plans vous même.",
+    "shot": "Plan {n}",
+    "shotLength": "Durée du plan {n}",
+    "removeShot": "Retirer le plan {n}",
+    "addShot": "Ajouter un plan",
+    "total": "{n} secondes sur {max}",
+    "shotsHint": "Chaque plan est créé séparément : décrivez les mêmes personnes et le même lieu de la même façon dans chaque plan.",
+    "shotsFirst": "Ajoutez au moins deux plans",
+    "startShots": "Créer la vidéo ({count} plans)"
   },
   "upload": {
     "wallet": {
@@ -498,7 +517,11 @@
     "chooseFirst": "Choisissez d’abord une vidéo",
     "addTitle": "Ajoutez un titre",
     "upload": "Importer",
-    "shelbyOnlyWarning": "Cette vidéo est publique : dès que Shelby la confirme, VideoMind supprime sa propre copie et la vidéo est lue uniquement depuis Shelby. Le réseau de test de Shelby est réinitialisé environ une fois par semaine et le stockage dure 30 jours : après une réinitialisation ou à la fin des 30 jours, la vidéo ne peut plus être lue tant que vous ne la stockez pas à nouveau depuis votre propre copie du fichier. Gardez votre fichier."
+    "shelbyOnlyWarning": "Cette vidéo est publique : dès que Shelby la confirme, VideoMind supprime sa propre copie et la vidéo est lue uniquement depuis Shelby. Le réseau de test de Shelby est réinitialisé environ une fois par semaine et le stockage dure 30 jours : après une réinitialisation ou à la fin des 30 jours, la vidéo ne peut plus être lue tant que vous ne la stockez pas à nouveau depuis votre propre copie du fichier. Gardez votre fichier.",
+    "useLibrary": "Utiliser la copie de votre bibliothèque",
+    "readingLibrary": "Lecture de la copie de votre bibliothèque",
+    "libraryOr": "ou choisissez le même fichier sur votre appareil plus bas.",
+    "libraryFailed": "La copie de votre bibliothèque n’a pas pu être lue. Choisissez plutôt le fichier sur votre appareil."
   },
   "info": {
     "removeTag": "Retirer l’étiquette {tag}",
@@ -904,7 +927,8 @@
       },
       "yourPrompt": "Votre description : {prompt}",
       "again": "Écrire une nouvelle description",
-      "updates": "Cette page se met à jour toute seule. Créer une vidéo prend d’environ une minute à quelques minutes."
+      "updates": "Cette page se met à jour toute seule. Créer une vidéo prend d’environ une minute à quelques minutes.",
+      "shotOf": "Plan {n} sur {total}"
     }
   },
   "proof": {

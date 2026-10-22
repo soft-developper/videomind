@@ -760,6 +760,14 @@ const MIGRATIONS: Migration[] = [
       `INSERT INTO action_prices (id, label, unit, micros_per_unit, position, updated_at) VALUES ('generate_video', 'Generating a video', 'second', 0, 8, 0)`,
     ],
   },
+  {
+    // vm_generate: a video of several shots, made one after another and joined (Part 17c3)
+    id: "028_generation_shots",
+    statements: [
+      `ALTER TABLE generations ADD COLUMN shots_json TEXT`,
+      `ALTER TABLE generations ADD COLUMN shot_state TEXT`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {
