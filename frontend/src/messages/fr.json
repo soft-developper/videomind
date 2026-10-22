@@ -2189,7 +2189,8 @@
     "capReached": "Vous avez atteint votre limite de dépenses mensuelle de {amount}. Vous pouvez la relever dans la page Portefeuille.",
     "capProcessing": "Votre limite de dépenses mensuelle est atteinte, cette vidéo n’a donc pas été traitée. Relevez la limite dans la page Portefeuille, puis réessayez.",
     "capCaptions": "Sous titres arrêtés : votre limite de dépenses mensuelle est atteinte. Relevez votre limite dans la page Portefeuille, puis réactivez les sous titres.",
-    "capGeneration": "Limite de dépenses mensuelle atteinte."
+    "capGeneration": "Limite de dépenses mensuelle atteinte.",
+    "providerPaused": "Cette fonction est en pause pour l’instant : VideoMind a atteint son budget mensuel pour elle. Réessayez plus tard."
   },
   "notFound": {
     "title": "Cette page est introuvable",

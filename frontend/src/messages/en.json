@@ -2189,7 +2189,8 @@
     "capReached": "You reached your monthly spending limit of {amount}. Raise it on the Wallet page.",
     "capProcessing": "Your monthly spending limit is reached, so this video was not processed. Raise the limit on the Wallet page, then try again.",
     "capCaptions": "Captions stopped: your monthly spending limit is reached. Raise it on the Wallet page, then turn captions on again.",
-    "capGeneration": "Monthly spending limit reached."
+    "capGeneration": "Monthly spending limit reached.",
+    "providerPaused": "This is paused for now: VideoMind reached its monthly budget for it. Try again later."
   },
   "notFound": {
     "title": "This page was not found",

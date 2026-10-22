@@ -51,6 +51,10 @@ export default function OverviewPage() {
     o.youtube.failed30 && `${num(o.youtube.failed30)} YouTube ${o.youtube.failed30 === 1 ? "upload" : "uploads"} failed in the last 30 days`,
     ...o.health.filter((h) => !h.ok && !h.optional).map((h) => `${h.name}: ${h.note}`),
     // vm_pricing: only while charging is on (with it off everything is free on purpose)
+    // vm_budgets
+    ...(o.budgets ?? []).map((b) => b.paused
+      ? `${b.label} is paused: its monthly budget of ${dollars(Math.round((b.monthlyUsd ?? 0) * 1e6))} is spent. See Costs, Provider budgets`
+      : `${b.label} has used over 80% of its monthly budget (${dollars(Math.round(b.spentUsd * 1e6))} of ${dollars(Math.round((b.monthlyUsd ?? 0) * 1e6))})`),
     o.pricing?.charging && o.pricing.belowCost.length > 0 && `${num(o.pricing.belowCost.length)} ${o.pricing.belowCost.length === 1 ? "price is" : "prices are"} below cost${o.pricing.lossMicros > 0 ? `, ${dollars(o.pricing.lossMicros)} lost this month` : ""}. See Credits, Prices`,
   ].filter(Boolean) as string[] : [];
 

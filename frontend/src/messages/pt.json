@@ -2189,7 +2189,8 @@
     "capReached": "Você atingiu seu limite de gastos mensal de {amount}. Aumente na página Carteira.",
     "capProcessing": "Seu limite de gastos mensal foi atingido, então este vídeo não foi processado. Aumente o limite na página Carteira e tente de novo.",
     "capCaptions": "Legendas paradas: seu limite de gastos mensal foi atingido. Aumente na página Carteira e ligue as legendas de novo.",
-    "capGeneration": "Limite de gastos mensal atingido."
+    "capGeneration": "Limite de gastos mensal atingido.",
+    "providerPaused": "Isto está em pausa por enquanto: o VideoMind atingiu o orçamento mensal para este recurso. Tente mais tarde."
   },
   "notFound": {
     "title": "Esta página não foi encontrada",

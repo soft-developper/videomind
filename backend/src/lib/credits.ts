@@ -312,8 +312,32 @@ export async function refundCharge(entryId: string, body: unknown, adminEmail: s
 const DEFAULT_HOLD_MS = 6 * 3600_000;
 const MAX_HOLD_MS = 7 * 24 * 3600_000;
 
+// ── vm_budgets: provider budgets (Part 20e) ──────────────────────────────────
+// Each paid action uses one or more providers. When VideoMind's monthly budget
+// for a provider is spent (lib/budgets.ts marks it paused), actions using it
+// are refused before anything is held, also while charging is off.
+export const ACTION_PROVIDERS: Record<string, string[]> = {
+  process_video: ["openai", "anthropic"], ask: ["anthropic"], search: ["openai"], learn_paths: ["anthropic"], learn_ask: ["anthropic"],
+  live_captions: ["openai"], translate: ["anthropic"], generate_direct: ["anthropic"], live: ["livekit"],
+  // generate_video: the model's own provider, passed by the caller
+};
+export const PROVIDER_PAUSED = "This is paused for now: VideoMind reached its monthly budget for it. Try again later.";
+const monthKey = (now: number) => new Date(now).toISOString().slice(0, 7);
+
+/** Throws CreditsError 503 provider_paused when one of these providers is paused this month. */
+export async function assertProvidersOpen(providers: string[], now = Date.now()): Promise<void> {
+  if (!providers.length) return;
+  const r = await getDb().execute({
+    sql: `SELECT provider FROM provider_budgets WHERE paused_month = ? AND provider IN (${providers.map(() => "?").join(",")}) LIMIT 1`,
+    args: [monthKey(now), ...providers],
+  });
+  if (r.rows.length) throw new CreditsError(503, "provider_paused", PROVIDER_PAUSED);
+}
+
 export interface ReserveArgs {
   wallet: string; action: string; quantity: number;
+  /** vm_budgets: the providers this action uses, when they are not the action's usual ones (generation). */
+  providers?: string[];
   videoId?: string | null; jobId?: string | null;
   /** The same key a second time gives back the first hold, so a retried request never holds twice. */
   key?: string | null;
@@ -333,6 +357,8 @@ export async function reserve(a: ReserveArgs): Promise<Reservation> {
   const wallet = walletOf(a.wallet);
   const quantity = Number(a.quantity);
   if (!Number.isFinite(quantity) || quantity < 0) throw new CreditsError(400, "bad_quantity", "The quantity must be 0 or more.");
+  // vm_budgets: before anything else, also while charging is off
+  await assertProvidersOpen(a.providers ?? ACTION_PROVIDERS[a.action] ?? [], a.now ?? Date.now());
   const [settings, price] = await Promise.all([
     getCreditSettings(),
     getDb().execute({ sql: "SELECT * FROM action_prices WHERE id = ?", args: [a.action] }).then((r) => (r.rows[0] ? rowToActionPrice(r.rows[0]) : null)),

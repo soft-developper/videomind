@@ -45,6 +45,7 @@ import {
   getProcessMinMinutes, setProcessMinMinutes,
 } from "../lib/credits.js";
 // vm_pricing: suggested prices and the platform fee (Part 20a)
+import { checkBudgets, listBudgets, setBudget } from "../lib/budgets.js";
 import { pricingReport, setFeePercent, applySuggestion, applyAllSuggestions, listEstimates, updateEstimate } from "../lib/pricing.js";
 import { treasuryAddress, TOPUP_NETWORK } from "../lib/topup.js";
 // vm_storagecharge: storage kept and owed (Part 16e)
@@ -354,10 +355,12 @@ router.get("/audit", requireAdmin, async (req, res) => {
 //   POST /costs/prices/:id             change a price { usd, longUsd, freePerMonth }
 //   POST /costs/fixed                  add a fixed monthly cost { name, usdPerMonth, note }
 //   POST /costs/fixed/:id/delete       remove one
+//   POST /costs/budgets/:provider      vm_budgets: a provider's monthly budget { usd: number | null }
 router.get("/costs", requireAdmin, async (req, res) => {
   try {
-    const [report, months, prices] = await Promise.all([monthReport(req.query.month), monthsWithUsage(), listPrices()]);
-    return res.json({ ...report, months, prices });
+    // vm_budgets: measured again on each visit, so the page is current
+    const [report, months, prices, budgets] = await Promise.all([monthReport(req.query.month), monthsWithUsage(), listPrices(), checkBudgets().catch(() => listBudgets())]);
+    return res.json({ ...report, months, prices, budgets });
   } catch (err) { fail(res, err, "Loading the costs"); }
 });
 router.post("/costs/prices/:id", requireAdmin, async (req, res) => {
@@ -366,6 +369,14 @@ router.post("/costs/prices/:id", requireAdmin, async (req, res) => {
     await audit(me(res), "price_changed", p.id, { model: p.model, metric: p.metric, usd: p.usd, longUsd: p.longUsd, freePerMonth: p.freePerMonth });
     return res.json(p);
   } catch (err) { fail(res, err, "Changing the price"); }
+});
+router.post("/costs/budgets/:provider", requireAdmin, async (req, res) => {
+  try {
+    const budgets = await setBudget(req.params.provider, req.body, me(res)!.email);
+    const b = budgets.find((x) => x.provider === req.params.provider)!;
+    await audit(me(res), "budget_changed", b.provider, { usd: b.monthlyUsd });
+    return res.json({ budgets });
+  } catch (err) { fail(res, err, "Changing the budget"); }
 });
 router.post("/costs/fixed", requireAdmin, async (req, res) => {
   try { const f = await addFixed(req.body); await audit(me(res), "fixed_cost_added", f.id, { name: f.name, usdPerMonth: f.usdPerMonth }); return res.status(201).json(f); }

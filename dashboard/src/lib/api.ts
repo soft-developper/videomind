@@ -54,6 +54,8 @@ export interface Overview {
   adminActivity: Array<{ id: number; at: number; email: string | null; action: string; target: string | null; detail: Record<string, unknown> | null }>;
   /** vm_pricing: actions priced below cost, and what that cost this month. */
   pricing: { charging: boolean; belowCost: string[]; lossMicros: number } | null;
+  /** vm_budgets: providers paused or past 80% of their budget this month. */
+  budgets?: Array<{ provider: string; label: string; paused: boolean; spentUsd: number; monthlyUsd: number | null }>;
 }
 export const getOverview = () => call<Overview>("GET", "/overview");
 
@@ -188,7 +190,14 @@ export interface CostReport {
   storage: { gbMonths: number; freeGbMonths: number };
   unpriced: Array<{ provider: string; model: string; metric: string; quantity: number }>;
   fixed: FixedCost[]; months: string[]; prices: Price[];
+  /** vm_budgets: VideoMind's monthly budget per provider, this month. */
+  budgets: ProviderBudget[];
 }
+export interface ProviderBudget {
+  provider: string; label: string; features: string; monthlyUsd: number | null; spentUsd: number; share: number | null;
+  warned: boolean; paused: boolean; checkedAt: number | null; updatedAt: number | null; updatedBy: string | null;
+}
+export const setProviderBudget = (provider: string, usd: string | null) => call<{ budgets: ProviderBudget[] }>("POST", `/costs/budgets/${encodeURIComponent(provider)}`, { usd });
 export const getCosts = (month?: string) => call<CostReport>("GET", `/costs${month ? `?month=${encodeURIComponent(month)}` : ""}`);
 export const updatePrice = (id: string, change: { usd?: number; longUsd?: number | null; freePerMonth?: number }) => call<Price>("POST", `/costs/prices/${encodeURIComponent(id)}`, change);
 export const addFixedCost = (name: string, usdPerMonth: number, note: string) => call<FixedCost>("POST", "/costs/fixed", { name, usdPerMonth, note });

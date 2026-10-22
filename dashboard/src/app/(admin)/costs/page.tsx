@@ -4,12 +4,17 @@
 // in the usage ledger and the prices in an editable table (seeded from each
 // provider's official pricing page). Fixed monthly costs, such as hosting,
 // are added by hand. Charging users stays parked.
+//
+// vm_budgets (Part 20e): VideoMind's monthly budget per provider. At 80% the
+// admins get an email; when a budget is spent, the features using that
+// provider pause for everyone until the budget is raised or the month ends.
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
+import { clsx } from "clsx";
 import { useAdmin } from "@/components/Shell";
 import { Note } from "@/components/AuthCard";
-import { ApiError, getCosts, updatePrice, addFixedCost, removeFixedCost, type CostReport, type Price } from "@/lib/api";
+import { ApiError, getCosts, updatePrice, addFixedCost, removeFixedCost, setProviderBudget, type CostReport, type Price, type ProviderBudget } from "@/lib/api";
 import { featureLabel } from "@/lib/actions";
 import { num, tokens, day, short } from "@/lib/format";
 
@@ -91,6 +96,42 @@ function PriceRow({ p, onSaved, onError }: { p: Price; onSaved: (p: Price) => vo
       </td>
       <td className="py-2 pr-4 text-right">
         <button onClick={() => void save()} disabled={!changed || busy} className="btn btn-ghost h-8 px-3 text-[13px] no-min">{busy ? "Saving" : "Save"}</button>
+      </td>
+    </tr>
+  );
+}
+
+/** vm_budgets: one provider's budget, this month's spending, and its state. */
+function BudgetRow({ b, onSaved, onError }: { b: ProviderBudget; onSaved: (m: string) => void; onError: (m: string) => void }) {
+  const shown = b.monthlyUsd == null ? "" : String(b.monthlyUsd);
+  const [v, setV] = useState(shown);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setV(b.monthlyUsd == null ? "" : String(b.monthlyUsd)); }, [b.monthlyUsd]);
+  const save = async () => {
+    const t = v.trim();
+    if (t !== "" && (!Number.isFinite(Number(t)) || Number(t) < 0)) return onError("Write the budget as a number of US dollars, or leave it empty for no budget.");
+    setBusy(true);
+    try { await setProviderBudget(b.provider, t === "" ? null : t); onSaved(t === "" ? `${b.label} has no budget now.` : `The ${b.label} budget is now $${Number(t).toFixed(2)} a month.`); }
+    catch (e) { onError(msg(e)); } finally { setBusy(false); }
+  };
+  const pct = b.share == null ? null : Math.min(999, Math.round(b.share * 100));
+  return (
+    <tr className={clsx("border-t border-rule align-top", b.paused && "bg-error/5")} data-budget={b.provider} data-budget-state={b.paused ? "paused" : b.warned ? "warned" : "ok"}>
+      <td className="py-2 pr-4">
+        <span className="text-paper">{b.label}</span>
+        <p className="text-[12px] text-dim max-w-[320px]">{b.features}</p>
+      </td>
+      <td className="py-2 pr-4 tabular-nums text-paper-2 whitespace-nowrap">{usd(b.spentUsd)}</td>
+      <td className="py-2 pr-4">
+        <div className="flex items-center gap-1.5">
+          <span className="text-dim">$</span>
+          <input value={v} onChange={(e) => setV(e.target.value)} inputMode="decimal" placeholder="No budget" className="h-8 px-2 w-28 text-[13.5px] tabular-nums" aria-label={`Monthly budget for ${b.label}`} />
+          <button onClick={() => void save()} disabled={busy || v.trim() === shown} className="btn btn-ghost h-8 px-3 text-[13px] no-min">Save</button>
+        </div>
+        {b.updatedBy && <p className="text-[12px] text-dim mt-1">Changed {day(b.updatedAt ?? 0)} by {b.updatedBy}</p>}
+      </td>
+      <td className={clsx("py-2 pr-4 text-[13px] whitespace-nowrap", b.paused ? "text-error" : b.warned ? "text-warn" : "text-paper-2")} data-budget-status>
+        {b.monthlyUsd == null ? <span className="text-dim">No budget</span> : b.paused ? `Paused, ${pct}% used` : `${pct}% used${b.warned ? ", over 80%" : ""}`}
       </td>
     </tr>
   );
@@ -196,6 +237,15 @@ export default function CostsPage() {
               )}
             </Panel>
           </div>
+
+          <Panel title="Provider budgets" hint="VideoMind's own limit per provider for this month (UTC), measured from the usage and the prices on this page. Admins get an email at 80%. When a budget is spent, the features listed pause for everyone until you raise it or the month ends; storage, playback and sign in never pause. Measured every two minutes, so a budget can be passed by a few minutes of use. Leave a budget empty for none. Keep the spend limits in the providers' own consoles as well.">
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13.5px] min-w-[720px]" data-budgets>
+                <thead><tr className="text-left text-dim"><th className="font-normal py-1.5 pr-4">Provider</th><th className="font-normal py-1.5 pr-4">Spent this month</th><th className="font-normal py-1.5 pr-4">Monthly budget</th><th className="font-normal py-1.5 pr-4">Status</th></tr></thead>
+                <tbody>{r.budgets.map((b) => <BudgetRow key={b.provider} b={b} onError={(m) => { setDone(null); setErr(m); }} onSaved={(m) => { setErr(null); void load().then(() => setDone(m)); }} />)}</tbody>
+              </table>
+            </div>
+          </Panel>
 
           <Panel title="Fixed monthly costs" hint="Costs the ledger does not see: Render, Vercel, Turso, LiveKit, Resend, a domain. Each one counts in full in every month.">
             {r.fixed.length > 0 && (

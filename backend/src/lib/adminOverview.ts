@@ -11,6 +11,7 @@ import { mailConfigured } from "./mail.js";
 import { adminKeySet, recentAudit } from "./admin.js";
 import { dayOf } from "./views.js";
 import { pricingReport } from "./pricing.js";
+import { listBudgets } from "./budgets.js";
 
 const DAY = 24 * 3600_000;
 const one = async (sql: string, args: any[] = []) => {
@@ -77,5 +78,7 @@ export async function overview(now = Date.now()) {
     adminActivity: await recentAudit(12),
     // vm_pricing: actions priced below what they cost, and what that cost this month
     pricing: await pricingReport(now).then((p) => ({ charging: p.charging, belowCost: p.belowCost, lossMicros: p.totals.lossMicros }), () => null),
+    // vm_budgets: providers paused or past 80% of their budget this month
+    budgets: await listBudgets(now).then((l) => l.filter((b) => b.paused || b.warned).map((b) => ({ provider: b.provider, label: b.label, paused: b.paused, spentUsd: b.spentUsd, monthlyUsd: b.monthlyUsd })), () => []),
   };
 }

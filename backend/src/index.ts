@@ -29,6 +29,7 @@ import profilesRouter from "./routes/profiles.js";
 import { youtubeRouter, youtubeVideoRouter } from "./routes/youtube.js";
 import { attachCaptions } from "./lib/livecaptions.js";
 import { endDueEvents, sampleAllViewers } from "./lib/live.js";
+import { startBudgetChecks } from "./lib/budgets.js";
 import settingsRouter from "./routes/settings.js";
 // vm_analytics: play counts without cookies, and the owner's numbers
 import { viewsRouter, analyticsRouter } from "./routes/analytics.js";
@@ -146,6 +147,8 @@ async function main() {
   // vm_liveviewers: viewers are counted every 30 seconds, for charging by viewer minute.
   const count = setInterval(() => { sampleAllViewers().catch((err) => console.error(`[live] counting viewers failed: ${err?.message ?? err}`)); }, 30_000);
   count.unref();
+  // vm_budgets: provider budgets are measured every two minutes.
+  startBudgetChecks();
 }
 
 main().catch((err) => { console.error("Failed to start:", err); process.exit(1); });

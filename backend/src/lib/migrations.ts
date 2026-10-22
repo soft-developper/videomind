@@ -883,6 +883,25 @@ const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    // vm_budgets (Part 20e): VideoMind's monthly budget per provider. No budget
+    // (NULL) never pauses. paused_month and warned_month hold the UTC month
+    // ("2026-10") a provider was paused or warned about.
+    id: "035_provider_budgets",
+    statements: [
+      `CREATE TABLE provider_budgets (
+        provider      TEXT PRIMARY KEY,
+        monthly_usd   REAL,
+        spent_usd     REAL NOT NULL DEFAULT 0,
+        checked_at    INTEGER,
+        warned_month  TEXT,
+        paused_month  TEXT,
+        updated_at    INTEGER,
+        updated_by    TEXT
+      )`,
+      `INSERT INTO provider_budgets (provider) VALUES ('anthropic'), ('openai'), ('fal'), ('google'), ('livekit')`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

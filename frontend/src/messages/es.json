@@ -2189,7 +2189,8 @@
     "capReached": "Llegaste a tu límite de gasto mensual de {amount}. Súbelo en la página Billetera.",
     "capProcessing": "Llegaste a tu límite de gasto mensual, así que este video no se procesó. Sube el límite en la página Billetera y vuelve a intentarlo.",
     "capCaptions": "Subtítulos detenidos: llegaste a tu límite de gasto mensual. Súbelo en la página Billetera y vuelve a activar los subtítulos.",
-    "capGeneration": "Se alcanzó el límite de gasto mensual."
+    "capGeneration": "Se alcanzó el límite de gasto mensual.",
+    "providerPaused": "Esto está en pausa por ahora: VideoMind llegó a su presupuesto mensual para esta función. Inténtalo más tarde."
   },
   "notFound": {
     "title": "No se encontró esta página",

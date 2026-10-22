@@ -141,7 +141,11 @@ export class CaptionSession {
       this.holds.push(r.hold.id);
       this.heldMs += BLOCK_MIN * 60_000;
     } catch (err: any) {
-      if (err instanceof CreditsError && (err.code === "not_enough_credits" || err.code === "monthly_cap")) {
+      if (err instanceof CreditsError && err.code === "provider_paused") {
+        // vm_budgets: the minutes already held are used, then captions stop
+        if (this.holds.length) this.lastBlock = true;
+        else { this.tell({ type: "stopped", reason: "paused", message: err.message }); this.close("provider_paused"); }
+      } else if (err instanceof CreditsError && (err.code === "not_enough_credits" || err.code === "monthly_cap")) {
         // The minutes already held are paid for: use them, then stop.
         if (this.holds.length) this.lastBlock = true;
         else { this.tell({ type: "stopped", reason: "credits", message: err.code === "monthly_cap" ? CAPTIONS_CAP : CAPTIONS_NO_CREDITS }); this.close("no_credits"); }
