@@ -1,0 +1,7 @@
+{
+  "name": "videomind-gen-probe",
+  "private": true,
+  "type": "module",
+  "description": "Part 17a probe: the same prompts through three video generation models. Needs Node 18 or later; no packages.",
+  "scripts": { "probe": "node probe.mjs" }
+}
