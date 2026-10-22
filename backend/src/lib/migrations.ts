@@ -768,6 +768,40 @@ const MIGRATIONS: Migration[] = [
       `ALTER TABLE generations ADD COLUMN shot_state TEXT`,
     ],
   },
+  {
+    // vm_translate: a video's transcript, summary and chapters in other languages (Part 18a)
+    id: "029_translations",
+    statements: [
+      `CREATE TABLE video_languages (
+        video_id    TEXT PRIMARY KEY,
+        spoken      TEXT,
+        how         TEXT NOT NULL,
+        updated_at  INTEGER NOT NULL
+      )`,
+      `CREATE TABLE transcript_translations (
+        video_id         TEXT NOT NULL,
+        lang             TEXT NOT NULL,
+        status           TEXT NOT NULL,
+        round            INTEGER NOT NULL DEFAULT 1,
+        wallet           TEXT,
+        hold_id          TEXT,
+        segments_json    TEXT,
+        summary          TEXT,
+        chapters_json    TEXT,
+        highlights_json  TEXT,
+        chapters_of      TEXT,
+        done             INTEGER NOT NULL DEFAULT 0,
+        total            INTEGER NOT NULL DEFAULT 0,
+        minutes          REAL NOT NULL DEFAULT 0,
+        error            TEXT,
+        error_code       TEXT,
+        created_at       INTEGER NOT NULL,
+        updated_at       INTEGER NOT NULL,
+        PRIMARY KEY (video_id, lang)
+      )`,
+      `INSERT INTO action_prices (id, label, unit, micros_per_unit, position, updated_at) VALUES ('translate', 'Translate a transcript (per language)', 'minute', 0, 9, 0)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

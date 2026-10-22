@@ -34,6 +34,8 @@ interface Props {
   format?: string | null;
   /** vm_captions: WebVTT text. A captions button appears when there is some. */
   captions?: string | null;
+  /** vm_translate: the language the captions are in, when they are a translation */
+  captionsLang?: string | null;
   /** vm_workspace: the bar names the chapter playing and steps between chapters */
   chapters?: Array<{ title: string; startSeconds: number }>;
   /** vm_workspace: where to start, for a link to a moment (?t=). The video waits for play. */
@@ -62,7 +64,7 @@ function ccPreference(): boolean {
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
-  function VideoPlayer({ streamUrl, source, shelbyGone, storagePaused, storeHref, poster, format, captions, chapters, startAt, resumed, onStartOver, onProgress, upNext, onDuration, onTimeUpdate, countViewsOf }, ref) {
+  function VideoPlayer({ streamUrl, source, shelbyGone, storagePaused, storeHref, poster, format, captions, captionsLang, chapters, startAt, resumed, onStartOver, onProgress, upNext, onDuration, onTimeUpdate, countViewsOf }, ref) {
     const tp = useTranslations("player");
     const tc = useTranslations("credits");
     const v = useRef<HTMLVideoElement>(null);
@@ -251,6 +253,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
               key={ccUrl}
               kind="captions"
               label={tp("captions")}
+              srcLang={captionsLang ?? undefined}
               src={ccUrl}
               onLoad={() => { const t = v.current?.textTracks?.[0]; if (t) t.mode = ccOn ? "showing" : "hidden"; placeCues(); }}
             />

@@ -26,6 +26,7 @@ import crypto from "crypto";
 import { getDb } from "./db.js";
 import { normalizeWallet } from "./auth.js";
 import { listPrices, modelMatches, quantityIn } from "./costs.js";
+import { minutesTranslated } from "./translate.js";
 
 export const MICROS = 1_000_000;
 const n = (v: unknown) => Number(v ?? 0) || 0;
@@ -397,6 +398,8 @@ const COST_BASIS: Record<string, { features: string[]; count: { feature: string;
   learn_paths: { features: ["learn_paths"], count: { feature: "learn_paths", metric: "output_tokens", as: "rows" } },
   learn_ask: { features: ["learn_ask"], count: { feature: "learn_ask", metric: "output_tokens", as: "rows" } },
   live_captions: { features: ["live_captions"], count: { feature: "live_captions", metric: "audio_seconds", as: "minutes" } },
+  // vm_translate: Claude's tokens for translating, per minute of video translated (counted from the translations below)
+  translate: { features: ["translate"], count: { feature: "translate", metric: "minutes_translated", as: "minutes" } },
 };
 
 export interface UnitCost { action: string; units: number; costUsd: number; perUnitUsd: number | null }
@@ -429,6 +432,8 @@ export async function unitCosts(days = 30, now = Date.now()): Promise<UnitCost[]
     if (p) costByFeature.set(feature, (costByFeature.get(feature) ?? 0) + quantityIn(p.unit, n(r.q)) * p.usd);
   }
   const out: UnitCost[] = [];
+  // vm_translate: the ledger has the tokens, the translations have the minutes
+  counted.set("translate|minutes_translated", { q: (await minutesTranslated(since)) * 60, c: 0 });
   for (const [action, b] of Object.entries(COST_BASIS)) {
     const c = counted.get(`${b.count.feature}|${b.count.metric}`) ?? { q: 0, c: 0 };
     const units = b.count.as === "minutes" ? c.q / 60 : c.c;

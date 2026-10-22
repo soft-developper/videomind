@@ -618,6 +618,36 @@
     "matches": "{hits, plural, one {# resultado} many {# de resultados} other {# resultados}} em {sentences, plural, one {# frase} many {# de frases} other {# frases}}",
     "noMatch": "Nada na transcrição contém “{q}”."
   },
+  "textLang": {
+    "label": "Idioma da transcrição e das legendas",
+    "asSpoken": "Original: {name}",
+    "asSpokenUnknown": "Original",
+    "title": "Traduções",
+    "intro": "Traduza a transcrição, as legendas, o resumo e os capítulos. Quem puder assistir ao vídeo poderá escolher o idioma ao lado de Exportar.",
+    "introSpoken": "Este vídeo está em {name}. Traduza a transcrição, as legendas, o resumo e os capítulos, e quem puder assistir poderá escolher o idioma ao lado de Exportar.",
+    "price": "{price} por idioma ({minutes, plural, one {# minuto} many {# minutos} other {# minutos}} de vídeo), cobrados quando a tradução fica pronta.",
+    "have": "Você tem {amount}.",
+    "cannot": "No momento não é possível fazer novas traduções deste vídeo.",
+    "notMade": "Sem tradução",
+    "queued": "Aguardando",
+    "translating": "Traduzindo: {done} de {total, plural, one {# linha} many {# linhas} other {# linhas}}",
+    "done": "Pronta",
+    "doneOn": "Pronta desde {date}",
+    "notFinished": "Não foi concluída.",
+    "same": "Este vídeo já está em {name}.",
+    "failed": "Não deu certo. Tente de novo.",
+    "translate": "Traduzir",
+    "asking": "Iniciando",
+    "again": "Tentar de novo",
+    "show": "Mostrar",
+    "showing": "Em exibição",
+    "remove": "Remover",
+    "stop": "Parar",
+    "removeSure": "Remover esta tradução?",
+    "stopSure": "Parar? Nada é cobrado.",
+    "yes": "Sim",
+    "no": "Não"
+  },
   "insights": {
     "copied": "Copiado",
     "tab": {
@@ -1308,7 +1338,8 @@
         "learn_ask": "Uma resposta de Pergunte à sua biblioteca",
         "live_captions": "Legendas ao vivo",
         "storage": "Armazenamento no VideoMind",
-        "generate_video": "Gerar um vídeo a partir de uma descrição"
+        "generate_video": "Gerar um vídeo a partir de uma descrição",
+        "translate": "Traduzir um vídeo (cada idioma)"
       },
       "per": {
         "minute": "{price} por minuto",
@@ -2100,7 +2131,13 @@
     "genModelDown": "Esse modelo não pode ser usado agora. Tente outro.",
     "genSeconds": "Escolha uma duração de {min} a {max} segundos.",
     "genBudget": "A criação de vídeos chegou ao limite de hoje. Tente de novo amanhã.",
-    "genServer": "A criação de vídeos teve um problema. Tente de novo em um minuto."
+    "genServer": "A criação de vídeos teve um problema. Tente de novo em um minuto.",
+    "trLang": "Escolha inglês, espanhol, francês, árabe ou português.",
+    "trRemoved": "Este vídeo foi retirado, então não pode ser traduzido.",
+    "trNotReady": "Um vídeo pode ser traduzido quando estiver pronto.",
+    "trNothing": "Nada é dito neste vídeo, então não há o que traduzir.",
+    "trNone": "Este vídeo não tem tradução nesse idioma.",
+    "trRefused": "O Claude recusou traduzir esta transcrição."
   },
   "notFound": {
     "title": "Esta página não foi encontrada",

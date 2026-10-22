@@ -618,6 +618,36 @@
     "matches": "{hits, plural, one {# coincidencia} many {# de coincidencias} other {# coincidencias}} en {sentences, plural, one {# frase} many {# de frases} other {# frases}}",
     "noMatch": "Nada en la transcripción contiene «{q}»."
   },
+  "textLang": {
+    "label": "Idioma de la transcripción y los subtítulos",
+    "asSpoken": "Original: {name}",
+    "asSpokenUnknown": "Original",
+    "title": "Traducciones",
+    "intro": "Traduce la transcripción, los subtítulos, el resumen y los capítulos. Quien pueda ver el video podrá elegir el idioma junto a Exportar.",
+    "introSpoken": "Este video está en {name}. Traduce la transcripción, los subtítulos, el resumen y los capítulos, y quien pueda verlo podrá elegir el idioma junto a Exportar.",
+    "price": "{price} por cada idioma ({minutes, plural, one {# minuto} many {# minutos} other {# minutos}} de video), que se cobran cuando la traducción está lista.",
+    "have": "Tienes {amount}.",
+    "cannot": "Ahora no se pueden hacer traducciones nuevas de este video.",
+    "notMade": "Sin traducir",
+    "queued": "En espera",
+    "translating": "Traduciendo: {done} de {total, plural, one {# línea} many {# líneas} other {# líneas}}",
+    "done": "Lista",
+    "doneOn": "Lista desde el {date}",
+    "notFinished": "No se terminó.",
+    "same": "Este video ya está en {name}.",
+    "failed": "No funcionó. Inténtalo de nuevo.",
+    "translate": "Traducir",
+    "asking": "Iniciando",
+    "again": "Intentar de nuevo",
+    "show": "Mostrar",
+    "showing": "Se muestra",
+    "remove": "Quitar",
+    "stop": "Detener",
+    "removeSure": "¿Quitar esta traducción?",
+    "stopSure": "¿Detenerla? No se cobra nada.",
+    "yes": "Sí",
+    "no": "No"
+  },
   "insights": {
     "copied": "Copiado",
     "tab": {
@@ -1308,7 +1338,8 @@
         "learn_ask": "Una respuesta de Pregunta a tu biblioteca",
         "live_captions": "Subtítulos en vivo",
         "storage": "Almacenamiento en VideoMind",
-        "generate_video": "Generar un video a partir de una descripción"
+        "generate_video": "Generar un video a partir de una descripción",
+        "translate": "Traducir un video (cada idioma)"
       },
       "per": {
         "minute": "{price} por minuto",
@@ -2100,7 +2131,13 @@
     "genModelDown": "Ese modelo no se puede usar ahora. Prueba con otro.",
     "genSeconds": "Elige una duración de {min} a {max} segundos.",
     "genBudget": "La creación de videos llegó al límite de hoy. Vuelve a intentarlo mañana.",
-    "genServer": "La creación de videos tuvo un problema. Vuelve a intentarlo en un minuto."
+    "genServer": "La creación de videos tuvo un problema. Vuelve a intentarlo en un minuto.",
+    "trLang": "Elige inglés, español, francés, árabe o portugués.",
+    "trRemoved": "Este video fue retirado, así que no se puede traducir.",
+    "trNotReady": "Un video se puede traducir cuando está listo.",
+    "trNothing": "En este video no se dice nada, así que no hay nada que traducir.",
+    "trNone": "Este video no tiene traducción en ese idioma.",
+    "trRefused": "Claude no aceptó traducir esta transcripción."
   },
   "notFound": {
     "title": "No se encontró esta página",

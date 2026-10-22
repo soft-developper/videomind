@@ -9,6 +9,7 @@
 //   ask            the video's owner, also for questions from visitors
 //   search, learn_paths, learn_ask   the signed in wallet
 //   live_captions  the event's host, per minute, in blocks
+//   translate      the video's owner, per minute, once per language (lib/translate.ts)
 // A settle that fails after the work is done is logged and the hold
 // expires: the user is never refused something already delivered.
 import { getDb } from "./db.js";

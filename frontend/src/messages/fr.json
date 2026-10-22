@@ -618,6 +618,36 @@
     "matches": "{hits, plural, one {# résultat} many {# de résultats} other {# résultats}} dans {sentences, plural, one {# phrase} many {# de phrases} other {# phrases}}",
     "noMatch": "Rien dans la transcription ne contient « {q} »."
   },
+  "textLang": {
+    "label": "Langue de la transcription et des sous-titres",
+    "asSpoken": "Original : {name}",
+    "asSpokenUnknown": "Original",
+    "title": "Traductions",
+    "intro": "Traduisez la transcription, les sous-titres, le résumé et les chapitres. Toute personne qui peut regarder la vidéo pourra ensuite choisir la langue à côté d’Exporter.",
+    "introSpoken": "Cette vidéo est en {name}. Traduisez la transcription, les sous-titres, le résumé et les chapitres : toute personne qui peut la regarder pourra choisir la langue à côté d’Exporter.",
+    "price": "{price} par langue ({minutes, plural, one {# minute} many {# minutes} other {# minutes}} de vidéo), débités quand la traduction est prête.",
+    "have": "Vous avez {amount}.",
+    "cannot": "Aucune nouvelle traduction ne peut être faite pour cette vidéo pour le moment.",
+    "notMade": "Pas traduite",
+    "queued": "En attente",
+    "translating": "Traduction : {done} sur {total, plural, one {# ligne} many {# lignes} other {# lignes}}",
+    "done": "Prête",
+    "doneOn": "Prête depuis le {date}",
+    "notFinished": "Pas terminée.",
+    "same": "Cette vidéo est déjà en {name}.",
+    "failed": "Cela n’a pas marché. Réessayez.",
+    "translate": "Traduire",
+    "asking": "Lancement",
+    "again": "Réessayer",
+    "show": "Afficher",
+    "showing": "Affichée",
+    "remove": "Retirer",
+    "stop": "Arrêter",
+    "removeSure": "Retirer cette traduction ?",
+    "stopSure": "L’arrêter ? Rien n’est débité.",
+    "yes": "Oui",
+    "no": "Non"
+  },
   "insights": {
     "copied": "Copié",
     "tab": {
@@ -1308,7 +1338,8 @@
         "learn_ask": "Une réponse de Interroger votre bibliothèque",
         "live_captions": "Sous-titres en direct",
         "storage": "Stockage sur VideoMind",
-        "generate_video": "Générer une vidéo à partir d’une description"
+        "generate_video": "Générer une vidéo à partir d’une description",
+        "translate": "Traduire une vidéo (chaque langue)"
       },
       "per": {
         "minute": "{price} la minute",
@@ -2100,7 +2131,13 @@
     "genModelDown": "Ce modèle ne peut pas être utilisé pour le moment. Choisissez un autre modèle.",
     "genSeconds": "Choisissez une durée de {min} à {max} secondes.",
     "genBudget": "La création de vidéos a atteint la limite du jour. Réessayez demain.",
-    "genServer": "La création de vidéos a rencontré un problème. Réessayez dans une minute."
+    "genServer": "La création de vidéos a rencontré un problème. Réessayez dans une minute.",
+    "trLang": "Choisissez l’anglais, l’espagnol, le français, l’arabe ou le portugais.",
+    "trRemoved": "Cette vidéo a été retirée, elle ne peut donc pas être traduite.",
+    "trNotReady": "Une vidéo peut être traduite une fois prête.",
+    "trNothing": "Rien n’est dit dans cette vidéo, il n’y a donc rien à traduire.",
+    "trNone": "Cette vidéo n’a pas de traduction dans cette langue.",
+    "trRefused": "Claude a refusé de traduire cette transcription."
   },
   "notFound": {
     "title": "Cette page est introuvable",

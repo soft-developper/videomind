@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { getVideo, getCaptions, getTranscriptWords, momentFromUrl, setVideoDuration, ApiError } from "@/lib/api";
+import { getVideo, getTranscriptWords, momentFromUrl, setVideoDuration, ApiError } from "@/lib/api";
 import { AppShell } from "@/components/layout/AppShell";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { InsightsPanel } from "@/components/video/InsightsPanel";
@@ -37,6 +37,9 @@ import { useMediaText } from "@/lib/media";
 // vm_lang
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/lib/format";
+// vm_translate: the words in another language, and the owner's translations
+import { useVideoText, presentQuery } from "@/lib/useVideoText";
+import { TextLanguagePicker, TranslationsPanel } from "@/components/video/TextLanguage";
 
 export default function VideoPage({ params }: { params: { id: string } }) {
   const tv = useTranslations("videoPage");
@@ -75,11 +78,8 @@ export default function VideoPage({ params }: { params: { id: string } }) {
   const [startAt] = useState(() => momentFromUrl(searchParams.get("t")));
   // vm_progress: where this wallet stopped last time, unless the link names a moment
   const progress = useWatchProgress(params.id, me, video?.status === "ready");
-  const { data: captions } = useQuery({
-    queryKey: ["captions", params.id, me ?? null],
-    queryFn: () => getCaptions(params.id),
-    enabled: hasSpeech, staleTime: Infinity, retry: false,
-  });
+  // vm_translate: captions, transcript, summary and chapters as spoken or in a chosen language
+  const text = useVideoText(video, { words, me });
 
   const seek = useCallback((s: number) => player.current?.seekTo(s), []);
 
@@ -228,7 +228,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   : <ShareButton videoId={params.id} title={video.title} currentTime={t} />}
                 {/* vm_present: a projector view for a room */}
                 <Link
-                  href={`/present/${params.id}${t >= 1 ? `?t=${Math.floor(t)}` : ""}`}
+                  href={`/present/${params.id}${presentQuery(t, text.lang)}`}
                   className="flex items-center gap-1.5 h-8 px-3 btn-ghost text-[12px] no-min"
                 >
                   <Presentation size={11} /> {tv("present")}
@@ -236,12 +236,14 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 <ExportMenu
                   videoId={params.id}
                   title={video.title}
-                  transcript={video.ai?.transcript}
-                  summary={video.ai?.summary}
-                  chapters={video.ai?.chapters}
-                  highlights={video.ai?.highlights}
+                  transcript={text.ai?.transcript}
+                  summary={text.ai?.summary}
+                  chapters={text.ai?.chapters}
+                  highlights={text.ai?.highlights}
                   tags={video.ai?.tags}
+                  lang={text.lang}
                 />
+                <TextLanguagePicker text={text} />
               </div>
             )}
           </div>
@@ -310,8 +312,9 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                   title={video.title}
                   shelbyAddress={video.shelby.accountAddress}
                   blobName={video.shelby.videoBlobName}
-                  captions={captions ?? null}
-                  chapters={video.ai?.chapters}
+                  captions={text.captions}
+                  captionsLang={text.lang}
+                  chapters={text.ai?.chapters}
                   startAt={startAt ?? progress.resumeAt}
                   resumed={startAt == null && progress.resumeAt != null}
                   onStartOver={progress.startOver}
@@ -326,9 +329,9 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                 <IntelligenceStrip
                   duration={duration}
                   currentTime={t}
-                  transcript={video.ai?.transcript}
-                  chapters={video.ai?.chapters}
-                  highlights={video.ai?.highlights}
+                  transcript={text.ai?.transcript}
+                  chapters={text.ai?.chapters}
+                  highlights={text.ai?.highlights}
                   onSeek={seek}
                 />
 
@@ -343,7 +346,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                     </p>
                   </div>
                 ) : (
-                  <InsightsPanel video={video} onSeek={seek} owner={mine} currentTime={t} duration={duration || undefined} onChaptersSaved={() => refetch()} />
+                  <InsightsPanel video={text.lang ? { ...video, ai: text.ai } : video} onSeek={seek} owner={mine && !text.lang} currentTime={t} duration={duration || undefined} onChaptersSaved={() => refetch()} />
                 )}
 
                 <OnChainProof
@@ -354,12 +357,15 @@ export default function VideoPage({ params }: { params: { id: string } }) {
 
                 {video.ai?.transcript?.length ? (
                   <TranscriptPanel
-                    transcript={words?.length ? words : video.ai.transcript}
+                    transcript={text.lines ?? video.ai.transcript}
                     currentTime={t}
                     onSeek={seek}
-                  chapters={video.ai?.chapters}
+                  chapters={text.ai?.chapters}
                 />
                 ) : null}
+
+                {/* vm_translate: the owner's translations */}
+                {mine && !speechless && <TranslationsPanel videoId={params.id} text={text} />}
 
                 {/* vm_notes: this wallet's own bookmarks and notes */}
                 <NotesPanel videoId={params.id} title={video.title} currentTime={t} onSeek={seek} />

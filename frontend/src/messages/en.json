@@ -618,6 +618,36 @@
     "matches": "{hits, plural, one {# match} other {# matches}} in {sentences, plural, one {# sentence} other {# sentences}}",
     "noMatch": "Nothing in the transcript contains “{q}”."
   },
+  "textLang": {
+    "label": "Language of the transcript and captions",
+    "asSpoken": "Original: {name}",
+    "asSpokenUnknown": "Original",
+    "title": "Translations",
+    "intro": "Translate the transcript, captions, summary and chapters. Anyone who can watch the video can then choose the language next to Export.",
+    "introSpoken": "This video is in {name}. Translate the transcript, captions, summary and chapters, and anyone who can watch it can choose the language next to Export.",
+    "price": "{price} for each language ({minutes, plural, one {# minute} other {# minutes}} of video), charged when the translation is done.",
+    "have": "You have {amount}.",
+    "cannot": "New translations cannot be made for this video right now.",
+    "notMade": "Not translated",
+    "queued": "Waiting to start",
+    "translating": "Translating: {done} of {total, plural, one {# line} other {# lines}}",
+    "done": "Ready",
+    "doneOn": "Ready since {date}",
+    "notFinished": "Not finished.",
+    "same": "This video is already in {name}.",
+    "failed": "That did not work. Try again.",
+    "translate": "Translate",
+    "asking": "Starting",
+    "again": "Try again",
+    "show": "Show",
+    "showing": "Showing",
+    "remove": "Remove",
+    "stop": "Stop",
+    "removeSure": "Remove this translation?",
+    "stopSure": "Stop it? Nothing is charged.",
+    "yes": "Yes",
+    "no": "No"
+  },
   "insights": {
     "copied": "Copied",
     "tab": {
@@ -1308,7 +1338,8 @@
         "learn_ask": "An answer from Ask your library",
         "live_captions": "Live captions",
         "storage": "Storage on VideoMind",
-        "generate_video": "Generating a video from a prompt"
+        "generate_video": "Generating a video from a prompt",
+        "translate": "Translating a video (each language)"
       },
       "per": {
         "minute": "{price} a minute",
@@ -2100,7 +2131,13 @@
     "genModelDown": "That model cannot be used right now. Try another one.",
     "genSeconds": "Choose a length from {min} to {max} seconds.",
     "genBudget": "Video generation has reached today's limit. Try again tomorrow.",
-    "genServer": "Video generation hit a problem. Try again in a minute."
+    "genServer": "Video generation hit a problem. Try again in a minute.",
+    "trLang": "Choose English, Spanish, French, Arabic or Portuguese.",
+    "trRemoved": "This video was taken down, so it cannot be translated.",
+    "trNotReady": "A video can be translated once it is ready.",
+    "trNothing": "Nothing is said in this video, so there is nothing to translate.",
+    "trNone": "This video has no translation in that language.",
+    "trRefused": "Claude declined to translate this transcript."
   },
   "notFound": {
     "title": "This page was not found",

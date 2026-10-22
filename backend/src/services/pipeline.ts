@@ -37,6 +37,8 @@ import { ANCHOR_CHECK, anchorCheckHandler, anchorCheckGaveUp } from "./anchor.js
 import { CLIP_JOB, clipHandler, clipGaveUp } from "./clip.js";
 // vm_youtube
 import { YOUTUBE_JOB, youtubeHandler, youtubeGaveUp } from "./youtube.js";
+// vm_translate: the spoken language is kept, and translations are jobs of their own
+import { TRANSLATE_JOB, makeTranslateHandler, translationGaveUp, rememberSpokenLanguage } from "../lib/translate.js";
 
 /**
  * Failure codes that no retry can fix. The retry button is hidden for
@@ -97,6 +99,7 @@ export function makeHandlers(deps: PipelineDeps) {
         classify(err, "Transcription");
       }
       await store.update(job.videoId, { ai: { transcript: transcript! } });
+      await rememberSpokenLanguage(job.videoId).catch((e) => console.error(`[translate] spoken language of ${job.videoId}: ${e?.message ?? e}`));
       await clearPieces(job.videoId);
     }
 
@@ -171,6 +174,7 @@ export function registerPipeline(deps: PipelineDeps = { extractSound, cutSound, 
   registerHandler(CLIP_JOB, clipHandler);
   registerHandler(YOUTUBE_JOB, youtubeHandler);
   registerHandler(GENERATE_JOB, makeGenerateHandler());
+  registerHandler(TRANSLATE_JOB, makeTranslateHandler());
   // A stage that failed for good marks the video, so the page stops waiting.
   setFinalFailureHook(async (job, f) => {
     // vm_media: a video without a thumbnail is not a failed video.
@@ -185,6 +189,8 @@ export function registerPipeline(deps: PipelineDeps = { extractSound, cutSound, 
     if (job.kind === YOUTUBE_JOB) { await youtubeGaveUp(job, f).catch(() => {}); return; }
     // vm_generate: a generation that failed for good marks its video and charges nothing.
     if (job.kind === GENERATE_JOB) { await generationGaveUp(job, f).catch(() => {}); return; }
+    // vm_translate: a translation that failed is not a failed video, and is not charged.
+    if (job.kind === TRANSLATE_JOB) { await translationGaveUp(job, f).catch(() => {}); return; }
     await store.update(job.videoId, { status: "error" }).catch(() => {});
     // vm_charge: processing that failed for good is not charged.
     await releaseProcessing(job.videoId).catch(() => {});

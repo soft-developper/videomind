@@ -172,13 +172,42 @@ export async function getVideo(id: string) {
  * the player, SubRip for download. Fetched with the session, so a
  * private video's owner gets them too.
  */
-export async function getCaptions(id: string, format: "vtt" | "srt" = "vtt"): Promise<string> {
+export async function getCaptions(id: string, format: "vtt" | "srt" = "vtt", lang?: string | null): Promise<string> {
   const res = await api.get(`/api/videos/${id}/captions`, {
-    params: format === "srt" ? { format } : undefined,
+    // vm_translate: lang gives a finished translation's captions
+    params: format === "srt" || lang ? { ...(format === "srt" ? { format } : {}), ...(lang ? { lang } : {}) } : undefined,
     responseType: "text", transformResponse: (d) => d,
   });
   return String(res.data ?? "");
 }
+
+// ── vm_translate: the transcript in other languages (Part 18) ───────────────
+export type TextLang = "en" | "es" | "fr" | "ar" | "pt";
+export interface TranslationItem {
+  lang: TextLang; status: "queued" | "translating" | "done" | "failed"; done: number; total: number;
+  /** the owner only */
+  error?: string | null; errorCode?: string | null; updatedAt?: number;
+}
+export interface TranslationList {
+  /** the language spoken in the video (a two letter code, any language), when known */
+  spoken: string | null;
+  offered: TextLang[];
+  items: TranslationItem[];
+  /** the owner only */
+  canTranslate?: boolean; minutes?: number;
+}
+export interface TranslatedText {
+  lang: TextLang;
+  transcript: Array<{ start: number; end: number; text: string }>;
+  /** null while the owner's edited chapters are being translated again */
+  summary: string | null;
+  chapters: Array<{ title: string; startSeconds: number; summary: string }> | null;
+  highlights: Array<{ startSeconds: number; endSeconds: number; reason: string; text: string }> | null;
+}
+export const getTranslations = (id: string) => call<TranslationList>(() => raw.get(`/api/videos/${id}/translations`));
+export const getTranslatedText = (id: string, lang: string) => call<TranslatedText>(() => raw.get(`/api/videos/${id}/translations/${lang}`));
+export const startTranslation = (id: string, lang: TextLang) => call<TranslationItem>(() => raw.post(`/api/videos/${id}/translations`, { lang }));
+export const removeTranslation = (id: string, lang: TextLang) => call<{ success: true }>(() => raw.delete(`/api/videos/${id}/translations/${lang}`));
 
 /**
  * vm_workspace: the transcript with every word and its time, for marking
@@ -483,7 +512,7 @@ export const getMyWallet = () => call<WalletOverview>(() => raw.get("/api/me/wal
 
 // ── vm_credits: the wallet's credits, in micro dollars (1 dollar = 1,000,000) ──
 export type CreditKind = "welcome" | "grant" | "remove" | "topup" | "charge" | "refund";
-export type CreditAction = "process_video" | "ask" | "search" | "learn_paths" | "learn_ask" | "live_captions" | "storage" | "generate_video";
+export type CreditAction = "process_video" | "ask" | "search" | "learn_paths" | "learn_ask" | "live_captions" | "storage" | "generate_video" | "translate";
 export type CreditUnit = "minute" | "answer" | "search" | "generation" | "gb_month" | "second";
 export interface CreditEntry { id: string; at: number; kind: CreditKind; amountMicros: number; action: string | null; quantity: number | null; videoId: string | null; refunded: boolean; txHash: string | null }
 export interface MyCredits {

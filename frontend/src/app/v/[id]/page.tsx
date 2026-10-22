@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { getVideo, getCaptions, getTranscriptWords, momentFromUrl, ApiError } from "@/lib/api";
+import { getVideo, getTranscriptWords, momentFromUrl, ApiError } from "@/lib/api";
 import { useLabels } from "@/lib/categories";
 import { useMediaText } from "@/lib/media";
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
@@ -27,6 +27,9 @@ import { useWatchProgress } from "@/lib/useWatchProgress";
 import { useRef, useState, useCallback } from "react";
 import { clsx } from "clsx";
 import { GeneratedBadge } from "@/components/generate/GeneratedBadge"; // vm_generate
+// vm_translate: the words in another language
+import { useVideoText, presentQuery } from "@/lib/useVideoText";
+import { TextLanguagePicker } from "@/components/video/TextLanguage";
 
 export default function PublicVideo({ params }: { params: { id: string } }) {
   const tv = useTranslations("videoPage");
@@ -58,11 +61,8 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
   const [startAt] = useState(() => momentFromUrl(searchParams.get("t")));
   // vm_progress: where this wallet stopped last time, unless the link names a moment
   const progress = useWatchProgress(params.id, sessionWallet, video?.status === "ready");
-  const { data: captions } = useQuery({
-    queryKey: ["captions", params.id],
-    queryFn: () => getCaptions(params.id),
-    enabled: hasSpeech, staleTime: Infinity, retry: false,
-  });
+  // vm_translate: captions, transcript, summary and chapters as spoken or in a chosen language
+  const text = useVideoText(video, { words, me: sessionWallet });
   // vm_info: the owner has not shared this video
   const isPrivate = !video && error instanceof ApiError && error.code === "private";
   // vm_content: taken down by VideoMind
@@ -147,7 +147,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
               <div className="flex items-center gap-2 flex-wrap">
               {/* vm_present: show it to a room, or share it (last, so its panel opens leftwards) */}
               <Link
-                href={`/present/${params.id}${t >= 1 ? `?t=${Math.floor(t)}` : ""}`}
+                href={`/present/${params.id}${presentQuery(t, text.lang)}`}
                 className="flex items-center gap-1.5 h-8 px-3 btn-ghost text-[12px] no-min"
               >
                 <Presentation size={11} /> {tv("present")}
@@ -155,12 +155,14 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
               <ExportMenu
                 videoId={params.id}
                 title={video.title}
-                transcript={video.ai?.transcript}
-                summary={video.ai?.summary}
-                chapters={video.ai?.chapters}
-                highlights={video.ai?.highlights}
+                transcript={text.ai?.transcript}
+                summary={text.ai?.summary}
+                chapters={text.ai?.chapters}
+                highlights={text.ai?.highlights}
                 tags={video.ai?.tags}
+                lang={text.lang}
               />
+              <TextLanguagePicker text={text} />
               <ShareButton videoId={params.id} title={video.title} currentTime={t} align="right" />
               </div>
             </div>
@@ -198,8 +200,9 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                 format={video.media && video.media.playable !== "yes" ? formatLabel(video.media) : null}
                 title={video.title}
                 shelbyAddress={video.shelby.accountAddress}
-                captions={captions ?? null}
-                chapters={video.ai?.chapters}
+                captions={text.captions}
+                captionsLang={text.lang}
+                chapters={text.ai?.chapters}
                 startAt={startAt ?? progress.resumeAt}
                   resumed={startAt == null && progress.resumeAt != null}
                   onStartOver={progress.startOver}
@@ -214,22 +217,22 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
               <IntelligenceStrip
                 duration={duration}
                 currentTime={t}
-                transcript={video.ai?.transcript}
-                chapters={video.ai?.chapters}
-                highlights={video.ai?.highlights}
+                transcript={text.ai?.transcript}
+                chapters={text.ai?.chapters}
+                highlights={text.ai?.highlights}
                 onSeek={seek}
               />
 
-              <InsightsPanel video={video} onSeek={seek} />
+              <InsightsPanel video={text.lang ? { ...video, ai: text.ai } : video} onSeek={seek} />
 
               <OnChainProof videoId={params.id} isOwner={!!video.isOwner} storeHref={video.isOwner ? `/upload?anchor=${params.id}` : undefined} />
 
               {video.ai?.transcript?.length ? (
                 <TranscriptPanel
-                  transcript={words?.length ? words : video.ai.transcript}
+                  transcript={text.lines ?? video.ai.transcript}
                   currentTime={t}
                   onSeek={seek}
-                  chapters={video.ai?.chapters}
+                  chapters={text.ai?.chapters}
                 />
               ) : null}
 

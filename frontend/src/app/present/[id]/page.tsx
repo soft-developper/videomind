@@ -16,7 +16,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { ArrowLeft, Captions, CaptionsOff, Maximize, Minimize, Pause, Play, QrCode as QrIcon, Keyboard } from "lucide-react";
-import { getVideo, getCaptions, momentFromUrl, ApiError } from "@/lib/api";
+import { getVideo, momentFromUrl, ApiError } from "@/lib/api";
+// vm_translate: captions and chapters in the language chosen on the video page (?lang=)
+import { useVideoText } from "@/lib/useVideoText";
 import { QrCode } from "@/components/share/QrCode";
 import { sharedLink } from "@/lib/qr";
 import { useViewCounter } from "@/lib/useViewCounter";
@@ -67,13 +69,10 @@ export default function Present({ params }: { params: { id: string } }) {
   // vm_analytics: a room watching counts as one view (the owner presenting is not counted)
   const views = useViewCounter(video?.status === "ready" ? video.id : null);
   const hasSpeech = video?.status === "ready" && (video.ai?.transcript?.length ?? 0) > 0;
-  const { data: vtt } = useQuery({
-    queryKey: ["captions", params.id],
-    queryFn: () => getCaptions(params.id),
-    enabled: hasSpeech, staleTime: Infinity, retry: false,
-  });
-  const cues = useMemo(() => parseVtt(vtt ?? ""), [vtt]);
   const searchParams = useSearchParams();
+  const text = useVideoText(video, { prefer: searchParams.get("lang") });
+  const vtt = text.captions;
+  const cues = useMemo(() => parseVtt(vtt ?? ""), [vtt]);
   const [startAt] = useState(() => momentFromUrl(searchParams.get("t")));
 
   const v = useRef<HTMLVideoElement>(null);
@@ -98,8 +97,8 @@ export default function Present({ params }: { params: { id: string } }) {
   useEffect(() => () => clearTimeout(idleTimer.current), []);
 
   const marks = useMemo(
-    () => (video?.ai?.chapters ?? []).slice().sort((a, b) => a.startSeconds - b.startSeconds),
-    [video?.ai?.chapters],
+    () => (text.ai?.chapters ?? []).slice().sort((a, b) => a.startSeconds - b.startSeconds),
+    [text.ai?.chapters],
   );
   let ch = -1;
   for (let i = 0; i < marks.length && marks[i].startSeconds <= t + 0.25; i++) ch = i;

@@ -45,6 +45,8 @@ import { namesOf } from "../lib/profiles.js";
 import { deleteClipsForVideo } from "../lib/clips.js";
 import { deletePublicationsForVideo } from "../lib/youtube.js";
 import { deleteViewsForVideo } from "../lib/views.js";   // vm_analytics
+// vm_translate: captions in another language, translations removed with the video, chapters translated again
+import { dropTranslations, refreshInsights, getTranslation, isLang } from "../lib/translate.js";
 import { normalizeWallet } from "../lib/auth.js";
 
 /**
@@ -74,6 +76,7 @@ export async function dropVideoWork(id: string): Promise<void> {
   await deleteClipsForVideo(id);     // vm_clips (their files go with the video's other files)
   await deletePublicationsForVideo(id); // vm_youtube (what is already on YouTube stays there)
   await deleteViewsForVideo(id);       // vm_analytics
+  await dropTranslations(id).catch(() => {}); // vm_translate: anything held for a translation is released
   await releaseProcessing(id).catch(() => {}); // vm_charge: a video deleted while processing is not charged
   await releaseGeneration(id).catch(() => {}); // vm_generate: nor one deleted while it is being made
   await abortUpload(id, { keepVideo: true }).catch((err) =>
@@ -388,20 +391,29 @@ router.get("/:id/cover", async (req, res) => {
 // vm_captions: captions cut from the transcript for reading on screen.
 // WebVTT by default (the player), ?format=srt for SubRip, ?download=1 to
 // save it as a file. Anyone who can watch the video can read them.
+// vm_translate: ?lang=xx gives a finished translation's captions instead.
 router.get("/:id/captions", optionalAuth, async (req, res) => {
   try {
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
     if (!canView(video, authOf(req)?.wallet)) return res.status(403).json(blockedFor(video));
-    const cues = buildCues(video.ai?.transcript ?? []);
+    let lines = video.ai?.transcript ?? [];
+    let lang: string | null = null;
+    if (req.query.lang) {
+      const t = isLang(req.query.lang) ? await getTranslation(video.id, String(req.query.lang)) : null;
+      if (!t || t.status !== "done") return res.status(404).json({ error: "This video has no translation in that language.", code: "no_translation" });
+      lines = t.segments; lang = t.lang;
+    }
+    const cues = buildCues(lines);
     if (!cues.length) return res.status(404).json({ error: "This video has no captions.", code: "no_captions" });
+    if (lang) res.setHeader("Content-Language", lang);
     const srt = req.query.format === "srt";
     res.setHeader("Content-Type", srt ? "application/x-subrip; charset=utf-8" : "text/vtt; charset=utf-8");
     // Captions change only when the video is transcribed again. Private ones are never kept by shared caches.
     res.setHeader("Cache-Control", "private, max-age=300");
     if (req.query.download === "1") {
       const name = (video.title ?? "captions").normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 80) || "captions";
-      res.setHeader("Content-Disposition", `attachment; filename="${name}.${srt ? "srt" : "vtt"}"`);
+      res.setHeader("Content-Disposition", `attachment; filename="${name}${lang ? `.${lang}` : ""}.${srt ? "srt" : "vtt"}"`);
     }
     return res.send(srt ? toSrt(cues) : toVtt(cues));
   } catch (err: any) {
@@ -496,6 +508,9 @@ router.put("/:id/chapters", limitEdit, requireAuth, async (req, res) => {
     const length = video.meta?.durationSeconds ?? video.media?.durationSeconds ?? (transcriptEnd > 0 ? transcriptEnd + 1 : null);
     const chapters = parseChapters(req.body, length);
     await store.update(video.id, { ai: { chapters } });
+    // vm_translate: each finished translation gets the new chapters (free)
+    const after = await store.get(video.id);
+    if (after) await refreshInsights(after).catch((e) => console.error(`[translate] chapters of ${video.id}: ${e?.message ?? e}`));
     return res.json({ chapters });
   } catch (err: any) {
     if (err instanceof ChapterError) return res.status(400).json({ error: err.message, code: err.code, index: err.index });

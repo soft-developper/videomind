@@ -19,6 +19,8 @@ interface Props {
   chapters?: Array<{ title: string; startSeconds: number; summary: string }>;
   highlights?: Array<{ startSeconds: number; endSeconds: number; reason: string; text: string }>;
   tags?: string[];
+  /** vm_translate: the language the words above are in, when they are a translation */
+  lang?: string | null;
 }
 
 export function ExportMenu(props: Props) {
@@ -37,12 +39,13 @@ export function ExportMenu(props: Props) {
   }, []);
 
   if (!transcript?.length) return null;
-  const slug = slugify(title);
+  // vm_translate: a translation's files say their language ("talk.fr.srt")
+  const slug = slugify(title) + (props.lang ? `.${props.lang}` : "");
 
   // The server's captions; the sentence by sentence version if they cannot be fetched.
   const captionsOr = async (format: "srt" | "vtt", local: () => string) => {
     if (!props.videoId) return local();
-    try { return await getCaptions(props.videoId, format); } catch { return local(); }
+    try { return await getCaptions(props.videoId, format, props.lang); } catch { return local(); }
   };
 
   const flash = () => { setDone(true); setTimeout(() => setDone(false), 1800); setOpen(false); };
