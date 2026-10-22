@@ -12,8 +12,8 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { clsx } from "clsx";
-import { AlertTriangle } from "lucide-react";
-import { ApiError, getGenerateInfo, startGeneration } from "@/lib/api";
+import { AlertTriangle, Sparkles } from "lucide-react";
+import { ApiError, getGenerateInfo, startGeneration, directGeneration } from "@/lib/api";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 import { useCredits, AddCreditsLink, isNoCredits } from "@/components/credits/Credits";
 import { useMoney, inline } from "@/lib/format";
@@ -48,6 +48,10 @@ export function GenerateForm() {
   const [visibility, setVisibility] = useState<Visibility>("private");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<{ text: string; code?: string } | null>(null);
+  // vm_director: AI writes the description; the wallet's own words can be put back.
+  const [directing, setDirecting] = useState(false);
+  const [note, setNote] = useState<{ kind: "chosen" | "problem"; text: string } | null>(null);
+  const [before, setBefore] = useState<string | null>(null);
 
   const models = info.data?.models ?? [];
   const model = models.find((m) => m.id === modelId) ?? models[0] ?? null;
@@ -68,6 +72,22 @@ export function GenerateForm() {
   const short = price != null && credits.available != null && credits.available < price;
   const trimmed = prompt.trim();
   const canStart = !busy && trimmed.length >= 3 && trimmed.length <= MAX && !!model && !info.data.budgetReached && !short;
+
+  const letAiWrite = async () => {
+    if (directing || busy || trimmed.length < 3 || trimmed.length > MAX) return;
+    setDirecting(true); setErr(null); setNote(null);
+    try {
+      const d = await directGeneration({ idea: trimmed, aspect, seconds: secs, modelId: model?.id });
+      if (d.problem) { setNote({ kind: "problem", text: d.problem }); return; }
+      const m = models.find((x) => x.id === d.modelId);
+      setBefore(prompt); setPrompt(d.prompt); setModelId(d.modelId); setSeconds(d.seconds); setAspect(d.aspect);
+      if (!title.trim() && d.title) setTitle(d.title);
+      setNote({ kind: "chosen", text: t("chosen", { model: m?.label ?? d.modelId, n: d.seconds, shape: d.aspect === "9:16" ? t("vertical") : t("wide"), why: d.why }) });
+    } catch (e) {
+      setErr({ text: e instanceof ApiError ? localize(e.message) : t("directFailed"), code: e instanceof ApiError ? e.code : undefined });
+    } finally { setDirecting(false); }
+  };
+  const undo = () => { if (before != null) { setPrompt(before); setBefore(null); setNote(null); } };
 
   const start = async () => {
     if (!canStart || !model) return;
@@ -92,7 +112,18 @@ export function GenerateForm() {
         <textarea id="gen-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value.slice(0, MAX + 200))} rows={6} dir="auto"
           aria-describedby="gen-prompt-hint" placeholder={t("placeholder")} disabled={busy}
           className="mt-2 w-full px-3 py-2.5 text-[14px] leading-relaxed resize-y min-h-[140px]" data-generate-prompt />
-        <p className={clsx("text-[12px] mt-1 text-end tabular-nums", trimmed.length > MAX ? "text-error" : "text-dim")}>{t("count", { n: trimmed.length, max: MAX })}</p>
+        <div className="mt-1.5 flex items-start gap-3 flex-wrap">
+          <button type="button" onClick={() => void letAiWrite()} disabled={directing || busy || trimmed.length < 3 || trimmed.length > MAX}
+            className="btn btn-ghost h-9 px-3.5 text-[13.5px] inline-flex items-center gap-1.5 no-min" data-generate-direct>
+            <Sparkles size={14} aria-hidden /> {directing ? t("directing") : t("direct")}
+          </button>
+          {before != null && <button type="button" onClick={undo} disabled={directing || busy} className="text-[13px] text-dim underline hover:text-paper no-min mt-2" data-generate-undo>{t("undo")}</button>}
+          <p className={clsx("text-[12px] mt-2.5 ms-auto tabular-nums", trimmed.length > MAX ? "text-error" : "text-dim")}>{t("count", { n: trimmed.length, max: MAX })}</p>
+        </div>
+        <p className="text-[12.5px] text-dim mt-1">{t("directHint")}</p>
+        {note && (
+          <p role="status" className={clsx("text-[13px] mt-2 leading-relaxed", note.kind === "problem" ? "text-warn" : "text-paper-2")} data-generate-note={note.kind}>{note.text}</p>
+        )}
       </div>
 
       <fieldset>

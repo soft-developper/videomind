@@ -641,3 +641,5 @@ export interface GenerateInfo { allowed: boolean; budgetReached: boolean; models
 export const getGenerateInfo = () => call<GenerateInfo>(() => raw.get("/api/generate"));
 export const startGeneration = (b: { prompt: string; modelId: string; seconds: number; aspect: "16:9" | "9:16"; title?: string; visibility: "private" | "unlisted" | "public" }) =>
   call<{ videoId: string; generationId: string; costMicros: number }>(() => raw.post("/api/generate", b));
+export interface Direction { modelId: string; seconds: number; aspect: "16:9" | "9:16"; prompt: string; title: string; why: string; problem: string | null }
+export const directGeneration = (b: { idea: string; aspect?: string; seconds?: number; modelId?: string }) => call<Direction>(() => raw.post("/api/generate/direct", b));

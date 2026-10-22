@@ -22,7 +22,7 @@ export const actionLabel = (a: string) => ACTIONS[a] ?? a.replace(/_/g, " ");
 /** The features the usage ledger records, in the site's words. */
 export const FEATURES: Record<string, string> = {
   transcribe: "Transcription", analyze: "Chapters and summary", embed: "Search passages", search: "Search", ask: "Ask",
-  learn_paths: "Learning paths", learn_ask: "Learn questions", live_captions: "Live captions", storage: "Storage", unattributed: "Not attributed",
+  learn_paths: "Learning paths", learn_ask: "Learn questions", live_captions: "Live captions", storage: "Storage", generate_direct: "Generation descriptions", unattributed: "Not attributed",
 };
 export const featureLabel = (f: string) => FEATURES[f] ?? f.replace(/_/g, " ");
 
