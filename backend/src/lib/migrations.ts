@@ -802,6 +802,21 @@ const MIGRATIONS: Migration[] = [
       `INSERT INTO action_prices (id, label, unit, micros_per_unit, position, updated_at) VALUES ('translate', 'Translate a transcript (per language)', 'minute', 0, 9, 0)`,
     ],
   },
+  {
+    // vm_livesession: a live event runs for a length chosen before it goes live, extended
+    // at most once, and is charged per minute of that length (Part 19). Events from
+    // before keep these empty and run as before.
+    id: "030_live_sessions",
+    statements: [
+      `ALTER TABLE live_events ADD COLUMN length_min INTEGER`,
+      `ALTER TABLE live_events ADD COLUMN extend_min INTEGER`,
+      `ALTER TABLE live_events ADD COLUMN ends_at INTEGER`,
+      `ALTER TABLE live_events ADD COLUMN hold_id TEXT`,
+      `ALTER TABLE live_events ADD COLUMN extend_hold_id TEXT`,
+      `CREATE INDEX live_events_due ON live_events(status, ends_at)`,
+      `INSERT INTO action_prices (id, label, unit, micros_per_unit, position, updated_at) VALUES ('live', 'Live event (per minute of its length)', 'minute', 0, 10, 0)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

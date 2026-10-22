@@ -6,7 +6,8 @@
 //   POST /                       create one { title }
 //   GET  /:id                    public: title, who, status, recording
 //   POST /:id/host-token         owner: join the room to publish
-//   POST /:id/start              owner: the stream is on { restream?: [rtmp urls] }
+//   POST /:id/start              owner: the stream is on { minutes, restream?: [rtmp urls] }
+//   POST /:id/extend             owner, while live: add time once { minutes: 10 | 20 | 30 }
 //   POST /:id/end                owner: end it for everyone
 //   GET  /:id/stats              owner: viewers now and at most
 //   POST /:id/recording          owner: the uploaded recording { videoId }
@@ -30,7 +31,9 @@ import { namesOf } from "../lib/profiles.js";
 import {
   liveConfig, createEvent, getEvent, eventsOf, isOwner, hostToken, viewerToken, parseRestream, goLive, endEvent,
   viewersNow, settle, linkRecording, LiveError, maxViewers, save, broadcast, CHAT_MODES, type LiveEvent, type ChatMode,
+  extendEvent, extendChoices, SESSION_MINUTES, EXTEND_MINUTES, MAX_SESSION_MINUTES,
 } from "../lib/live.js";
+import { creditFailure } from "../lib/charge.js";
 import { joinChat, readPass, postMessage, listMessages, deleteMessage, blockWriter, listCaptions } from "../lib/livechat.js";
 import { captionsAvailable, makeTicket, stopCaptions, maxMinutes } from "../lib/livecaptions.js";
 
@@ -55,10 +58,16 @@ async function view(e: LiveEvent, owner: boolean) {
     id: e.id, title: e.title, status: e.status, wallet: e.wallet, hostName: name,
     startedAt: e.startedAt, endedAt: e.endedAt, videoId: e.videoId, createdAt: e.createdAt,
     chatMode: e.chatMode, captions: e.captions && captionsAvailable(),
+    // vm_livesession: when it ends, for everyone; how long and what can still be added, for the host
+    endsAt: e.endsAt, lengthMin: e.lengthMin, extendMin: e.extendMin,
+    ...(owner ? { extendChoices: extendChoices(e) } : {}),
     ...(owner ? { restreaming: e.restream, peakViewers: e.peakViewers, captionsAvailable: captionsAvailable(), captionSeconds: e.captionSeconds, captionLimitMinutes: maxMinutes() } : {}),
   };
 }
 function fail(res: any, err: any) {
+  // vm_livesession: not enough credits for the length, or for the extension (402)
+  const credits = creditFailure(err);
+  if (credits) return res.status(credits.status).json(credits.body);
   if (err instanceof LiveError) {
     if ((err as any).retryAfter) res.set("Retry-After", String((err as any).retryAfter));
     return res.status(err.status).json({ error: err.message, code: err.code });
@@ -73,7 +82,10 @@ async function ownEvent(req: any, res: any): Promise<LiveEvent | null> {
   return e;
 }
 
-router.get("/config", (_req, res) => res.json({ enabled: !!liveConfig(), maxViewers: maxViewers() }));
+router.get("/config", (_req, res) => res.json({
+  enabled: !!liveConfig(), maxViewers: maxViewers(),
+  sessionMinutes: SESSION_MINUTES, extendMinutes: EXTEND_MINUTES, maxSessionMinutes: MAX_SESSION_MINUTES,
+}));
 
 router.get("/mine", requireAuth, async (req, res) => {
   try {
@@ -111,8 +123,18 @@ router.post("/:id/start", limitLive, requireAuth, async (req, res) => {
   try {
     const e = await ownEvent(req, res); if (!e) return;
     const urls = parseRestream((req.body ?? {}).restream);
-    const r = await goLive(e, urls);
+    const r = await goLive(e, urls, (req.body ?? {}).minutes);
     return res.json({ event: await view(r.event, true), restreamError: r.restreamError });
+  } catch (err) { return fail(res, err); }
+});
+
+router.post("/:id/extend", limitLive, requireAuth, async (req, res) => {
+  try {
+    const e = await ownEvent(req, res); if (!e) return;
+    const fresh = await extendEvent(e, (req.body ?? {}).minutes);
+    // Viewers' pages read the event again and show the new end time.
+    await broadcast(fresh, "settings", { type: "settings", chatMode: fresh.chatMode, captions: fresh.captions && captionsAvailable(), endsAt: fresh.endsAt });
+    return res.json({ event: await view(fresh, true) });
   } catch (err) { return fail(res, err); }
 });
 
@@ -129,8 +151,8 @@ router.get("/:id/stats", requireAuth, async (req, res) => {
   try {
     const e = await ownEvent(req, res); if (!e) return;
     const viewers = await viewersNow(e);
-    const fresh = (await getEvent(e.id))!;
-    return res.json({ viewers, peakViewers: fresh.peakViewers, status: fresh.status });
+    const fresh = await settle((await getEvent(e.id))!).catch(() => e);
+    return res.json({ viewers, peakViewers: fresh.peakViewers, status: fresh.status, endsAt: fresh.endsAt });
   } catch (err) { return fail(res, err); }
 });
 

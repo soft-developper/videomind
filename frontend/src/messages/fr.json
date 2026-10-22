@@ -1202,7 +1202,22 @@
     "alsoStreamHint": "Une adresse RTMP avec sa clé de diffusion, de YouTube Live, Twitch ou un autre site. Elle sert pour ce direct uniquement et n’est jamais conservée. La rediffusion consomme des minutes de transcodage LiveKit.",
     "restreamLabel": "Adresse de rediffusion {n}",
     "addAnother": "En ajouter une",
-    "goLive": "Passer en direct"
+    "goLive": "Passer en direct",
+    "length": "Durée du direct",
+    "lengthHint": "Le direct se termine tout seul à la fin de cette durée. Pendant le direct, vous pouvez ajouter une fois 10, 20 ou 30 minutes, jusqu’à {max} minutes au total.",
+    "minutesShort": "{minutes} min",
+    "livePrice": "Le direct coûte {price} par minute : {total} pour {minutes} minutes, mis de côté maintenant. Seules les minutes réellement diffusées sont facturées.",
+    "timeLeft": "Encore {time}",
+    "endsAt": "Se termine à {time}",
+    "warnLeft": "{minutes, plural, one {Il reste # minute.} other {Il reste # minutes.}} Le direct se termine tout seul à {time}.",
+    "addTime": "Ajouter du temps une fois :",
+    "addMinutes": "+{minutes} min",
+    "adding": "Ajout en cours",
+    "added": "{minutes} minutes ajoutées. Le direct se termine maintenant à {time}.",
+    "addPrice": "Ajouter du temps coûte {price} par minute.",
+    "addFailed": "Le temps n’a pas pu être ajouté. Réessayez.",
+    "reachedLength": "Le direct a atteint la durée choisie et s’est terminé.",
+    "endedOnServer": "Le direct s’est terminé sur le serveur, le studio s’est donc arrêté aussi."
   },
   "liveChat": {
     "confirmBlock": "Bloquer {name} dans cette discussion ? Tout ce que cette personne a écrit sera supprimé.",
@@ -1250,7 +1265,8 @@
     "captionsOn": "Sous-titres affichés",
     "captionsOff": "Sous-titres masqués",
     "soundOn": "Activer le son",
-    "whatWasSaid": "{count, plural, one {Ce qui a été dit (# ligne, tirée des sous-titres en direct)} many {Ce qui a été dit (# lignes, tirées des sous-titres en direct)} other {Ce qui a été dit (# lignes, tirées des sous-titres en direct)}}"
+    "whatWasSaid": "{count, plural, one {Ce qui a été dit (# ligne, tirée des sous-titres en direct)} many {Ce qui a été dit (# lignes, tirées des sous-titres en direct)} other {Ce qui a été dit (# lignes, tirées des sous-titres en direct)}}",
+    "endsAt": "Se termine à {time}"
   },
   "profile": {
     "saved": "Enregistré. Votre page publique l’affiche désormais.",
@@ -1339,7 +1355,8 @@
         "live_captions": "Sous-titres en direct",
         "storage": "Stockage sur VideoMind",
         "generate_video": "Générer une vidéo à partir d’une description",
-        "translate": "Traduire une vidéo (chaque langue)"
+        "translate": "Traduire une vidéo (chaque langue)",
+        "live": "Directs"
       },
       "per": {
         "minute": "{price} la minute",
@@ -2137,7 +2154,14 @@
     "trNotReady": "Une vidéo peut être traduite une fois prête.",
     "trNothing": "Rien n’est dit dans cette vidéo, il n’y a donc rien à traduire.",
     "trNone": "Cette vidéo n’a pas de traduction dans cette langue.",
-    "trRefused": "Claude a refusé de traduire cette transcription."
+    "trRefused": "Claude a refusé de traduire cette transcription.",
+    "liveBadLength": "Choisissez la durée du direct : {list} minutes.",
+    "liveExtendNotLive": "Du temps ne peut être ajouté que pendant le direct.",
+    "liveNoLength": "Ce direct n’a pas de durée fixée, il n’y a donc rien à prolonger.",
+    "liveAlreadyExtended": "Du temps a déjà été ajouté une fois à ce direct.",
+    "liveBadExtend": "Ajoutez {list} minutes.",
+    "liveTooLong": "Un direct peut durer au plus {max} minutes.",
+    "liveTimeUp": "Le direct a atteint son heure de fin."
   },
   "notFound": {
     "title": "Cette page est introuvable",

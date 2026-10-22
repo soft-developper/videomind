@@ -12,6 +12,7 @@ import { Volume2, Captions } from "lucide-react";
 import { clsx } from "clsx";
 import { getLiveEvent, liveViewerToken, getLiveCaptions, ApiError } from "@/lib/api";
 import { LiveChat } from "./LiveChat";
+import { useFormat } from "@/lib/format";
 // vm_lang
 import { useTranslations } from "next-intl";
 
@@ -24,12 +25,14 @@ const clock = (sec: number) => {
 export function LiveWatch({ id }: { id: string }) {
   const t = useTranslations("liveWatch");
   const tc = useTranslations("common");
+  const f = useFormat();
   const { data, error, refetch } = useQuery({
     queryKey: ["live-watch", id],
     queryFn: () => getLiveEvent(id),
     retry: (n, e) => !(e instanceof ApiError && e.status === 404) && n < 2,
     // Until it is live, look again every 10 seconds. After it ends, now and then for the recording.
-    refetchInterval: (q) => (q.state.data?.event.status === "scheduled" ? 10_000 : q.state.data?.event.status === "ended" && !q.state.data?.event.videoId ? 30_000 : false),
+    // vm_livesession: while live, every 60 seconds too, so a new end time or the end shows even without the room.
+    refetchInterval: (q) => (q.state.data?.event.status === "scheduled" ? 10_000 : q.state.data?.event.status === "live" ? 60_000 : q.state.data?.event.status === "ended" && !q.state.data?.event.videoId ? 30_000 : false),
   });
   const event = data?.event;
   const stage = useRef<HTMLDivElement>(null);
@@ -129,6 +132,10 @@ export function LiveWatch({ id }: { id: string }) {
       <div>
         <h1 className="font-display text-[22px] sm:text-[26px] leading-tight text-paper" dir="auto">{event.title}</h1>
         <Link href={`/u/${event.wallet}`} className="text-[13.5px] text-paper-2 hover:text-paper hover:underline underline-offset-2">{t("by", { name: who })}</Link>
+        {/* vm_livesession: when the event ends by itself */}
+        {event.status === "live" && event.endsAt && (
+          <p className="text-[13px] text-dim mt-0.5" data-live-ends>{t("endsAt", { time: f.date(event.endsAt, { timeStyle: "short" }) })}</p>
+        )}
       </div>
 
       <div ref={stage} className="relative w-full aspect-video rounded-md bg-black overflow-hidden" data-live-stage>

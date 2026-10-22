@@ -1202,7 +1202,22 @@
     "alsoStreamHint": "Una dirección RTMP con su clave de transmisión, de YouTube Live, Twitch u otro sitio. Solo se usa para este evento y nunca se guarda. Retransmitir consume minutos de transcodificación de LiveKit.",
     "restreamLabel": "Dirección de retransmisión {n}",
     "addAnother": "Añadir otra",
-    "goLive": "Transmitir en vivo"
+    "goLive": "Transmitir en vivo",
+    "length": "Cuánto dura",
+    "lengthHint": "El evento en vivo termina solo cuando se acaba este tiempo. Durante la transmisión puedes añadir 10, 20 o 30 minutos una vez, hasta {max} minutos en total.",
+    "minutesShort": "{minutes} min",
+    "livePrice": "Transmitir en vivo cuesta {price} por minuto: {total} por {minutes} minutos, apartados ahora. Solo se cobran los minutos que de verdad dure.",
+    "timeLeft": "Quedan {time}",
+    "endsAt": "Termina a las {time}",
+    "warnLeft": "{minutes, plural, one {Queda # minuto.} other {Quedan # minutos.}} El evento en vivo termina solo a las {time}.",
+    "addTime": "Añadir tiempo una vez:",
+    "addMinutes": "+{minutes} min",
+    "adding": "Añadiendo",
+    "added": "Se añadieron {minutes} minutos. El evento en vivo ahora termina a las {time}.",
+    "addPrice": "Añadir tiempo cuesta {price} por minuto.",
+    "addFailed": "No se pudo añadir tiempo. Inténtalo de nuevo.",
+    "reachedLength": "El evento en vivo llegó a la duración que elegiste y terminó.",
+    "endedOnServer": "El evento en vivo terminó en el servidor, así que el estudio también se detuvo."
   },
   "liveChat": {
     "confirmBlock": "¿Bloquear a {name} en este chat? Se borra todo lo que escribió.",
@@ -1250,7 +1265,8 @@
     "captionsOn": "Subtítulos activados",
     "captionsOff": "Subtítulos desactivados",
     "soundOn": "Activar el sonido",
-    "whatWasSaid": "{count, plural, one {Lo que se dijo (# línea, de los subtítulos en vivo)} many {Lo que se dijo (# líneas, de los subtítulos en vivo)} other {Lo que se dijo (# líneas, de los subtítulos en vivo)}}"
+    "whatWasSaid": "{count, plural, one {Lo que se dijo (# línea, de los subtítulos en vivo)} many {Lo que se dijo (# líneas, de los subtítulos en vivo)} other {Lo que se dijo (# líneas, de los subtítulos en vivo)}}",
+    "endsAt": "Termina a las {time}"
   },
   "profile": {
     "saved": "Guardado. Tu página pública ya lo muestra.",
@@ -1339,7 +1355,8 @@
         "live_captions": "Subtítulos en vivo",
         "storage": "Almacenamiento en VideoMind",
         "generate_video": "Generar un video a partir de una descripción",
-        "translate": "Traducir un video (cada idioma)"
+        "translate": "Traducir un video (cada idioma)",
+        "live": "Eventos en vivo"
       },
       "per": {
         "minute": "{price} por minuto",
@@ -2137,7 +2154,14 @@
     "trNotReady": "Un video se puede traducir cuando está listo.",
     "trNothing": "En este video no se dice nada, así que no hay nada que traducir.",
     "trNone": "Este video no tiene traducción en ese idioma.",
-    "trRefused": "Claude no aceptó traducir esta transcripción."
+    "trRefused": "Claude no aceptó traducir esta transcripción.",
+    "liveBadLength": "Elige cuánto dura el evento en vivo: {list} minutos.",
+    "liveExtendNotLive": "Solo se puede añadir tiempo mientras el evento está en vivo.",
+    "liveNoLength": "Este evento en vivo no tiene una duración fijada, así que no hay nada que alargar.",
+    "liveAlreadyExtended": "Ya se añadió tiempo una vez a este evento en vivo.",
+    "liveBadExtend": "Añade {list} minutos.",
+    "liveTooLong": "Un evento en vivo puede durar como máximo {max} minutos.",
+    "liveTimeUp": "El evento en vivo llegó a su hora de fin."
   },
   "notFound": {
     "title": "No se encontró esta página",

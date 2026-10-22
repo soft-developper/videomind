@@ -10,6 +10,7 @@
 //   search, learn_paths, learn_ask   the signed in wallet
 //   live_captions  the event's host, per minute, in blocks
 //   translate      the video's owner, per minute, once per language (lib/translate.ts)
+//   live           the event's host, per minute of the length chosen, extension held apart (lib/live.ts)
 // A settle that fails after the work is done is logged and the hold
 // expires: the user is never refused something already delivered.
 import { getDb } from "./db.js";

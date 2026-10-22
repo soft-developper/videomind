@@ -28,6 +28,7 @@ import liveRouter from "./routes/live.js";
 import profilesRouter from "./routes/profiles.js";
 import { youtubeRouter, youtubeVideoRouter } from "./routes/youtube.js";
 import { attachCaptions } from "./lib/livecaptions.js";
+import { endDueEvents } from "./lib/live.js";
 import settingsRouter from "./routes/settings.js";
 // vm_analytics: play counts without cookies, and the owner's numbers
 import { viewsRouter, analyticsRouter } from "./routes/analytics.js";
@@ -139,6 +140,9 @@ async function main() {
   });
   // vm_livechat: the studio sends its sound for live captions over a WebSocket on the same port.
   attachCaptions(server);
+  // vm_livesession: live events end at their end time, even when nobody is looking.
+  const due = setInterval(() => { endDueEvents().catch((err) => console.error(`[live] ending due events failed: ${err?.message ?? err}`)); }, 15_000);
+  due.unref();
 }
 
 main().catch((err) => { console.error("Failed to start:", err); process.exit(1); });

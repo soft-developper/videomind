@@ -41,7 +41,8 @@ const RATE = 24_000;
 export const captionsUrl = () => process.env.LIVE_CAPTIONS_URL?.trim() || "wss://api.openai.com/v1/realtime?intent=transcription";
 export const captionsModel = () => process.env.LIVE_CAPTIONS_MODEL?.trim() || "gpt-live-transcribe";
 /** Minutes of captions one event may use (the audio actually sent). */
-export const maxMinutes = () => Math.max(1, Number(process.env.LIVE_CAPTIONS_MAX_MINUTES) || 180);
+// vm_livesession: 210 by default, the longest a live event can run with its extension.
+export const maxMinutes = () => Math.max(1, Number(process.env.LIVE_CAPTIONS_MAX_MINUTES) || 210);
 export const captionsAvailable = () => !!liveConfig() && !!process.env.OPENAI_API_KEY?.trim() && process.env.LIVE_CAPTIONS !== "off";
 
 // Pause detection. Levels are the root mean square of the samples, 0 to 1.

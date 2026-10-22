@@ -10,6 +10,11 @@
 // captions are made, before or during the event. Captions take the sound
 // that goes live (see lib/liveaudio.ts). The host's chat sits beside the
 // picture, with delete and block.
+//
+// vm_livesession: the host picks how long the event runs before going live.
+// The studio counts down, offers to add time once (10, 20 or 30 minutes),
+// and stops at the end time. The server ends the event then too, so a
+// closed or sleeping tab does not keep it going.
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Room, RoomEvent, Track } from "livekit-client";
@@ -20,7 +25,7 @@ import { QrCode } from "@/components/share/QrCode";
 import { openInputs, pickType, fixWebmDuration, VIDEO_BITS, AUDIO_BITS, MAX_SECONDS, canRecord, type Source, type Inputs } from "@/lib/record";
 import {
   getLiveEvent, liveHostToken, startLive, endLive, liveStats, linkLiveRecording, ApiError, type LiveEventInfo,
-  updateLiveSettings, liveCaptionsSocket, type ChatMode,
+  updateLiveSettings, liveCaptionsSocket, type ChatMode, getLiveConfig, extendLive,
 } from "@/lib/api";
 import { startCaptionFeed } from "@/lib/liveaudio";
 import { LiveChat } from "./LiveChat";
@@ -28,7 +33,8 @@ import { LiveChat } from "./LiveChat";
 import { useTranslations } from "next-intl";
 import { localize } from "@/lib/errorText";
 // vm_charge: the price of captions, and a way to add credits when they stop for credits
-import { PriceTag, AddCreditsLink } from "@/components/credits/Credits";
+import { PriceTag, AddCreditsLink, useCredits, isNoCredits } from "@/components/credits/Credits";
+import { useMoney, inline, useFormat } from "@/lib/format";
 
 type T = ReturnType<typeof useTranslations<"live">>;
 const CHAT_CHOICES: ChatMode[] = ["anyone", "wallets", "off"];
@@ -82,6 +88,86 @@ function LiveSettings({ event, onSaved }: { event: LiveEventInfo; onSaved: () =>
   );
 }
 
+// vm_livesession: used until the server's list arrives, the same as the server's.
+const SESSION_FALLBACK = [15, 30, 45, 60, 90, 120, 180];
+const MAX_SESSION_FALLBACK = 210;
+const DEFAULT_MINUTES = 60;
+
+/** How long the event runs, picked before going live, with its price when live events cost something. */
+function SessionLength({ minutes, onChange, choices, max, disabled }: { minutes: number; onChange: (m: number) => void; choices: number[]; max: number; disabled?: boolean }) {
+  const t = useTranslations("live");
+  const money = useMoney();
+  const c = useCredits();
+  const per = c.costOf("live");
+  const total = per != null ? Math.ceil(per * minutes) : null;
+  const short = total != null && c.available != null && c.available < total;
+  return (
+    <fieldset disabled={disabled} data-session-length>
+      <legend className="text-[13px] font-medium text-paper mb-2">{t("length")}</legend>
+      <div className="flex flex-wrap gap-2">
+        {choices.map((m) => (
+          <label key={m} className={clsx("h-9 px-3 rounded-md border inline-flex items-center cursor-pointer text-[13.5px]", minutes === m ? "border-paper bg-slate-2 text-paper" : "border-rule text-paper-2 hover:border-rule-lit")}>
+            <input type="radio" name="live-length" className="sr-only" checked={minutes === m} onChange={() => onChange(m)} />
+            <span className="tc">{t("minutesShort", { minutes: m })}</span>
+          </label>
+        ))}
+      </div>
+      <p className="text-[12.5px] text-dim mt-2">{t("lengthHint", { max })}</p>
+      {per != null && total != null && (
+        <p className={clsx("text-[12px] mt-1", short ? "text-warn" : "text-dim")} data-price-tag="live">
+          {t("livePrice", { price: inline(money(per)), total: inline(money(total)), minutes })}
+          {short && <> <AddCreditsLink /></>}
+        </p>
+      )}
+    </fieldset>
+  );
+}
+
+/** Time left, a warning near the end, and adding time once. */
+function SessionClock({ event, left, onExtended }: { event: LiveEventInfo; left: number; onExtended: (e: LiveEventInfo) => void }) {
+  const t = useTranslations("live");
+  const f = useFormat();
+  const money = useMoney();
+  const c = useCredits();
+  const [busy, setBusy] = useState<number | null>(null);
+  const [err, setErr] = useState<{ text: string; credits: boolean } | null>(null);
+  const [added, setAdded] = useState<number | null>(null);
+  if (!event.endsAt) return null;
+  const at = f.date(event.endsAt, { timeStyle: "short" });
+  const mins = Math.ceil(left / 60_000);
+  const warn = left <= 10 * 60_000;
+  const choices = event.extendChoices ?? [];
+  const per = c.costOf("live");
+  const add = async (m: number) => {
+    setBusy(m); setErr(null);
+    try { const r = await extendLive(event.id, m); setAdded(m); onExtended(r.event); }
+    catch (x) { setErr({ text: x instanceof ApiError ? x.message : t("addFailed"), credits: x instanceof ApiError && isNoCredits(x.code) }); }
+    finally { setBusy(null); }
+  };
+  return (
+    <div className={clsx("rounded-md border px-3.5 py-2.5 space-y-2", warn ? "border-warn/50 bg-warn/5" : "border-rule")} data-session-clock>
+      <p className="flex items-center gap-3 flex-wrap text-[13.5px]">
+        <span className={clsx("tc", warn ? "text-warn" : "text-paper")} data-time-left>{t("timeLeft", { time: clock(left / 1000) })}</span>
+        <span className="text-dim">{t("endsAt", { time: at })}</span>
+      </p>
+      {warn && left > 0 && <p className="text-[13px] text-warn" role="status" data-session-warning>{t("warnLeft", { minutes: Math.max(1, mins), time: at })}</p>}
+      {added != null && !warn && <p className="text-[13px] text-paper-2" role="status">{t("added", { minutes: added, time: at })}</p>}
+      {choices.length > 0 && left > 0 && (
+        <div className="flex items-center gap-2 flex-wrap" data-extend>
+          <span className="text-[13px] text-paper-2">{t("addTime")}</span>
+          {choices.map((m) => (
+            <button key={m} onClick={() => void add(m)} disabled={busy != null} className="btn btn-ghost h-8 px-3 text-[13px]">
+              {busy === m ? t("adding") : t("addMinutes", { minutes: m })}
+            </button>
+          ))}
+          {per != null && <span className="text-[12px] text-dim">{t("addPrice", { price: inline(money(per)) })}</span>}
+        </div>
+      )}
+      {err && <p className="text-[12.5px] text-error" role="alert">{err.text}{err.credits && <> <AddCreditsLink /></>}</p>}
+    </div>
+  );
+}
+
 const clock = (sec: number) => {
   const s = Math.max(0, Math.floor(sec)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
   return h ? `${h}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}` : `${m}:${String(r).padStart(2, "0")}`;
@@ -111,6 +197,12 @@ export function LiveStudio({ id }: { id: string }) {
   const tc = useTranslations("common");
   const { data, refetch } = useQuery({ queryKey: ["live", id], queryFn: () => getLiveEvent(id) });
   const event: LiveEventInfo | undefined = data?.event;
+  // vm_livesession
+  const { data: cfg } = useQuery({ queryKey: ["live-config"], queryFn: getLiveConfig, staleTime: 300_000 });
+  const [minutes, setMinutes] = useState(DEFAULT_MINUTES);
+  const [endsAt, setEndsAt] = useState<number | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => { if (event?.endsAt) setEndsAt(event.endsAt); }, [event?.endsAt]);
 
   const [source, setSource] = useState<Source>("camera");
   const [mic, setMic] = useState(true);
@@ -147,11 +239,18 @@ export function LiveStudio({ id }: { id: string }) {
 
   useEffect(() => {
     if (phase.at !== "live") return;
-    const t = setInterval(() => setElapsed((performance.now() - since.current) / 1000), 500);
-    const s = setInterval(() => { liveStats(id).then((x) => setViewers(x.viewers)).catch(() => {}); }, 10_000);
-    liveStats(id).then((x) => setViewers(x.viewers)).catch(() => {});
+    const t = setInterval(() => { setElapsed((performance.now() - since.current) / 1000); setNowMs(Date.now()); }, 500);
+    const look = () => liveStats(id).then((x) => {
+      setViewers(x.viewers);
+      if (x.endsAt) setEndsAt(x.endsAt);
+      // vm_livesession: the server ended it (its end time, or an admin): stop here too.
+      if (x.status === "ended") setServerEnded(true);
+    }).catch(() => {});
+    const s = setInterval(look, 10_000);
+    void look();
     return () => { clearInterval(t); clearInterval(s); };
   }, [phase, id]);
+  const [serverEnded, setServerEnded] = useState(false);
 
   useEffect(() => {
     if (phase.at === "live" && preview.current && inputs.current && !preview.current.srcObject) {
@@ -169,8 +268,9 @@ export function LiveStudio({ id }: { id: string }) {
 
   const stopRecording = async (): Promise<File | null> => {
     const r = rec.current; rec.current = null;
-    if (!r || r.state === "inactive") return null;
-    await new Promise<void>((res) => { r.addEventListener("stop", () => res(), { once: true }); r.stop(); });
+    if (!r) return null;
+    // A recorder that already stopped by itself (its tracks ended) still holds what it recorded.
+    if (r.state !== "inactive") await new Promise<void>((res) => { r.addEventListener("stop", () => res(), { once: true }); r.stop(); });
     const type = r.mimeType || "video/webm";
     let blob = new Blob(parts.current, { type }); parts.current = [];
     if (!blob.size) return null;
@@ -179,7 +279,12 @@ export function LiveStudio({ id }: { id: string }) {
     return new File([blob], `live-${id.slice(0, 8)}${ext}`, { type: type.split(";")[0] });
   };
 
+  // vm_livesession: the end time, the server and the host can all end the event at about the
+  // same moment. Only the first call ends it; a second would find no recording and replace it.
+  const ending = useRef(false);
   const end = useCallback(async (why?: string) => {
+    if (ending.current) return;
+    ending.current = true;
     setPhase({ at: "ending" });
     const seconds = (performance.now() - since.current) / 1000;
     const file = await stopRecording();
@@ -218,11 +323,18 @@ export function LiveStudio({ id }: { id: string }) {
     return () => { cancelled = true; };
   }, [wantCaptions, id, capTry, t]);
 
-  // A live event stops by itself at the longest recording allowed.
-  useEffect(() => { if (phase.at === "live" && elapsed >= MAX_SECONDS) void end(t("reachedLongest")); }, [elapsed, phase, end, t]);
+  // vm_livesession: the event stops at its end time. Events from before Part 19 have none and
+  // stop at the longest recording allowed, as before.
+  const left = endsAt ? Math.max(0, endsAt - nowMs) : null;
+  useEffect(() => {
+    if (phase.at !== "live") return;
+    if (left !== null && left <= 0) void end(t("reachedLength"));
+    else if (serverEnded) void end(t("endedOnServer"));
+    else if (left === null && elapsed >= MAX_SECONDS) void end(t("reachedLongest"));
+  }, [elapsed, left, serverEnded, phase, end, t]);
 
   const goLive = async () => {
-    setErr(null); setNote(null);
+    setErr(null); setNote(null); setNoCredits(false);
     const type = pickType();
     if (!type) { setErr(t("noRecorder")); return; }
     let ins: Inputs;
@@ -232,7 +344,9 @@ export function LiveStudio({ id }: { id: string }) {
     setPhase({ at: "starting" });
     try {
       const { url, token } = await liveHostToken(id);
-      const r = new Room({ adaptiveStream: false, dynacast: true });
+      // vm_livesession: the camera and microphone belong to this page (they are also being recorded).
+      // When the server closes the room at the end time, LiveKit must not stop them, or the recording stops too.
+      const r = new Room({ adaptiveStream: false, dynacast: true, stopLocalTrackOnUnpublish: false });
       room.current = r;
       r.on(RoomEvent.DataReceived, (payload, _p, _k, topic) => {
         if (topic !== "chat") return;
@@ -247,10 +361,12 @@ export function LiveStudio({ id }: { id: string }) {
       const urls = restream.map((u) => u.trim()).filter(Boolean);
       let started: Awaited<ReturnType<typeof startLive>> | null = null;
       for (let i = 0; i < 8 && !started; i++) {
-        try { started = await startLive(id, urls); }
+        try { started = await startLive(id, urls, minutes); }
         catch (e) { if (e instanceof ApiError && e.code === "not_publishing" && i < 7) await sleep(1000); else throw e; }
       }
       if (started?.restreamError) setNote(localize(started.restreamError));
+      if (started?.event.endsAt) setEndsAt(started.event.endsAt);
+      setServerEnded(false);
       // Record what is sent, from the same tracks.
       parts.current = [];
       const mr = new MediaRecorder(ins.stream, { mimeType: type, videoBitsPerSecond: VIDEO_BITS, audioBitsPerSecond: AUDIO_BITS });
@@ -260,14 +376,17 @@ export function LiveStudio({ id }: { id: string }) {
       since.current = performance.now();
       ins.onEnded(() => { void end(t("sharingStopped")); });
       setElapsed(0);
+      ending.current = false;
       setPhase({ at: "live" });
       await refetch();
     } catch (e) {
       void cleanup();
       setErr(reason(e, source, t));
+      setNoCredits(e instanceof ApiError && isNoCredits(e.code));
       setPhase({ at: "setup" });
     }
   };
+  const [noCredits, setNoCredits] = useState(false);
 
   const onUploaded = useCallback((videoId: string) => {
     linkLiveRecording(id, videoId).then(() => refetch()).catch(() => {});
@@ -355,6 +474,9 @@ export function LiveStudio({ id }: { id: string }) {
             {event.restreaming && <span className="tc">{t("restreaming")}</span>}
           </div>
           {note && <p className="text-[13px] text-warn" role="status">{note}</p>}
+          {phase.at === "live" && left !== null && (
+            <SessionClock event={{ ...event, endsAt }} left={left} onExtended={(e) => { if (e.endsAt) setEndsAt(e.endsAt); void refetch(); }} />
+          )}
           {event.captions && event.captionsAvailable && (
             <p className="text-[13px] text-paper-2" data-captions-state>
               {capState.on ? <>{t("capOn")}{capState.text ? <span className="text-dim">: <span dir="auto">{capState.text.slice(-120)}</span></span> : <span className="text-dim">{t("capListening")}</span>}</> : capState.note ?? t("capStarting")}
@@ -393,6 +515,8 @@ export function LiveStudio({ id }: { id: string }) {
         <input type="checkbox" checked={mic} onChange={(e) => setMic(e.target.checked)} /> {t("mic")}
       </label>
 
+      <SessionLength minutes={minutes} onChange={setMinutes} choices={cfg?.sessionMinutes ?? SESSION_FALLBACK} max={cfg?.maxSessionMinutes ?? MAX_SESSION_FALLBACK} />
+
       <LiveSettings event={event} onSaved={() => void refetch()} />
 
       <fieldset className="space-y-2">
@@ -417,7 +541,7 @@ export function LiveStudio({ id }: { id: string }) {
 
       <div className="space-y-2">
         <button onClick={() => void goLive()} disabled={!support?.recorder} className="btn btn-signal h-10 px-5">{t("goLive")}</button>
-        {err && <p className="text-[13.5px] text-error" role="alert">{err}</p>}
+        {err && <p className="text-[13.5px] text-error" role="alert">{err}{noCredits && <> <AddCreditsLink /></>}</p>}
       </div>
     </div>
   );

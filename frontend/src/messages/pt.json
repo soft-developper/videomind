@@ -1202,7 +1202,22 @@
     "alsoStreamHint": "Um endereço RTMP com a chave de transmissão, do YouTube Live, da Twitch ou de outro site. Ele é usado só neste evento e nunca fica guardado. Retransmitir consome minutos de transcodificação do LiveKit.",
     "restreamLabel": "Endereço de retransmissão {n}",
     "addAnother": "Adicionar outro",
-    "goLive": "Transmitir ao vivo"
+    "goLive": "Transmitir ao vivo",
+    "length": "Quanto tempo dura",
+    "lengthHint": "O evento ao vivo termina sozinho quando esse tempo acaba. Durante a transmissão você pode adicionar 10, 20 ou 30 minutos uma vez, até {max} minutos no total.",
+    "minutesShort": "{minutes} min",
+    "livePrice": "Transmitir ao vivo custa {price} por minuto: {total} por {minutes} minutos, reservados agora. Só os minutos que realmente durar são cobrados.",
+    "timeLeft": "Faltam {time}",
+    "endsAt": "Termina às {time}",
+    "warnLeft": "{minutes, plural, one {Falta # minuto.} other {Faltam # minutos.}} O evento ao vivo termina sozinho às {time}.",
+    "addTime": "Adicionar tempo uma vez:",
+    "addMinutes": "+{minutes} min",
+    "adding": "Adicionando",
+    "added": "{minutes} minutos adicionados. O evento ao vivo agora termina às {time}.",
+    "addPrice": "Adicionar tempo custa {price} por minuto.",
+    "addFailed": "Não foi possível adicionar tempo. Tente de novo.",
+    "reachedLength": "O evento ao vivo atingiu a duração que você escolheu e foi encerrado.",
+    "endedOnServer": "O evento ao vivo foi encerrado no servidor, então o estúdio também parou."
   },
   "liveChat": {
     "confirmBlock": "Bloquear {name} neste chat? Tudo o que a pessoa escreveu será apagado.",
@@ -1250,7 +1265,8 @@
     "captionsOn": "Legendas ativadas",
     "captionsOff": "Legendas desativadas",
     "soundOn": "Ativar o som",
-    "whatWasSaid": "{count, plural, one {O que foi dito (# linha, das legendas ao vivo)} many {O que foi dito (# linhas, das legendas ao vivo)} other {O que foi dito (# linhas, das legendas ao vivo)}}"
+    "whatWasSaid": "{count, plural, one {O que foi dito (# linha, das legendas ao vivo)} many {O que foi dito (# linhas, das legendas ao vivo)} other {O que foi dito (# linhas, das legendas ao vivo)}}",
+    "endsAt": "Termina às {time}"
   },
   "profile": {
     "saved": "Salvo. Sua página pública já mostra.",
@@ -1339,7 +1355,8 @@
         "live_captions": "Legendas ao vivo",
         "storage": "Armazenamento no VideoMind",
         "generate_video": "Gerar um vídeo a partir de uma descrição",
-        "translate": "Traduzir um vídeo (cada idioma)"
+        "translate": "Traduzir um vídeo (cada idioma)",
+        "live": "Eventos ao vivo"
       },
       "per": {
         "minute": "{price} por minuto",
@@ -2137,7 +2154,14 @@
     "trNotReady": "Um vídeo pode ser traduzido quando estiver pronto.",
     "trNothing": "Nada é dito neste vídeo, então não há o que traduzir.",
     "trNone": "Este vídeo não tem tradução nesse idioma.",
-    "trRefused": "O Claude recusou traduzir esta transcrição."
+    "trRefused": "O Claude recusou traduzir esta transcrição.",
+    "liveBadLength": "Escolha quanto tempo dura o evento ao vivo: {list} minutos.",
+    "liveExtendNotLive": "Só é possível adicionar tempo enquanto o evento está ao vivo.",
+    "liveNoLength": "Este evento ao vivo não tem duração definida, então não há nada para estender.",
+    "liveAlreadyExtended": "Já foi adicionado tempo uma vez a este evento ao vivo.",
+    "liveBadExtend": "Adicione {list} minutos.",
+    "liveTooLong": "Um evento ao vivo pode durar no máximo {max} minutos.",
+    "liveTimeUp": "O evento ao vivo chegou ao horário de término."
   },
   "notFound": {
     "title": "Esta página não foi encontrada",

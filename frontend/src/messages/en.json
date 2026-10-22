@@ -1202,7 +1202,22 @@
     "alsoStreamHint": "An RTMP address with its stream key, from YouTube Live, Twitch or another site. It is used for this event only and never stored. Restreaming uses LiveKit transcoding minutes.",
     "restreamLabel": "Restream address {n}",
     "addAnother": "Add another",
-    "goLive": "Go live"
+    "goLive": "Go live",
+    "length": "How long it runs",
+    "lengthHint": "The live event ends by itself when this time is up. While live you can add 10, 20 or 30 minutes once, up to {max} minutes in all.",
+    "minutesShort": "{minutes} min",
+    "livePrice": "Going live costs {price} a minute: {total} for {minutes} minutes, set aside now. Only the minutes it really runs are charged.",
+    "timeLeft": "{time} left",
+    "endsAt": "Ends at {time}",
+    "warnLeft": "{minutes, plural, one {# minute left.} other {# minutes left.}} The live event ends by itself at {time}.",
+    "addTime": "Add time once:",
+    "addMinutes": "+{minutes} min",
+    "adding": "Adding",
+    "added": "{minutes} minutes added. The live event now ends at {time}.",
+    "addPrice": "Adding time costs {price} a minute.",
+    "addFailed": "Time could not be added. Try again.",
+    "reachedLength": "The live event reached the length you set and was ended.",
+    "endedOnServer": "The live event ended on the server, so the studio stopped too."
   },
   "liveChat": {
     "confirmBlock": "Block {name} from this chat? Everything they wrote is removed.",
@@ -1250,7 +1265,8 @@
     "captionsOn": "Captions on",
     "captionsOff": "Captions off",
     "soundOn": "Turn sound on",
-    "whatWasSaid": "{count, plural, one {What was said (# line, from the live captions)} other {What was said (# lines, from the live captions)}}"
+    "whatWasSaid": "{count, plural, one {What was said (# line, from the live captions)} other {What was said (# lines, from the live captions)}}",
+    "endsAt": "Ends at {time}"
   },
   "profile": {
     "saved": "Saved. Your public page shows it now.",
@@ -1339,7 +1355,8 @@
         "live_captions": "Live captions",
         "storage": "Storage on VideoMind",
         "generate_video": "Generating a video from a prompt",
-        "translate": "Translating a video (each language)"
+        "translate": "Translating a video (each language)",
+        "live": "Live events"
       },
       "per": {
         "minute": "{price} a minute",
@@ -2137,7 +2154,14 @@
     "trNotReady": "A video can be translated once it is ready.",
     "trNothing": "Nothing is said in this video, so there is nothing to translate.",
     "trNone": "This video has no translation in that language.",
-    "trRefused": "Claude declined to translate this transcript."
+    "trRefused": "Claude declined to translate this transcript.",
+    "liveBadLength": "Choose how long the live event runs: {list} minutes.",
+    "liveExtendNotLive": "Time can only be added while the event is live.",
+    "liveNoLength": "This live event has no set length, so there is nothing to extend.",
+    "liveAlreadyExtended": "Time was already added once to this live event.",
+    "liveBadExtend": "Add {list} minutes.",
+    "liveTooLong": "A live event can run at most {max} minutes.",
+    "liveTimeUp": "The live event has reached its end time."
   },
   "notFound": {
     "title": "This page was not found",
