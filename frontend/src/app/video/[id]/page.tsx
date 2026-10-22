@@ -26,6 +26,7 @@ import { clsx } from "clsx";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 // vm_info: category, collection, tags and who can watch
 import { VideoDetails } from "@/components/video/VideoDetails";
+import { GeneratedBadge } from "@/components/generate/GeneratedBadge"; // vm_generate
 import { WalletButton } from "@/components/layout/WalletButton";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { Lock } from "lucide-react";
@@ -187,6 +188,7 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                     {video.description}
                   </p>
                 )}
+                <GeneratedBadge g={video.generated} />
                 <VideoDetails video={video} owner={mine} />
                 {/* vm_content: only the owner can still open a video VideoMind took down; tell them why */}
                 {mine && video.removed && (
@@ -281,11 +283,12 @@ export default function VideoPage({ params }: { params: { id: string } }) {
                     onTimeUpdate={setT}
                   />
                 )}
-                <OnChainProof
+                {/* vm_generate: nothing to store on Shelby until the model has made the video */}
+                {video.status !== "generating" && <OnChainProof
                   videoId={video.id}
                   isOwner={!!mine}
                   storeHref={mine ? `/upload?anchor=${video.id}` : undefined}
-                />
+                />}
               </div>
               <ProcessingStatus videoId={params.id} onReady={() => refetch()} />
             </div>

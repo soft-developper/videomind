@@ -185,6 +185,8 @@ router.post("/:id/anchor/start", limitUpload, requireAuth, async (req, res) => {
     if (!video) return res.status(404).json({ error: "Video not found" });
     if (!ownsVideo(video, authOf(req)!.wallet)) return res.status(403).json(NOT_OWNER);
     if (video.status === "uploading") return res.status(409).json({ error: "Finish the upload first.", code: "not_uploaded" });
+    // vm_generate: nothing to store until the model has made it
+    if (video.status === "generating") return res.status(409).json({ error: "Wait until the video is made.", code: "not_made" });
     const list = await listAnchors(video.id);
     const may = canStoreAgain(list);
     if (!may.ok) return res.status(409).json({ error: may.reason, code: "already_stored" });
@@ -208,6 +210,8 @@ router.post("/:id/anchor", limitUpload, requireAuth, async (req, res) => {
     if (!video) return res.status(404).json({ error: "Video not found" });
     if (!ownsVideo(video, wallet)) return res.status(403).json(NOT_OWNER);
     if (video.status === "uploading") return res.status(409).json({ error: "Finish the upload first.", code: "not_uploaded" });
+    // vm_generate: nothing to store until the model has made it
+    if (video.status === "generating") return res.status(409).json({ error: "Wait until the video is made.", code: "not_made" });
 
     const blobName = typeof sent === "string" && sent ? sent : video.shelby.videoBlobName;
     if (!isOurBlobName(video.id, blobName)) return res.status(400).json({ error: "That is not a name this video is stored under.", code: "bad_blob_name" });
@@ -444,7 +448,9 @@ router.get("/:id/jobs", optionalAuth, async (req, res) => {
       errorCode: owner ? j.errorCode ?? null : null,
       canRetry: owner && j.status === "failed" && !NOT_RETRYABLE.has(j.errorCode ?? ""),
     }));
-    return res.json({ id: video.id, status: video.status, jobs });
+    // vm_generate: a video made from a prompt says which model makes it, and why it failed (to its owner)
+    const generation = await generationOf(video.id, owner).catch(() => null);
+    return res.json({ id: video.id, status: video.status, jobs, generation });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

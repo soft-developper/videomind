@@ -23,7 +23,7 @@ export const VIDEO_GRID = "grid gap-x-5 gap-y-9 grid-cols-[repeat(auto-fill,minm
 
 // vm_lang: the steps a video goes through, as message keys under "card.step".
 type StepKey = keyof Messages["card"]["step"];
-const WORKING = ["uploading", "processing", "transcribing", "analyzing"] as const;
+const WORKING = ["uploading", "generating", "processing", "transcribing", "analyzing"] as const;
 export const stepKey = (status: string): StepKey =>
   (WORKING as readonly string[]).includes(status) ? (status as StepKey) : status === "error" ? "error" : "processing";
 

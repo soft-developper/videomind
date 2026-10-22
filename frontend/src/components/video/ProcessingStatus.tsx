@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 // vm_jobs: stage by stage status, the reason a stage failed, and retry
-import { getVideoJobs, retryVideoJob, type VideoJob } from "@/lib/api";
+import { getVideoJobs, retryVideoJob, type VideoJob, type Generated } from "@/lib/api";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
@@ -13,8 +13,10 @@ import { AddCreditsLink, PriceTag, isNoCredits } from "@/components/credits/Cred
 
 // vm_lang: names and lines are message keys under "processing.steps".
 const STEPS = [{ k: "uploading" }, { k: "transcribing" }, { k: "analyzing" }, { k: "ready" }] as const;
+// vm_generate: a video made from a description starts with the model making it
+const GEN_STEPS = [{ k: "generating" }, { k: "transcribing" }, { k: "analyzing" }, { k: "ready" }] as const;
 
-const ORDER = ["uploading", "processing", "transcribing", "analyzing", "ready"];
+const ORDER = ["uploading", "generating", "processing", "transcribing", "analyzing", "ready"];
 
 export function ProcessingStatus({
   videoId, onReady,
@@ -27,6 +29,7 @@ export function ProcessingStatus({
   // Signing in changes what the server shows (the reason, the retry), so reload then.
   const sessionWallet = useSessionWallet();
   const [jobs, setJobs] = useState<VideoJob[]>([]);
+  const [gen, setGen] = useState<Generated | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [retryErr, setRetryErr] = useState<string | null>(null);
   // Kept in a ref so a new function from the parent does not restart polling.
@@ -40,6 +43,7 @@ export function ProcessingStatus({
         const d = await getVideoJobs(videoId);
         if (!alive) return;
         setJobs(d.jobs);
+        setGen(d.generation ?? null);
         setStatus(d.status);
         if (d.status === "ready") onReadyRef.current();
       } catch {}
@@ -71,6 +75,23 @@ export function ProcessingStatus({
       setRetrying(false);
     }
   };
+
+  // vm_generate: the model could not make it. Nothing was charged; a new description is the way on.
+  if (status === "error" && gen && gen.status === "failed") {
+    const code = gen.errorCode ?? "";
+    const known = ["refused", "provider_account", "provider_error", "timeout", "no_credits"].includes(code);
+    return (
+      <div className="panel p-5 space-y-3" data-generation-failed={code || "unknown"}>
+        <p className="font-display text-[18px] text-paper">{tp("gen.failedTitle")}</p>
+        <p className="text-[14px] text-paper-2 leading-relaxed">{tp(known ? `gen.error.${code}` as "gen.error.refused" : "gen.error.other")}</p>
+        {gen.prompt && <p className="text-[13px] text-dim leading-relaxed" dir="auto">{tp("gen.yourPrompt", { prompt: gen.prompt.length > 240 ? gen.prompt.slice(0, 240) + "..." : gen.prompt })}</p>}
+        <div className="flex gap-2 pt-2">
+          <Link href="/generate" className="btn btn-signal h-9 px-4 flex items-center">{tp("gen.again")}</Link>
+          <Link href="/library" className="btn btn-ghost h-9 px-4 flex items-center">{tp("library")}</Link>
+        </div>
+      </div>
+    );
+  }
 
   if (status === "error") {
     return (
@@ -127,7 +148,7 @@ export function ProcessingStatus({
       </header>
 
       <div>
-        {STEPS.map((s, i) => {
+        {(gen ? GEN_STEPS : STEPS).map((s, i) => {
           const si = ORDER.indexOf(s.k);
           const done = idx > si;
           const on = status === s.k || (s.k === "uploading" && status === "processing");
@@ -153,7 +174,7 @@ export function ProcessingStatus({
                 )}>
                   {tp(`steps.${s.k}.n`)}
                 </p>
-                <p className="text-[13px] font-sans text-dim mt-0.5">{tp(`steps.${s.k}.d`)}</p>
+                <p className="text-[13px] font-sans text-dim mt-0.5">{s.k === "generating" && gen ? tp("steps.generating.d", { model: gen.model }) : tp(`steps.${s.k}.d` as "steps.ready.d")}</p>
                 {on && s.k === "transcribing" && pieces && pieces.total > 1 && (
                   <p className="tc text-paper-2 mt-1.5">
                     {tp("part", { n: Math.min(pieces.done + 1, pieces.total), total: pieces.total })}
@@ -170,7 +191,7 @@ export function ProcessingStatus({
         <p className="text-[13px] text-dim">
           {waiting
             ? tp("retrying", { step: stage(waiting, "name"), n: waiting.attempts + 1, max: waiting.maxAttempts })
-            : tp("updates")}
+            : status === "generating" ? tp("gen.updates") : tp("updates")}
         </p>
       </footer>
     </div>

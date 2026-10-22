@@ -9,7 +9,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { clsx } from "clsx";
 import {
   Home, Film, Upload, Disc, Radio, Search, BookOpen, MessageSquare,
-  BarChart3, User, Settings, Menu, X, type LucideIcon,
+  BarChart3, User, Settings, Menu, X, Clapperboard, type LucideIcon,
   // vm_profile
   Wallet,
 } from "lucide-react";
@@ -19,6 +19,8 @@ import { WalletButton } from "./WalletButton";
 import { SignInNotice } from "./SignInNotice";
 // vm_charge: low credits
 import { CreditsNotice } from "@/components/credits/Credits";
+// vm_generate: Generate shows only for wallets the dashboard lets generate
+import { useGenerateAllowed } from "@/components/generate/GenerateForm";
 import { useSessionWallet } from "./AuthProvider";
 // vm_lang
 import { LanguagePicker } from "./LanguagePicker";
@@ -33,7 +35,7 @@ const SHOW_PLANNED = true;
 
 // vm_lang: labels are message keys under "nav".
 type NavKey = Parameters<ReturnType<typeof useTranslations<"nav">>>[0];
-interface Item { label: NavKey; href?: string; icon?: LucideIcon; match?: (path: string) => boolean }
+interface Item { label: NavKey; href?: string; icon?: LucideIcon; match?: (path: string) => boolean; gate?: "generate" }
 interface Group { label?: NavKey; items: Item[] }
 
 const NAV: Group[] = [
@@ -53,6 +55,7 @@ const NAV: Group[] = [
     label: "create",
     items: [
       { label: "upload", href: "/upload", icon: Upload },
+      { label: "generate", href: "/generate", icon: Clapperboard, gate: "generate" },   // vm_generate
       { label: "record", href: "/record", icon: Disc },   // vm_record
       { label: "goLive", href: "/live", icon: Radio, match: (p) => p === "/live" || p.endsWith("/studio") },   // vm_live
     ],
@@ -158,10 +161,11 @@ function ShelbyRow() {
 
 function NavList({ path }: { path: string }) {
   const t = useTranslations("nav");
+  const canGenerate = useGenerateAllowed();
   return (
     <nav aria-label={t("main")} className="flex-1 overflow-y-auto px-2.5 pb-4 scrollbar-hide">
       {NAV.map((group, gi) => {
-        const items = group.items.filter((it) => SHOW_PLANNED || it.href);
+        const items = group.items.filter((it) => (SHOW_PLANNED || it.href) && (it.gate !== "generate" || canGenerate));
         if (!items.length) return null;
         return (
           <div key={gi} className={gi === 0 ? "" : "mt-5"}>

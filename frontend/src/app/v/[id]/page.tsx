@@ -26,6 +26,7 @@ import { useTranslations } from "next-intl";
 import { useWatchProgress } from "@/lib/useWatchProgress";
 import { useRef, useState, useCallback } from "react";
 import { clsx } from "clsx";
+import { GeneratedBadge } from "@/components/generate/GeneratedBadge"; // vm_generate
 
 export default function PublicVideo({ params }: { params: { id: string } }) {
   const tv = useTranslations("videoPage");
@@ -127,6 +128,7 @@ export default function PublicVideo({ params }: { params: { id: string } }) {
                     {ts("by", { name: video.ownerName ?? `${video.ownerWallet.slice(0, 6)}…${video.ownerWallet.slice(-4)}` })}
                   </Link>
                 )}
+                <GeneratedBadge g={video.generated} />
                 {video.description && (
                   <p className="text-[13px] font-sans text-dim mt-2 max-w-2xl leading-relaxed whitespace-pre-line" dir="auto">
                     {video.description}

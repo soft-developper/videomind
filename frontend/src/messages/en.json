@@ -51,6 +51,7 @@
     "liveRecordings": "Live recordings",
     "create": "Create",
     "upload": "Upload",
+    "generate": "Generate",
     "record": "Record",
     "goLive": "Go live",
     "discover": "Discover",
@@ -170,7 +171,8 @@
       "processing": "Processing",
       "transcribing": "Transcribing",
       "analyzing": "Finding chapters",
-      "error": "Stopped"
+      "error": "Stopped",
+      "generating": "Being made"
     },
     "watched": "Watched",
     "chapters": "{count, plural, one {# chapter} other {# chapters}}",
@@ -374,6 +376,62 @@
       }
     },
     "prepaid": "Storage on Shelby is prepaid when you upload, for a fixed number of 24 hour payment periods. Each video's ownership proof shows the date it is paid until."
+  },
+  "generatePage": {
+    "title": "Make a video",
+    "description": "Describe a video and an AI model makes it. It lands in your library and is transcribed and split into chapters like any upload.",
+    "signIn": "Sign in with your wallet to make videos. The prompt is at the bottom of the page.",
+    "loadFailed": "This page could not be loaded. Try again in a minute.",
+    "notAllowed": "Making videos from a description is not open to your wallet yet.",
+    "noModels": "No model can make videos right now. Try again later.",
+    "promptLabel": "Describe the video",
+    "promptHint": "Say who or what is in it, what happens, how the camera moves, the light and the sound. Put spoken words in quotes.",
+    "placeholder": "A teacher at a whiteboard in a bright classroom turns to the camera and says: \"Today we learn how computers agree.\" Slow push in, soft daylight, quiet room.",
+    "count": "{n} of {max}",
+    "model": "Model",
+    "fixedSeconds": "{n} seconds",
+    "range": "{min} to {max} seconds",
+    "sep": " · ",
+    "length": "Length",
+    "seconds": "{n} s",
+    "shape": "Shape",
+    "wide": "Wide (16:9)",
+    "vertical": "Vertical (9:16)",
+    "titleLabel": "Title",
+    "titleHint": "Optional. The description is used when left empty.",
+    "visibility": "Who can see it",
+    "aiNotice": "Videos made here are labelled AI generated. Do not describe real, identifiable people without their permission. The model may refuse a description; a refused or failed video costs nothing.",
+    "budget": "Video generation has reached today's limit. Try again tomorrow.",
+    "price": "{price} for {n} seconds ({perSecond} a second), charged when the video arrives.",
+    "start": "Make the video",
+    "starting": "Sending",
+    "writeFirst": "Describe the video first",
+    "startFailed": "The video could not be started. Try again.",
+    "tipsTitle": "Writing a good description",
+    "tips": {
+      "subject": {
+        "n": "Who or what",
+        "d": "The people, objects and place, with a detail or two each."
+      },
+      "action": {
+        "n": "What happens",
+        "d": "One clear action. A short clip has time for one moment."
+      },
+      "camera": {
+        "n": "The camera",
+        "d": "Close up, wide shot, a slow push in, a drone flying forward."
+      },
+      "light": {
+        "n": "Light and look",
+        "d": "Soft daylight, golden hour, a dark studio, natural colors."
+      },
+      "sound": {
+        "n": "Sound and words",
+        "d": "Background sound, music, and any spoken line in quotes."
+      }
+    },
+    "example": "Short, concrete descriptions work better than long lists of styles.",
+    "after": "The model takes from about a minute to a few minutes. You can leave the page; the video appears in your library."
   },
   "upload": {
     "wallet": {
@@ -804,6 +862,10 @@
     "title": "Processing",
     "done": "Done",
     "steps": {
+      "generating": {
+        "n": "Make",
+        "d": "{model} is making your video"
+      },
       "uploading": {
         "n": "Upload",
         "d": "Sending the file to your library"
@@ -823,7 +885,21 @@
     },
     "part": "Part {n} of {total}",
     "retrying": "{step} hit a problem. Trying again, attempt {n} of {max}",
-    "updates": "This updates by itself. Long videos take a few minutes."
+    "updates": "This updates by itself. Long videos take a few minutes.",
+    "gen": {
+      "failedTitle": "The video could not be made",
+      "error": {
+        "refused": "The model refused this description. Change it and try again. Nothing was charged.",
+        "provider_account": "Video generation is not available right now. Nothing was charged.",
+        "provider_error": "The model hit a problem while making the video. Nothing was charged.",
+        "timeout": "The model took too long. Nothing was charged.",
+        "no_credits": "There were not enough credits. Nothing was charged.",
+        "other": "The video could not be made. Nothing was charged."
+      },
+      "yourPrompt": "Your description: {prompt}",
+      "again": "Write a new description",
+      "updates": "This updates by itself. Making a video takes from about a minute to a few minutes."
+    }
   },
   "proof": {
     "copyValue": "Copy the full value",
@@ -920,7 +996,11 @@
     "noSpeechAsk": "Questions are answered from what is said in a video. This one has no speech.",
     "ask": "Ask",
     "askTitle": "Ask about this video",
-    "close": "Close"
+    "close": "Close",
+    "generated": {
+      "label": "AI generated with {model}",
+      "prompt": "The description it was made from"
+    }
   },
   "record": {
     "title": "Record",
@@ -1713,6 +1793,7 @@
     "rules6": "collect other people’s information without their permission.",
     "rulesP2": "We may remove content, end live events or limit access that we reasonably believe breaks these rules.",
     "aiP": "Transcripts, chapters, summaries, answers, captions and other output are made by AI services (currently OpenAI and Anthropic) and can be incomplete or wrong. They are not professional advice. Check anything important against the video itself. You are responsible for how you use the output.",
+    "aiP2": "You can make videos from a description. They are labelled AI generated on VideoMind, and some providers add an invisible watermark (Google’s SynthID). Do not describe real, identifiable people without their permission, or anything section 5 forbids. Providers may refuse a description, and a refused or failed video costs no credits. As far as the law allows, a video you make is your content under section 4.",
     "live1": "The host is responsible for what is shown and said in a live event, and for choosing who may write in its chat.",
     "live2": "Everyone in a chat is responsible for their own messages. The host can delete messages and block people, and we may do the same.",
     "live3": "Live captions are made automatically and can be wrong.",
@@ -1981,7 +2062,15 @@
     "ownerOutOfCredits": "The owner of this video is out of credits, so it cannot answer questions right now.",
     "processNoCredits": "Not enough credits to process this video. Add credits on the Wallet page, then try again.",
     "captionsNoCredits": "Captions stopped: not enough credits. Add credits on the Wallet page, then turn captions on again.",
-    "storageUnpaid": "Your storage on VideoMind is unpaid, so new uploads are paused. Add credits on the Wallet page and what is owed is paid first."
+    "storageUnpaid": "Your storage on VideoMind is unpaid, so new uploads are paused. Add credits on the Wallet page and what is owed is paid first.",
+    "genNotAllowed": "Video generation is not open to this wallet yet.",
+    "genDescribe": "Describe the video you want.",
+    "genTooLong": "Keep the description under 2,000 characters.",
+    "genBadModel": "That model is not available.",
+    "genModelDown": "That model cannot be used right now. Try another one.",
+    "genSeconds": "Choose a length from {min} to {max} seconds.",
+    "genBudget": "Video generation has reached today's limit. Try again tomorrow.",
+    "genServer": "Video generation hit a problem. Try again in a minute."
   },
   "notFound": {
     "title": "This page was not found",

@@ -293,7 +293,7 @@ export interface VideoJob {
 
 export async function getVideoJobs(id: string) {
   const res = await api.get(`/api/videos/${id}/jobs`);
-  return res.data as { id: string; status: string; jobs: VideoJob[] };
+  return res.data as { id: string; status: string; jobs: VideoJob[]; generation?: Generated | null };
 }
 
 /** Run one failed stage again. Finished stages are not repeated. */
@@ -382,7 +382,7 @@ export interface VideoRecord {
   title: string;
   description?: string;
   createdAt: number;
-  status: "uploading" | "processing" | "transcribing" | "analyzing" | "ready" | "error";
+  status: "uploading" | "generating" | "processing" | "transcribing" | "analyzing" | "ready" | "error";
   /** vm_content: taken down by VideoMind. Only the owner can still open it. */
   removed?: { at: number; reason: string } | null;
   shelby: {
@@ -412,6 +412,8 @@ export interface VideoRecord {
   shelbyGone?: "missing" | "lapsed" | "unconfirmed" | null;
   /** vm_storagecharge: the owner's storage is unpaid, so a video kept only on VideoMind does not play. */
   storagePaused?: boolean;
+  /** vm_generate: made from a prompt. The prompt and the failure are for the owner only. */
+  generated?: Generated | null;
   /** true once the owner has stored the file on Shelby */
   onShelby?: boolean;
   /** vm_info: the owner's details. Videos from before these existed are "unlisted". */
@@ -632,3 +634,10 @@ export interface Analytics {
 }
 export const getAnalytics = (days: AnalyticsRange, videoId?: string | null) =>
   call<Analytics>(() => raw.get("/api/me/analytics", { params: { days, ...(videoId ? { video: videoId } : {}) } }));
+
+// ── vm_generate: videos made from a prompt (Part 17b2) ─────────────────────
+export interface Generated { model: string; seconds: number; aspect: string; status: "queued" | "running" | "succeeded" | "failed"; prompt: string | null; errorCode: string | null; createdAt: number }
+export interface GenerateInfo { allowed: boolean; budgetReached: boolean; models: Array<{ id: string; label: string; minSeconds: number; maxSeconds: number; resolution: string }> }
+export const getGenerateInfo = () => call<GenerateInfo>(() => raw.get("/api/generate"));
+export const startGeneration = (b: { prompt: string; modelId: string; seconds: number; aspect: "16:9" | "9:16"; title?: string; visibility: "private" | "unlisted" | "public" }) =>
+  call<{ videoId: string; generationId: string; costMicros: number }>(() => raw.post("/api/generate", b));

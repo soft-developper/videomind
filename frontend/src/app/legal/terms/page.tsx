@@ -21,7 +21,7 @@ const BODY: Array<{ id: SectionId; blocks: Block[] }> = [
   { id: "wallet", blocks: [["p", "walletP"]] },
   { id: "content", blocks: [["p", "contentP1"], ["p", "contentP2"], ["p", "contentP3"]] },
   { id: "rules", blocks: [["p", "rulesP1"], ["ul", ["rules1", "rules2", "rules3", "rules4", "rules5", "rules6"]], ["p", "rulesP2"]] },
-  { id: "ai", blocks: [["p", "aiP"]] },
+  { id: "ai", blocks: [["p", "aiP"], ["p", "aiP2"]] },  // aiP2: vm_generate, Part 17b2
   { id: "live", blocks: [["ul", ["live1", "live2", "live3", "live4"]]] },
   { id: "youtube", blocks: [["p", "youtubeP"]] },
   { id: "shelby", blocks: [["p", "shelbyP"]] },

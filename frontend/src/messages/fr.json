@@ -51,6 +51,7 @@
     "liveRecordings": "Enregistrements en direct",
     "create": "Créer",
     "upload": "Importer",
+    "generate": "Générer",
     "record": "Enregistrer",
     "goLive": "Passer en direct",
     "discover": "Découvrir",
@@ -170,7 +171,8 @@
       "processing": "Traitement",
       "transcribing": "Transcription",
       "analyzing": "Recherche des chapitres",
-      "error": "Arrêté"
+      "error": "Arrêté",
+      "generating": "En création"
     },
     "watched": "Vue",
     "chapters": "{count, plural, one {# chapitre} many {# de chapitres} other {# chapitres}}",
@@ -374,6 +376,62 @@
       }
     },
     "prepaid": "Le stockage sur Shelby est payé d’avance à l’import, pour un nombre fixe de périodes de paiement de 24 heures. La preuve de propriété de chaque vidéo indique la date jusqu’à laquelle elle est payée."
+  },
+  "generatePage": {
+    "title": "Créer une vidéo",
+    "description": "Décrivez une vidéo et un modèle d’IA la crée. Elle arrive dans votre bibliothèque, puis est transcrite et découpée en chapitres comme tout import.",
+    "signIn": "Connectez votre portefeuille pour créer des vidéos. L’invite se trouve en bas de la page.",
+    "loadFailed": "Cette page n’a pas pu être chargée. Réessayez dans une minute.",
+    "notAllowed": "La création de vidéos à partir d’une description n’est pas encore ouverte à votre portefeuille.",
+    "noModels": "Aucun modèle ne peut créer de vidéo pour le moment. Réessayez plus tard.",
+    "promptLabel": "Décrivez la vidéo",
+    "promptHint": "Dites qui ou quoi apparaît, ce qui se passe, comment la caméra bouge, la lumière et le son. Mettez les paroles entre guillemets.",
+    "placeholder": "Une enseignante devant un tableau blanc, dans une classe lumineuse, se tourne vers la caméra et dit : « Aujourd’hui, nous apprenons comment les ordinateurs se mettent d’accord. » Lent travelling avant, lumière du jour douce, salle calme.",
+    "count": "{n} sur {max}",
+    "model": "Modèle",
+    "fixedSeconds": "{n} secondes",
+    "range": "De {min} à {max} secondes",
+    "sep": " · ",
+    "length": "Durée",
+    "seconds": "{n} s",
+    "shape": "Format",
+    "wide": "Horizontal (16:9)",
+    "vertical": "Vertical (9:16)",
+    "titleLabel": "Titre",
+    "titleHint": "Facultatif. La description est utilisée s’il reste vide.",
+    "visibility": "Qui peut la voir",
+    "aiNotice": "Les vidéos créées ici portent la mention générée par IA. Ne décrivez pas de personnes réelles et identifiables sans leur accord. Le modèle peut refuser une description ; une vidéo refusée ou échouée ne coûte rien.",
+    "budget": "La création de vidéos a atteint la limite du jour. Réessayez demain.",
+    "price": "{price} pour {n} secondes ({perSecond} par seconde), prélevé quand la vidéo arrive.",
+    "start": "Créer la vidéo",
+    "starting": "Envoi",
+    "writeFirst": "Décrivez d’abord la vidéo",
+    "startFailed": "La vidéo n’a pas pu être lancée. Réessayez.",
+    "tipsTitle": "Écrire une bonne description",
+    "tips": {
+      "subject": {
+        "n": "Qui ou quoi",
+        "d": "Les personnes, les objets et le lieu, avec un ou deux détails chacun."
+      },
+      "action": {
+        "n": "Ce qui se passe",
+        "d": "Une seule action claire. Un clip court n’a le temps que pour un moment."
+      },
+      "camera": {
+        "n": "La caméra",
+        "d": "Gros plan, plan large, lent travelling avant, drone qui avance."
+      },
+      "light": {
+        "n": "Lumière et rendu",
+        "d": "Lumière du jour douce, heure dorée, studio sombre, couleurs naturelles."
+      },
+      "sound": {
+        "n": "Son et paroles",
+        "d": "Bruit de fond, musique et toute réplique entre guillemets."
+      }
+    },
+    "example": "Des descriptions courtes et concrètes marchent mieux que de longues listes de styles.",
+    "after": "Le modèle met d’environ une minute à quelques minutes. Vous pouvez quitter la page ; la vidéo apparaît dans votre bibliothèque."
   },
   "upload": {
     "wallet": {
@@ -804,6 +862,10 @@
     "title": "Traitement",
     "done": "Fait",
     "steps": {
+      "generating": {
+        "n": "Création",
+        "d": "{model} crée votre vidéo"
+      },
       "uploading": {
         "n": "Import",
         "d": "Envoi du fichier dans votre bibliothèque"
@@ -823,7 +885,21 @@
     },
     "part": "Partie {n} sur {total}",
     "retrying": "{step} a rencontré un problème. Nouvel essai, tentative {n} sur {max}",
-    "updates": "Cette page se met à jour toute seule. Les longues vidéos prennent quelques minutes."
+    "updates": "Cette page se met à jour toute seule. Les longues vidéos prennent quelques minutes.",
+    "gen": {
+      "failedTitle": "La vidéo n’a pas pu être créée",
+      "error": {
+        "refused": "Le modèle a refusé cette description. Modifiez cette description et réessayez. Rien n’a été prélevé.",
+        "provider_account": "La création de vidéos n’est pas disponible pour le moment. Rien n’a été prélevé.",
+        "provider_error": "Le modèle a rencontré un problème en créant la vidéo. Rien n’a été prélevé.",
+        "timeout": "Le modèle a mis trop de temps. Rien n’a été prélevé.",
+        "no_credits": "Il n’y avait pas assez de crédits. Rien n’a été prélevé.",
+        "other": "La vidéo n’a pas pu être créée. Rien n’a été prélevé."
+      },
+      "yourPrompt": "Votre description : {prompt}",
+      "again": "Écrire une nouvelle description",
+      "updates": "Cette page se met à jour toute seule. Créer une vidéo prend d’environ une minute à quelques minutes."
+    }
   },
   "proof": {
     "copyValue": "Copier la valeur complète",
@@ -920,7 +996,11 @@
     "noSpeechAsk": "Les questions trouvent leur réponse dans ce qui est dit dans une vidéo. Cette vidéo ne contient pas de parole.",
     "ask": "Demander",
     "askTitle": "Poser une question sur cette vidéo",
-    "close": "Fermer"
+    "close": "Fermer",
+    "generated": {
+      "label": "Générée par IA avec {model}",
+      "prompt": "La description utilisée"
+    }
   },
   "record": {
     "title": "Enregistrer",
@@ -1713,6 +1793,7 @@
     "rules6": "collecter les informations d’autres personnes sans leur accord.",
     "rulesP2": "Nous pouvons retirer un contenu, arrêter un direct ou limiter un accès dont nous pensons raisonnablement qu’il enfreint ces règles.",
     "aiP": "Les transcriptions, chapitres, résumés, réponses, sous-titres et autres résultats sont produits par des services d’IA (actuellement OpenAI et Anthropic) et peuvent être incomplets ou faux. Ils ne constituent pas un conseil professionnel. Vérifiez tout ce qui est important en revenant à la vidéo. Vous êtes responsable de l’usage que vous faites des résultats.",
+    "aiP2": "Vous pouvez créer des vidéos à partir d’une description. Elles portent la mention générée par IA sur VideoMind, et certains fournisseurs ajoutent un filigrane invisible (SynthID de Google). Ne décrivez pas de personnes réelles et identifiables sans leur accord, ni rien de ce que la section 5 interdit. Les fournisseurs peuvent refuser une description, et une vidéo refusée ou échouée ne coûte aucun crédit. Dans la mesure permise par la loi, une vidéo que vous créez est votre contenu au sens de la section 4.",
     "live1": "L’hôte est responsable de ce qui est montré et dit pendant un direct, et du choix de qui peut écrire dans sa discussion.",
     "live2": "Chaque participant à une discussion est responsable de ses propres messages. L’hôte peut supprimer des messages et bloquer des personnes, et nous pouvons faire de même.",
     "live3": "Les sous-titres en direct sont produits automatiquement et peuvent être faux.",
@@ -1981,7 +2062,15 @@
     "ownerOutOfCredits": "Le propriétaire de cette vidéo n’a plus de crédits : elle ne peut pas répondre aux questions pour l’instant.",
     "processNoCredits": "Pas assez de crédits pour traiter cette vidéo. Ajoutez des crédits dans la page Portefeuille, puis réessayez.",
     "captionsNoCredits": "Sous-titres arrêtés : pas assez de crédits. Ajoutez des crédits dans la page Portefeuille, puis réactivez les sous-titres.",
-    "storageUnpaid": "Votre stockage sur VideoMind n’est pas payé, donc les nouveaux imports sont en pause. Ajoutez des crédits dans la page Portefeuille et ce qui est dû est payé en premier."
+    "storageUnpaid": "Votre stockage sur VideoMind n’est pas payé, donc les nouveaux imports sont en pause. Ajoutez des crédits dans la page Portefeuille et ce qui est dû est payé en premier.",
+    "genNotAllowed": "La création de vidéos n’est pas encore ouverte à ce portefeuille.",
+    "genDescribe": "Décrivez la vidéo que vous voulez.",
+    "genTooLong": "La description doit faire moins de 2 000 caractères.",
+    "genBadModel": "Ce modèle n’est pas disponible.",
+    "genModelDown": "Ce modèle ne peut pas être utilisé pour le moment. Choisissez un autre modèle.",
+    "genSeconds": "Choisissez une durée de {min} à {max} secondes.",
+    "genBudget": "La création de vidéos a atteint la limite du jour. Réessayez demain.",
+    "genServer": "La création de vidéos a rencontré un problème. Réessayez dans une minute."
   },
   "notFound": {
     "title": "Cette page est introuvable",

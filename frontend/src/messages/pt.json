@@ -51,6 +51,7 @@
     "liveRecordings": "Gravações ao vivo",
     "create": "Criar",
     "upload": "Enviar",
+    "generate": "Gerar",
     "record": "Gravar",
     "goLive": "Transmitir ao vivo",
     "discover": "Descobrir",
@@ -170,7 +171,8 @@
       "processing": "Processando",
       "transcribing": "Transcrevendo",
       "analyzing": "Encontrando capítulos",
-      "error": "Parado"
+      "error": "Parado",
+      "generating": "Sendo criado"
     },
     "watched": "Assistido",
     "chapters": "{count, plural, one {# capítulo} many {# de capítulos} other {# capítulos}}",
@@ -374,6 +376,62 @@
       }
     },
     "prepaid": "O armazenamento na Shelby é pago antecipadamente no envio, por um número fixo de períodos de pagamento de 24 horas. A prova de propriedade de cada vídeo mostra até que data ele está pago."
+  },
+  "generatePage": {
+    "title": "Criar um vídeo",
+    "description": "Descreva um vídeo e um modelo de IA o cria. Ele chega à sua biblioteca e é transcrito e dividido em capítulos como qualquer envio.",
+    "signIn": "Entre com a sua carteira para criar vídeos. O aviso está no fim da página.",
+    "loadFailed": "Não foi possível carregar esta página. Tente de novo em um minuto.",
+    "notAllowed": "Criar vídeos a partir de uma descrição ainda não está aberto para a sua carteira.",
+    "noModels": "Nenhum modelo pode criar vídeos agora. Tente de novo mais tarde.",
+    "promptLabel": "Descreva o vídeo",
+    "promptHint": "Diga quem ou o que aparece, o que acontece, como a câmera se move, a luz e o som. Coloque as falas entre aspas.",
+    "placeholder": "Uma professora diante de um quadro branco, numa sala clara, vira para a câmera e diz: \"Hoje aprendemos como os computadores entram em acordo.\" Aproximação lenta, luz do dia suave, sala silenciosa.",
+    "count": "{n} de {max}",
+    "model": "Modelo",
+    "fixedSeconds": "{n} segundos",
+    "range": "De {min} a {max} segundos",
+    "sep": " · ",
+    "length": "Duração",
+    "seconds": "{n} s",
+    "shape": "Formato",
+    "wide": "Horizontal (16:9)",
+    "vertical": "Vertical (9:16)",
+    "titleLabel": "Título",
+    "titleHint": "Opcional. Se ficar vazio, a descrição é usada.",
+    "visibility": "Quem pode ver",
+    "aiNotice": "Os vídeos criados aqui são marcados como gerados por IA. Não descreva pessoas reais e identificáveis sem a permissão delas. O modelo pode recusar uma descrição; um vídeo recusado ou com falha não custa nada.",
+    "budget": "A criação de vídeos chegou ao limite de hoje. Tente de novo amanhã.",
+    "price": "{price} por {n} segundos ({perSecond} por segundo), cobrado quando o vídeo chegar.",
+    "start": "Criar o vídeo",
+    "starting": "Enviando",
+    "writeFirst": "Descreva o vídeo primeiro",
+    "startFailed": "Não foi possível iniciar o vídeo. Tente de novo.",
+    "tipsTitle": "Como escrever uma boa descrição",
+    "tips": {
+      "subject": {
+        "n": "Quem ou o quê",
+        "d": "As pessoas, os objetos e o lugar, com um ou dois detalhes de cada."
+      },
+      "action": {
+        "n": "O que acontece",
+        "d": "Uma só ação clara. Um clipe curto só tem tempo para um momento."
+      },
+      "camera": {
+        "n": "A câmera",
+        "d": "Close, plano aberto, aproximação lenta, um drone voando para a frente."
+      },
+      "light": {
+        "n": "Luz e aparência",
+        "d": "Luz do dia suave, hora dourada, um estúdio escuro, cores naturais."
+      },
+      "sound": {
+        "n": "Som e falas",
+        "d": "Som de fundo, música e qualquer fala entre aspas."
+      }
+    },
+    "example": "Descrições curtas e concretas funcionam melhor do que longas listas de estilos.",
+    "after": "O modelo leva de cerca de um minuto a alguns minutos. Você pode sair da página; o vídeo aparece na sua biblioteca."
   },
   "upload": {
     "wallet": {
@@ -804,6 +862,10 @@
     "title": "Processando",
     "done": "Feito",
     "steps": {
+      "generating": {
+        "n": "Criar",
+        "d": "{model} está criando o seu vídeo"
+      },
       "uploading": {
         "n": "Envio",
         "d": "Enviando o arquivo para a sua biblioteca"
@@ -823,7 +885,21 @@
     },
     "part": "Parte {n} de {total}",
     "retrying": "{step} teve um problema. Tentando de novo, tentativa {n} de {max}",
-    "updates": "Isto se atualiza sozinho. Vídeos longos levam alguns minutos."
+    "updates": "Isto se atualiza sozinho. Vídeos longos levam alguns minutos.",
+    "gen": {
+      "failedTitle": "Não foi possível criar o vídeo",
+      "error": {
+        "refused": "O modelo recusou esta descrição. Mude a descrição e tente de novo. Nada foi cobrado.",
+        "provider_account": "A criação de vídeos não está disponível agora. Nada foi cobrado.",
+        "provider_error": "O modelo teve um problema ao criar o vídeo. Nada foi cobrado.",
+        "timeout": "O modelo demorou demais. Nada foi cobrado.",
+        "no_credits": "Não havia créditos suficientes. Nada foi cobrado.",
+        "other": "Não foi possível criar o vídeo. Nada foi cobrado."
+      },
+      "yourPrompt": "Sua descrição: {prompt}",
+      "again": "Escrever uma nova descrição",
+      "updates": "Isto se atualiza sozinho. Criar um vídeo leva de cerca de um minuto a alguns minutos."
+    }
   },
   "proof": {
     "copyValue": "Copiar o valor completo",
@@ -920,7 +996,11 @@
     "noSpeechAsk": "As perguntas são respondidas a partir do que é dito em um vídeo. Este não tem fala.",
     "ask": "Perguntar",
     "askTitle": "Pergunte sobre este vídeo",
-    "close": "Fechar"
+    "close": "Fechar",
+    "generated": {
+      "label": "Gerado por IA com {model}",
+      "prompt": "A descrição usada para criar este vídeo"
+    }
   },
   "record": {
     "title": "Gravar",
@@ -1713,6 +1793,7 @@
     "rules6": "coletar informações de outras pessoas sem a permissão delas.",
     "rulesP2": "Podemos remover conteúdo, encerrar eventos ao vivo ou limitar o acesso quando acreditarmos razoavelmente que essas regras foram descumpridas.",
     "aiP": "Transcrições, capítulos, resumos, respostas, legendas e outros resultados são criados por serviços de IA (atualmente OpenAI e Anthropic) e podem estar incompletos ou errados. Eles não são aconselhamento profissional. Confira tudo o que for importante no próprio vídeo. Você é responsável pelo modo como usa os resultados.",
+    "aiP2": "Você pode criar vídeos a partir de uma descrição. No VideoMind eles são marcados como gerados por IA, e alguns fornecedores adicionam uma marca d’água invisível (o SynthID do Google). Não descreva pessoas reais e identificáveis sem a permissão delas, nem nada que a seção 5 proíba. Os fornecedores podem recusar uma descrição, e um vídeo recusado ou com falha não custa créditos. Na medida em que a lei permitir, um vídeo que você cria é o seu conteúdo nos termos da seção 4.",
     "live1": "Quem transmite é responsável pelo que é mostrado e dito em um evento ao vivo, e por escolher quem pode escrever no chat dele.",
     "live2": "Cada pessoa em um chat é responsável pelas próprias mensagens. Quem transmite pode apagar mensagens e bloquear pessoas, e nós podemos fazer o mesmo.",
     "live3": "As legendas ao vivo são criadas automaticamente e podem estar erradas.",
@@ -1981,7 +2062,15 @@
     "ownerOutOfCredits": "O dono deste vídeo está sem créditos, então ele não pode responder perguntas agora.",
     "processNoCredits": "Você não tem créditos suficientes para processar este vídeo. Adicione créditos na página Carteira e tente de novo.",
     "captionsNoCredits": "As legendas pararam: não há créditos suficientes. Adicione créditos na página Carteira e ligue as legendas de novo.",
-    "storageUnpaid": "Seu armazenamento no VideoMind não foi pago, então os novos envios estão pausados. Adicione créditos na página Carteira e o que você deve é pago primeiro."
+    "storageUnpaid": "Seu armazenamento no VideoMind não foi pago, então os novos envios estão pausados. Adicione créditos na página Carteira e o que você deve é pago primeiro.",
+    "genNotAllowed": "A criação de vídeos ainda não está aberta para esta carteira.",
+    "genDescribe": "Descreva o vídeo que você quer.",
+    "genTooLong": "A descrição deve ter menos de 2.000 caracteres.",
+    "genBadModel": "Esse modelo não está disponível.",
+    "genModelDown": "Esse modelo não pode ser usado agora. Tente outro.",
+    "genSeconds": "Escolha uma duração de {min} a {max} segundos.",
+    "genBudget": "A criação de vídeos chegou ao limite de hoje. Tente de novo amanhã.",
+    "genServer": "A criação de vídeos teve um problema. Tente de novo em um minuto."
   },
   "notFound": {
     "title": "Esta página não foi encontrada",
