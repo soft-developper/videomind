@@ -52,6 +52,8 @@ export interface Overview {
   youtube: { published30: number; failed30: number };
   health: Array<{ name: string; ok: boolean; optional?: boolean; note: string }>;
   adminActivity: Array<{ id: number; at: number; email: string | null; action: string; target: string | null; detail: Record<string, unknown> | null }>;
+  /** vm_pricing: actions priced below cost, and what that cost this month. */
+  pricing: { charging: boolean; belowCost: string[]; lossMicros: number } | null;
 }
 export const getOverview = () => call<Overview>("GET", "/overview");
 
@@ -231,7 +233,22 @@ export interface CreditsOverview {
   topup: { treasury: string | null; network: string };
   /** vm_storagecharge: what owners keep on VideoMind's storage, and what is owed for it. */
   storage: StorageTotals;
+  /** vm_pricing: cost, fee and suggested price per action, and this month's totals. */
+  pricing: PricingReport;
+  estimates: CostEstimate[];
 }
+export type CostSource = "exact" | "measured" | "estimate" | "none";
+export interface PricingRow {
+  action: string; unit: CreditUnit; priceMicros: number;
+  costUsd: number | null; costSource: CostSource; costNote: string | null; units30: number;
+  suggestedMicros: number | null; belowCost: boolean;
+  unitsMonth: number; chargedMonthMicros: number; costMonthMicros: number;
+}
+export interface PricingReport {
+  feeBps: number; charging: boolean; month: string; rows: PricingRow[]; belowCost: string[];
+  totals: { chargedMicros: number; costMicros: number; marginMicros: number; feeMicros: number; fixedMonthMicros: number; lossMicros: number };
+}
+export interface CostEstimate { id: string; usdPerUnit: number; note: string | null; updatedAt: number; updatedBy: string | null }
 export interface StorageTotals { totalBytes: number; owners: number; freeBytes: number; owedMicros: number; walletsOwing: number; walletsPaused: number; graceDays: number; gbBytes: number }
 export interface StorageStatus {
   bytes: number; freeBytes: number; microsPerGbMonth: number; dailyMicros: number;
@@ -253,6 +270,11 @@ export const grantCredits = (wallet: string, usd: string, note: string) => call<
 export const removeCredits = (wallet: string, usd: string, note: string) => call<CreditEntry>("POST", "/credits/remove", { wallet, usd, note });
 export const setStorageFree = (freeGb: string) => call<{ freeBytes: number }>("POST", "/credits/storage", { freeGb });
 export const forgiveStorage = (wallet: string) => call<{ forgivenMicros: number; days: number }>("POST", `/credits/wallets/${encodeURIComponent(wallet)}/forgive-storage`);
+// vm_pricing
+export const setPlatformFee = (percent: string) => call<{ feeBps: number }>("POST", "/credits/fee", { percent });
+export const applySuggestedPrice = (id: string) => call<{ id: string; fromMicros: number; toMicros: number }>("POST", `/credits/prices/${encodeURIComponent(id)}/apply`);
+export const applyAllSuggestedPrices = () => call<{ changed: Array<{ id: string; fromMicros: number; toMicros: number }> }>("POST", "/credits/prices-apply-all");
+export const setCostEstimate = (id: string, usd: string) => call<CostEstimate>("POST", `/credits/estimates/${encodeURIComponent(id)}`, { usd });
 export const refundCredit = (id: string, note: string) => call<CreditEntry>("POST", `/credits/entries/${encodeURIComponent(id)}/refund`, { note });
 
 // ── vm_generate: video generation (Part 17b) ────────────────────────────────

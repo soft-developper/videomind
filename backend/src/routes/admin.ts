@@ -43,6 +43,8 @@ import { listVideos, getVideoForAdmin, removeVideo, restoreVideo, listLive, endL
 import {
   creditsOverview, adminLedger, updateActionPrice, setWelcome, grantCredits, removeCredits, refundCharge, walletCredits, CreditsError, MICROS, setCharging,
 } from "../lib/credits.js";
+// vm_pricing: suggested prices and the platform fee (Part 20a)
+import { pricingReport, setFeePercent, applySuggestion, applyAllSuggestions, listEstimates, updateEstimate } from "../lib/pricing.js";
 import { treasuryAddress, TOPUP_NETWORK } from "../lib/topup.js";
 // vm_storagecharge: storage kept and owed (Part 16e)
 import { storageTotals, storageStatus, setStorageFree, forgiveStorage, collectOwed, GB } from "../lib/storageCharge.js";
@@ -385,12 +387,17 @@ router.post("/costs/fixed/:id/delete", requireAdmin, async (req, res) => {
 //   POST /credits/entries/:id/refund { note }      a charge, in full, once
 //   POST /credits/storage      { freeGb }   vm_storagecharge: the free allowance per owner
 //   POST /credits/wallets/:wallet/forgive-storage   let a wallet off what it owes for storage
+// vm_pricing:
+//   POST /credits/fee          { percent }  the platform fee added to every suggested price
+//   POST /credits/prices/:id/apply          set a price to its suggestion
+//   POST /credits/prices-apply-all          set every price to its suggestion
+//   POST /credits/estimates/:id { usd }     the starting cost of one unit of an action
 const usdOf = (micros: number) => micros / MICROS;
 router.get("/credits", requireAdmin, async (_req, res) => {
   // vm_topup: where top ups go (TOPUP_TREASURY_ADDRESS on the server, read only here).
   try {
-    const [overview, storage, genCost] = await Promise.all([creditsOverview(), storageTotals(), generationUnitCost()]);
-    return res.json({ ...overview, costs: [...overview.costs, genCost], storage, topup: { treasury: treasuryAddress(), network: TOPUP_NETWORK } });
+    const [overview, storage, genCost, pricing, estimates] = await Promise.all([creditsOverview(), storageTotals(), generationUnitCost(), pricingReport(), listEstimates()]);
+    return res.json({ ...overview, costs: [...overview.costs, genCost], storage, topup: { treasury: treasuryAddress(), network: TOPUP_NETWORK }, pricing, estimates });
   }
   catch (err) { fail(res, err, "Loading the credits"); }
 });
@@ -409,6 +416,34 @@ router.post("/credits/prices/:id", requireAdmin, async (req, res) => {
     await audit(me(res), "credit_price_changed", p.id, { usd: usdOf(p.microsPerUnit), unit: p.unit });
     return res.json(p);
   } catch (err) { fail(res, err, "Changing the price"); }
+});
+router.post("/credits/fee", requireAdmin, async (req, res) => {
+  try {
+    const bps = await setFeePercent(req.body);
+    await audit(me(res), "credit_fee_changed", null, { percent: bps / 100 });
+    return res.json({ feeBps: bps });
+  } catch (err) { fail(res, err, "Changing the platform fee"); }
+});
+router.post("/credits/prices/:id/apply", requireAdmin, async (req, res) => {
+  try {
+    const r = await applySuggestion(req.params.id, me(res).email);
+    await audit(me(res), "credit_price_applied", r.id, { fromUsd: usdOf(r.fromMicros), toUsd: usdOf(r.toMicros) });
+    return res.json(r);
+  } catch (err) { fail(res, err, "Applying the suggested price"); }
+});
+router.post("/credits/prices-apply-all", requireAdmin, async (_req, res) => {
+  try {
+    const changed = await applyAllSuggestions(me(res).email);
+    if (changed.length) await audit(me(res), "credit_prices_applied", null, { changed: changed.map((c) => ({ id: c.id, fromUsd: usdOf(c.fromMicros), toUsd: usdOf(c.toMicros) })) });
+    return res.json({ changed });
+  } catch (err) { fail(res, err, "Applying the suggested prices"); }
+});
+router.post("/credits/estimates/:id", requireAdmin, async (req, res) => {
+  try {
+    const e = await updateEstimate(req.params.id, req.body, me(res).email);
+    await audit(me(res), "credit_estimate_changed", e.id, { usd: e.usdPerUnit });
+    return res.json(e);
+  } catch (err) { fail(res, err, "Changing the estimate"); }
 });
 router.post("/credits/charging", requireAdmin, async (req, res) => {
   try {

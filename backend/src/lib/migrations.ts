@@ -817,6 +817,33 @@ const MIGRATIONS: Migration[] = [
       `INSERT INTO action_prices (id, label, unit, micros_per_unit, position, updated_at) VALUES ('live', 'Live event (per minute of its length)', 'minute', 0, 10, 0)`,
     ],
   },
+  {
+    // vm_pricing: suggested prices (Part 20a). The platform fee in basis points
+    // (30 = 0.3%), and a starting cost estimate per action, used until an action
+    // has enough real use for the measured average (see src/lib/pricing.ts).
+    // Estimates from the providers' official prices on 22 Oct 2026.
+    id: "031_pricing",
+    statements: [
+      `INSERT INTO credit_settings (id, value) VALUES ('platform_fee_bps', '30') ON CONFLICT(id) DO NOTHING`,
+      `CREATE TABLE action_cost_estimates (
+        id            TEXT PRIMARY KEY,
+        usd_per_unit  REAL NOT NULL,
+        note          TEXT,
+        updated_at    INTEGER NOT NULL,
+        updated_by    TEXT
+      )`,
+      `INSERT INTO action_cost_estimates (id, usd_per_unit, note, updated_at) VALUES ('process_video', 0.0067, 'whisper-1 $0.006 a minute, plus about $0.02 per video for chapters and summary (Claude Sonnet 5.5), spread over a 60 minute lecture', 0)`,
+      `INSERT INTO action_cost_estimates (id, usd_per_unit, note, updated_at) VALUES ('ask', 0.02, 'Claude Sonnet 5.5 with the transcript cached: about $0.005 an answer from the cache, up to $0.12 for the first question on a 4 hour video', 0)`,
+      `INSERT INTO action_cost_estimates (id, usd_per_unit, note, updated_at) VALUES ('search', 0.0001, 'text-embedding-3-small $0.02 per million tokens; one question is a few dozen tokens', 0)`,
+      `INSERT INTO action_cost_estimates (id, usd_per_unit, note, updated_at) VALUES ('learn_paths', 0.05, 'Claude Sonnet 5.5, about 10,000 tokens read and 3,000 written; not measured yet', 0)`,
+      `INSERT INTO action_cost_estimates (id, usd_per_unit, note, updated_at) VALUES ('learn_ask', 0.02, 'Claude Sonnet 5.5 reading up to 24 passages, about 8,000 tokens, and writing about 500', 0)`,
+      `INSERT INTO action_cost_estimates (id, usd_per_unit, note, updated_at) VALUES ('live_captions', 0.017, 'OpenAI gpt-live-transcribe $0.017 a minute', 0)`,
+      `INSERT INTO action_cost_estimates (id, usd_per_unit, note, updated_at) VALUES ('storage', 0.015, 'Cloudflare R2 $0.015 per GB month', 0)`,
+      `INSERT INTO action_cost_estimates (id, usd_per_unit, note, updated_at) VALUES ('generate_video', 0.152, 'the dearest model switched on, per second (Gemini Omni Flash, our estimate; Google publishes no price)', 0)`,
+      `INSERT INTO action_cost_estimates (id, usd_per_unit, note, updated_at) VALUES ('translate', 0.003, 'Claude Sonnet 5.5, about 200 tokens read and 250 written per minute of video', 0)`,
+      `INSERT INTO action_cost_estimates (id, usd_per_unit, note, updated_at) VALUES ('live', 0.0019, 'LiveKit Ship plan for one viewer: $0.0005 a participant minute plus about 0.011 GB at $0.12 per GB; free on the Build plan until its limits', 0)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

@@ -10,6 +10,7 @@ import { youtubeConfig } from "./youtube.js";
 import { mailConfigured } from "./mail.js";
 import { adminKeySet, recentAudit } from "./admin.js";
 import { dayOf } from "./views.js";
+import { pricingReport } from "./pricing.js";
 
 const DAY = 24 * 3600_000;
 const one = async (sql: string, args: any[] = []) => {
@@ -74,5 +75,7 @@ export async function overview(now = Date.now()) {
       { name: "Admin key", ok: adminKeySet(), note: adminKeySet() ? "Set" : "ADMIN_KEY missing" },
     ],
     adminActivity: await recentAudit(12),
+    // vm_pricing: actions priced below what they cost, and what that cost this month
+    pricing: await pricingReport(now).then((p) => ({ charging: p.charging, belowCost: p.belowCost, lossMicros: p.totals.lossMicros }), () => null),
   };
 }

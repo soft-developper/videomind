@@ -7,7 +7,7 @@ import { RefreshCw } from "lucide-react";
 import { useAdmin } from "@/components/Shell";
 import { Note } from "@/components/AuthCard";
 import { ApiError, getOverview, type Overview } from "@/lib/api";
-import { ACTIONS } from "@/lib/actions";
+import { ACTIONS, dollars } from "@/lib/actions";
 import { num, bytes, duration, tokens, when } from "@/lib/format";
 
 
@@ -50,6 +50,8 @@ export default function OverviewPage() {
     o.videos.failed && `${num(o.videos.failed)} ${o.videos.failed === 1 ? "video" : "videos"} could not be processed`,
     o.youtube.failed30 && `${num(o.youtube.failed30)} YouTube ${o.youtube.failed30 === 1 ? "upload" : "uploads"} failed in the last 30 days`,
     ...o.health.filter((h) => !h.ok && !h.optional).map((h) => `${h.name}: ${h.note}`),
+    // vm_pricing: only while charging is on (with it off everything is free on purpose)
+    o.pricing?.charging && o.pricing.belowCost.length > 0 && `${num(o.pricing.belowCost.length)} ${o.pricing.belowCost.length === 1 ? "price is" : "prices are"} below cost${o.pricing.lossMicros > 0 ? `, ${dollars(o.pricing.lossMicros)} lost this month` : ""}. See Credits, Prices`,
   ].filter(Boolean) as string[] : [];
 
   return (

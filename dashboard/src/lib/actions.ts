@@ -11,6 +11,8 @@ export const ACTIONS: Record<string, string> = {
   credit_price_changed: "Changed a credit price", credit_welcome_changed: "Changed the welcome credits", credits_granted: "Gave credits",
   credits_removed: "Removed credits", credit_refunded: "Refunded a charge",
   charging_turned_on: "Turned charging on", charging_turned_off: "Turned charging off",
+  credit_fee_changed: "Changed the platform fee", credit_price_applied: "Applied a suggested price", credit_prices_applied: "Applied the suggested prices",
+  credit_estimate_changed: "Changed a cost estimate",
   storage_free_changed: "Changed the free storage", storage_forgiven: "Forgave storage owed",
   generation_settings_changed: "Changed video generation", generation_model_changed: "Changed a generation model",
   generation_allowed: "Allowed a wallet to generate", generation_disallowed: "Removed a wallet from generation",

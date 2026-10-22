@@ -4,6 +4,11 @@
 // ledger of every change. Credits are counted in micro dollars. Charging is
 // off until the actions are wired to it (Part 16c): until then users see
 // the prices on their Wallet page and nothing is taken from a balance.
+//
+// vm_pricing (Part 20a): next to each price, what one unit costs VideoMind
+// (exact provider price, measured average or starting estimate), the
+// platform fee, and the suggested price (cost plus fee) with Apply. A price
+// below cost is marked. Nothing changes for users until an admin applies.
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
@@ -11,7 +16,8 @@ import { useAdmin } from "@/components/Shell";
 import { Note } from "@/components/AuthCard";
 import {
   ApiError, getCredits, getCreditLedger, setCreditPrice, setWelcome, grantCredits, removeCredits, refundCredit, setCharging, setStorageFree,
-  type CreditsOverview, type CreditEntry, type CreditKind, type ActionPrice, type UnitCost,
+  setPlatformFee, applySuggestedPrice, applyAllSuggestedPrices, setCostEstimate,
+  type CreditsOverview, type CreditEntry, type CreditKind, type ActionPrice, type PricingRow, type CostEstimate,
 } from "@/lib/api";
 import { dollars, CREDIT_KINDS, CREDIT_UNITS } from "@/lib/actions";
 import { num, when, short, gb } from "@/lib/format";
@@ -39,42 +45,118 @@ function Panel({ title, children, hint, id }: { title: string; children: React.R
   );
 }
 
-function PriceRow({ p, cost, onSaved, onError }: { p: ActionPrice; cost: UnitCost | undefined; onSaved: (p: ActionPrice) => void; onError: (m: string) => void }) {
+const SOURCE: Record<string, string> = { exact: "Exact", measured: "Measured", estimate: "Estimate", none: "No cost yet" };
+const usd = (x: number) => `$${x.toLocaleString("en-US", { maximumFractionDigits: 6 })}`;
+
+function PriceRow({ p, row, est, charging, onSaved, onError }: {
+  p: ActionPrice; row: PricingRow | undefined; est: CostEstimate | undefined; charging: boolean;
+  onSaved: (message: string) => void; onError: (m: string) => void;
+}) {
   const [v, setV] = useState(asInput(p.microsPerUnit));
   const [busy, setBusy] = useState(false);
+  const [editEst, setEditEst] = useState(false);
+  const [estV, setEstV] = useState(est ? String(est.usdPerUnit) : "");
   useEffect(() => { setV(asInput(p.microsPerUnit)); }, [p]);
+  useEffect(() => { setEstV(est ? String(est.usdPerUnit) : ""); }, [est]);
   const changed = v.trim() !== asInput(p.microsPerUnit);
   const save = async () => {
     const x = Number(v);
     if (v.trim() === "" || !Number.isFinite(x) || x < 0) return onError("Write the price as a number of US dollars, for example 0.05. Write 0 to keep it free.");
     setBusy(true);
-    try { onSaved(await setCreditPrice(p.id, v.trim())); } catch (e) { onError(msg(e)); } finally { setBusy(false); }
+    try { const np = await setCreditPrice(p.id, v.trim()); onSaved(`The price of ${np.label.toLowerCase()} was saved.`); } catch (e) { onError(msg(e)); } finally { setBusy(false); }
   };
-  const per = cost?.perUnitUsd ?? null;
+  const apply = async () => {
+    setBusy(true);
+    try { const r = await applySuggestedPrice(p.id); onSaved(`${p.label}: price set to the suggestion, ${dollars(r.toMicros, true)} ${CREDIT_UNITS[p.unit] ?? ""}.`); }
+    catch (e) { onError(msg(e)); } finally { setBusy(false); }
+  };
+  const saveEst = async () => {
+    const x = Number(estV);
+    if (estV.trim() === "" || !Number.isFinite(x) || x < 0) return onError("Write the estimate as a number of US dollars, for example 0.02.");
+    setBusy(true);
+    try { await setCostEstimate(p.id, estV.trim()); setEditEst(false); onSaved(`The starting estimate for ${p.label.toLowerCase()} was saved.`); }
+    catch (e) { onError(msg(e)); } finally { setBusy(false); }
+  };
+  const cost = row?.costUsd ?? null;
   const priceUsd = p.microsPerUnit / 1_000_000;
-  const margin = per != null && per > 0 && priceUsd > 0 ? Math.round(((priceUsd - per) / priceUsd) * 100) : null;
+  const margin = cost != null && cost > 0 && priceUsd > 0 ? Math.round(((priceUsd - cost) / priceUsd) * 100) : null;
+  const below = !!row?.belowCost;
+  const loud = below && charging;
+  const atSuggestion = row?.suggestedMicros != null && row.suggestedMicros === p.microsPerUnit;
   return (
-    <tr className="border-b border-rule last:border-0 align-top" data-credit-price={p.id}>
-      <td className="py-2 px-4 text-paper">{p.label}</td>
+    <tr className={clsx("border-b border-rule last:border-0 align-top", loud && "bg-error/5")} data-credit-price={p.id} data-below-cost={below ? "yes" : "no"}>
+      <td className="py-2 px-4 text-paper">
+        {p.label}
+        {loud && <p className="text-[12px] text-error mt-0.5" data-below-note>Below cost: VideoMind loses money on each one</p>}
+      </td>
+      <td className="py-2 pr-4 text-[13px] text-paper-2 tabular-nums" data-credit-cost>
+        {cost == null ? <span className="text-dim">No cost yet</span> : <span className="whitespace-nowrap">{usd(cost)}</span>}
+        <p className="text-[12px] text-dim" title={row?.costNote ?? undefined}>
+          <span data-cost-source={row?.costSource ?? "none"}>{SOURCE[row?.costSource ?? "none"]}</span>
+          {row && row.units30 > 0 && <>, {num(Math.round(row.units30 * 100) / 100)} {unitWord[p.unit] ?? "units"} in 30 days</>}
+        </p>
+        {row?.costNote && <p className="text-[12px] text-dim max-w-[260px]">{row.costNote}</p>}
+        {est && row?.costSource !== "exact" && (
+          editEst ? (
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="text-dim">$</span>
+              <input value={estV} onChange={(e) => setEstV(e.target.value)} inputMode="decimal" className="h-7 px-2 w-24 text-[12.5px] tabular-nums" aria-label={`Starting estimate for ${p.label}`} />
+              <button onClick={() => void saveEst()} disabled={busy} className="btn btn-ghost h-7 px-2 text-[12px] no-min">Save</button>
+              <button onClick={() => { setEditEst(false); setEstV(String(est.usdPerUnit)); }} className="text-[12px] text-dim hover:text-paper no-min">Cancel</button>
+            </div>
+          ) : (
+            <button onClick={() => setEditEst(true)} className="text-[12px] text-dim underline hover:text-paper no-min mt-0.5" data-edit-estimate>
+              Starting estimate {usd(est.usdPerUnit)}, edit
+            </button>
+          )
+        )}
+      </td>
+      <td className="py-2 pr-4 text-[13px] tabular-nums" data-credit-suggested>
+        {row?.suggestedMicros == null ? <span className="text-dim">-</span> : (
+          <>
+            <span className="text-paper whitespace-nowrap">{dollars(row.suggestedMicros, true)}</span>
+            <div className="mt-1">
+              {atSuggestion
+                ? <span className="text-[12px] text-marker">Price is at the suggestion</span>
+                : <button onClick={() => void apply()} disabled={busy} className="btn btn-ghost h-7 px-2.5 text-[12.5px] no-min" data-apply>Apply</button>}
+            </div>
+          </>
+        )}
+      </td>
       <td className="py-2 pr-4">
         <div className="flex items-center gap-1.5">
           <span className="text-dim">$</span>
           <input value={v} onChange={(e) => setV(e.target.value)} inputMode="decimal" className="h-8 px-2 w-24 text-[13.5px] tabular-nums" aria-label={`Price for ${p.label}`} />
-          <span className="text-dim text-[12.5px] whitespace-nowrap">{CREDIT_UNITS[p.unit] ?? p.unit}</span>
+          <button onClick={() => void save()} disabled={!changed || busy} className="btn btn-ghost h-8 px-3 text-[13px] no-min">{busy ? "Saving" : "Save"}</button>
         </div>
         <p className="text-[12.5px] text-dim mt-1">{p.microsPerUnit === 0 ? "Free" : `${dollars(p.microsPerUnit, true)} ${CREDIT_UNITS[p.unit] ?? ""}`}{p.updatedBy ? `, changed ${when(p.updatedAt)} by ${p.updatedBy}` : ""}</p>
-      </td>
-      <td className="py-2 pr-4 text-[13px] text-paper-2 tabular-nums whitespace-nowrap" data-credit-cost>
-        {per == null ? <span className="text-dim">Not used yet</span> : `$${per.toLocaleString("en-US", { maximumFractionDigits: 5 })}`}
-        {cost && cost.units > 0 && <p className="text-[12px] text-dim">{num(cost.units)} {unitWord[p.unit] ?? "units"} in 30 days</p>}
       </td>
       <td className={clsx("py-2 pr-4 text-[13px] tabular-nums whitespace-nowrap", margin != null && margin < 0 ? "text-error" : "text-paper-2")} data-credit-margin>
         {margin == null ? <span className="text-dim">-</span> : `${margin}%`}
       </td>
-      <td className="py-2 pr-4 text-right">
-        <button onClick={() => void save()} disabled={!changed || busy} className="btn btn-ghost h-8 px-3 text-[13px] no-min">{busy ? "Saving" : "Save"}</button>
-      </td>
     </tr>
+  );
+}
+
+function Fee({ feeBps, onSaved, onError }: { feeBps: number; onSaved: (m: string) => void; onError: (m: string) => void }) {
+  const shown = String(feeBps / 100);
+  const [v, setV] = useState(shown);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setV(String(feeBps / 100)); }, [feeBps]);
+  const save = async () => {
+    const x = Number(v);
+    if (v.trim() === "" || !Number.isFinite(x) || x < 0) return onError("Write the platform fee as a percentage, for example 0.3.");
+    setBusy(true);
+    try { const r = await setPlatformFee(v.trim()); onSaved(`The platform fee is now ${r.feeBps / 100}%. Suggested prices were updated; apply them to change what users pay.`); }
+    catch (e) { onError(msg(e)); } finally { setBusy(false); }
+  };
+  return (
+    <div className="flex items-end gap-3 flex-wrap" data-platform-fee>
+      <label className="text-[13px] text-dim flex flex-col gap-1">Platform fee, %
+        <input value={v} onChange={(e) => setV(e.target.value)} inputMode="decimal" className="h-9 px-3 text-[13.5px] w-28 tabular-nums" aria-label="Platform fee in percent" />
+      </label>
+      <button onClick={() => void save()} disabled={busy || v.trim() === shown} className="btn btn-ghost h-9 px-3.5">Save</button>
+    </div>
   );
 }
 
@@ -89,6 +171,44 @@ function What({ e }: { e: CreditEntry }) {
       {parts.map((x, i) => <span key={i}>{i > 0 && ", "}{x}</span>)}
       {e.note && <span className="text-dim">{parts.length ? ". " : ""}{e.note}</span>}
     </span>
+  );
+}
+
+/** What was charged this month, what it cost VideoMind, the fee and the fixed costs. */
+function ThisMonth({ o }: { o: CreditsOverview }) {
+  const m = o.pricing.totals;
+  const left = m.marginMicros - m.fixedMonthMicros;
+  const rows = o.pricing.rows.filter((r) => r.unitsMonth > 0 || r.chargedMonthMicros > 0);
+  const label = (id: string) => o.prices.find((p) => p.id === id)?.label ?? id;
+  return (
+    <Panel title={`This month (${o.pricing.month})`} hint={<>Since the first of the month, UTC. Charged is what users paid, refunds taken off. Cost is the units used times the cost per unit above, so it is an estimate; the providers&rsquo; invoices are the real figures. Fixed costs are the monthly amounts on <Link href="/costs" className="underline hover:text-paper">Costs</Link>.{o.settings.charging ? "" : " Charging is off, so nothing is charged and everything used is a cost to VideoMind."}</>}>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4" data-month-totals>
+        <Tile test="m-charged" label="Charged" value={dollars(m.chargedMicros)} />
+        <Tile test="m-cost" label="Cost of what was used" value={dollars(m.costMicros)} />
+        <Tile test="m-margin" label="Charged less cost" value={dollars(m.marginMicros)} sub={`Of which the ${o.pricing.feeBps / 100}% fee: ${dollars(m.feeMicros)}`} />
+        <Tile test="m-fixed" label="Fixed costs, a month" value={dollars(m.fixedMonthMicros)} sub="Hosting and plans" />
+        <Tile test="m-left" label="Left after fixed costs" value={dollars(left)} sub={left < 0 ? "VideoMind is paying the difference" : "Covered"} />
+      </div>
+      {rows.length === 0 ? <p className="text-[13.5px] text-dim">Nothing used yet this month.</p> : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13.5px] min-w-[640px]" data-month-rows>
+            <thead><tr className="text-left text-dim"><th className="font-normal py-1.5 pr-4">Action</th><th className="font-normal py-1.5 pr-4 text-right">Used</th><th className="font-normal py-1.5 pr-4 text-right">Charged</th><th className="font-normal py-1.5 pr-4 text-right">Cost</th><th className="font-normal py-1.5 pr-4 text-right">Difference</th></tr></thead>
+            <tbody>{rows.map((r) => {
+              const d = r.chargedMonthMicros - r.costMonthMicros;
+              return (
+                <tr key={r.action} className="border-t border-rule">
+                  <td className="py-1.5 pr-4 text-paper-2">{label(r.action)}</td>
+                  <td className="py-1.5 pr-4 text-right tabular-nums text-paper-2">{num(Math.round(r.unitsMonth * 100) / 100)} {unitWord[r.unit] ?? "units"}</td>
+                  <td className="py-1.5 pr-4 text-right tabular-nums text-paper-2">{dollars(r.chargedMonthMicros)}</td>
+                  <td className="py-1.5 pr-4 text-right tabular-nums text-paper-2">{dollars(r.costMonthMicros)}</td>
+                  <td className={clsx("py-1.5 pr-4 text-right tabular-nums", d < 0 ? "text-error" : "text-paper-2")}>{d > 0 ? "+" : ""}{dollars(d)}</td>
+                </tr>
+              );
+            })}</tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
   );
 }
 
@@ -173,6 +293,13 @@ export default function CreditsPage() {
     try { const r = await refundCredit(e.id, why); await refresh(`Refunded ${dollars(r.amountMicros, true)} to ${short(r.wallet)}.`); } catch (x) { fail(x); }
   };
 
+  const applyAll = async (count: number) => {
+    if (!window.confirm(`Set ${count} ${count === 1 ? "price" : "prices"} to the suggestion? Users pay the new prices for actions started from now on.`)) return;
+    setBusy(true);
+    try { const r = await applyAllSuggestedPrices(); await refresh(`${r.changed.length} ${r.changed.length === 1 ? "price was" : "prices were"} set to the suggestion.`); }
+    catch (e) { fail(e); } finally { setBusy(false); }
+  };
+
   const t = o?.totals;
   const given = t ? t.byKind.welcome.micros + t.byKind.grant.micros + t.byKind.remove.micros : 0;
   const spent = t ? Math.max(0, -(t.byKind.charge.micros + t.byKind.refund.micros)) : 0;
@@ -216,16 +343,37 @@ export default function CreditsPage() {
             <Tile test="topups" label="Top ups" value={dollars(t.byKind.topup.micros)} sub={`${num(t.byKind.topup.count)} paid in ShelbyUSD${t.openHolds.count ? `. ${num(t.openHolds.count)} open ${t.openHolds.count === 1 ? "hold" : "holds"}, ${dollars(t.openHolds.micros)}` : ""}`} />
           </div>
 
-          <Panel title="Prices" hint={<>The price of one unit of each action. 0 means free. Next to it: what one unit cost VideoMind in the last 30 days, from the usage and the provider prices on <Link href="/costs" className="underline hover:text-paper">Costs</Link> (standard prices, so an estimate), and the margin at your price. A new price applies to actions started after you save it.</>}>
+          <Panel title="Prices" hint={<>For each action: what one unit costs VideoMind, the suggested price (that cost plus the platform fee) and the price users pay now. The cost is <b className="font-medium text-paper-2">exact</b> when the provider bills exactly that unit, <b className="font-medium text-paper-2">measured</b> from the last 30 days once an action has enough use, and otherwise a <b className="font-medium text-paper-2">starting estimate</b> you can edit. Provider prices are on <Link href="/costs" className="underline hover:text-paper">Costs</Link>. Nothing changes for users until you apply a suggestion or save a price, and a new price applies to actions started after that.</>}>
+            <div className="flex items-end justify-between gap-4 flex-wrap mb-4">
+              <Fee feeBps={o.pricing.feeBps} onError={(m) => { setDone(null); setErr(m); }} onSaved={(m) => void refresh(m)} />
+              <div className="flex items-center gap-3 flex-wrap">
+                {o.pricing.belowCost.length > 0 && (
+                  <span className={clsx("text-[13px]", o.settings.charging ? "text-error" : "text-dim")} data-below-count>
+                    {o.pricing.belowCost.length} {o.pricing.belowCost.length === 1 ? "price is" : "prices are"} below cost{o.settings.charging ? "" : " (charging is off, so everything is free now)"}
+                  </span>
+                )}
+                {(() => {
+                  const differ = o.pricing.rows.filter((r) => r.suggestedMicros != null && r.suggestedMicros !== r.priceMicros).length;
+                  return (
+                    <button onClick={() => void applyAll(differ)} disabled={busy || differ === 0} className="btn btn-ghost h-9 px-3.5" data-apply-all>
+                      {differ === 0 ? "Every price is at its suggestion" : `Apply all suggestions (${differ})`}
+                    </button>
+                  );
+                })()}
+              </div>
+            </div>
             <div className="overflow-x-auto -mx-4 sm:mx-0">
-              <table className="w-full text-[13.5px] min-w-[760px]" data-credit-prices>
-                <thead><tr className="text-left text-dim border-b border-rule"><th className="font-normal py-2.5 px-4">Action</th><th className="font-normal py-2.5 pr-4">Price</th><th className="font-normal py-2.5 pr-4">Cost to VideoMind</th><th className="font-normal py-2.5 pr-4">Margin</th><th className="py-2.5 pr-4" /></tr></thead>
+              <table className="w-full text-[13.5px] min-w-[980px]" data-credit-prices>
+                <thead><tr className="text-left text-dim border-b border-rule"><th className="font-normal py-2.5 px-4">Action</th><th className="font-normal py-2.5 pr-4">Cost to VideoMind, per unit</th><th className="font-normal py-2.5 pr-4">Suggested, with {o.pricing.feeBps / 100}% fee</th><th className="font-normal py-2.5 pr-4">Price now</th><th className="font-normal py-2.5 pr-4">Margin</th></tr></thead>
                 <tbody>{o.prices.map((p) => (
-                  <PriceRow key={p.id} p={p} cost={o.costs.find((c) => c.action === p.id)} onError={(m) => { setDone(null); setErr(m); }} onSaved={(np) => void refresh(`The price of ${np.label.toLowerCase()} was saved.`)} />
+                  <PriceRow key={p.id} p={p} row={o.pricing.rows.find((r) => r.action === p.id)} est={o.estimates.find((e) => e.id === p.id)} charging={o.settings.charging}
+                    onError={(m) => { setDone(null); setErr(m); }} onSaved={(m) => void refresh(m)} />
                 ))}</tbody>
               </table>
             </div>
           </Panel>
+
+          <ThisMonth o={o} />
 
           <div className="grid lg:grid-cols-2 gap-5">
             <Panel title="Welcome credits" hint="Given once to every wallet, the first time it opens its Wallet page or starts a paid action. Changing it does not change what wallets got before. 0 means none.">
