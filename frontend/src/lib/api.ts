@@ -572,19 +572,21 @@ export interface LiveEventInfo {
   captionsAvailable?: boolean; captionSeconds?: number; captionLimitMinutes?: number;
   // vm_livesession: the end time for everyone; the length and what can still be added for the host
   endsAt: number | null; lengthMin: number | null; extendMin: number | null; extendChoices?: number[];
+  // vm_liveviewers
+  viewerLimit: number | null; viewerMinutes?: number;
 }
-export interface LiveConfigInfo { enabled: boolean; maxViewers: number; sessionMinutes: number[]; extendMinutes: number[]; maxSessionMinutes: number }
+export interface LiveConfigInfo { enabled: boolean; maxViewers: number; sessionMinutes: number[]; extendMinutes: number[]; maxSessionMinutes: number; viewerChoices?: number[] }
 export const getLiveConfig = () => call<LiveConfigInfo>(() => raw.get("/api/live/config"));
 export const getMyLiveEvents = () => call<{ events: LiveEventInfo[]; enabled: boolean }>(() => raw.get("/api/live/mine"));
 export const createLiveEvent = (title: string) => call<{ event: LiveEventInfo }>(() => raw.post("/api/live", { title }));
 export const getLiveEvent = (id: string) => call<{ event: LiveEventInfo }>(() => raw.get(`/api/live/${id}`));
-export const liveHostToken = (id: string) => call<{ url: string; token: string }>(() => raw.post(`/api/live/${id}/host-token`));
+export const liveHostToken = (id: string, viewers?: number) => call<{ url: string; token: string }>(() => raw.post(`/api/live/${id}/host-token`, viewers ? { viewers } : {}));
 export const liveViewerToken = (id: string) => call<{ url: string; token: string }>(() => raw.post(`/api/live/${id}/viewer-token`));
 export const startLive = (id: string, restream: string[], minutes: number) => call<{ event: LiveEventInfo; restreamError: string | null }>(() => raw.post(`/api/live/${id}/start`, { restream, minutes }));
 /** vm_livesession: add time once while live. */
 export const extendLive = (id: string, minutes: number) => call<{ event: LiveEventInfo }>(() => raw.post(`/api/live/${id}/extend`, { minutes }));
 export const endLive = (id: string) => call<{ event: LiveEventInfo }>(() => raw.post(`/api/live/${id}/end`));
-export const liveStats = (id: string) => call<{ viewers: number; peakViewers: number; status: LiveStatus; endsAt: number | null }>(() => raw.get(`/api/live/${id}/stats`));
+export const liveStats = (id: string) => call<{ viewers: number; peakViewers: number; status: LiveStatus; endsAt: number | null; viewerLimit?: number | null; viewerMinutes?: number }>(() => raw.get(`/api/live/${id}/stats`));
 export const linkLiveRecording = (id: string, videoId: string) => call<{ event: LiveEventInfo }>(() => raw.post(`/api/live/${id}/recording`, { videoId }));
 
 // ── vm_youtube: publishing to the owner's YouTube channel ────────────────────

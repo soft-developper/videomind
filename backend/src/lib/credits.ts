@@ -181,7 +181,8 @@ export async function myCredits(walletIn: string) {
 
 // ── prices ───────────────────────────────────────────────────────────────────
 // vm_priceshapes: answer_step is one answer for every 30 minutes of the video (Part 20b)
-export type PriceUnit = "minute" | "answer" | "search" | "generation" | "gb_month" | "second" | "answer_step";
+// vm_liveviewers: viewer_minute is one viewer watching a live event for one minute (Part 20c)
+export type PriceUnit = "minute" | "answer" | "search" | "generation" | "gb_month" | "second" | "answer_step" | "viewer_minute";
 export interface ActionPrice { id: string; label: string; unit: PriceUnit; microsPerUnit: number; position: number; updatedAt: number; updatedBy: string | null }
 const rowToActionPrice = (r: any): ActionPrice => ({
   id: String(r.id), label: String(r.label), unit: String(r.unit) as PriceUnit, microsPerUnit: n(r.micros_per_unit),

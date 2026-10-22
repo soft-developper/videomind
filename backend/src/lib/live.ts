@@ -22,6 +22,12 @@
 // and settle() when the event is read). The price `live` is per minute of
 // the length: held when the event goes live, the extension held when it is
 // added, and only the minutes the event really ran are charged when it ends.
+//
+// vm_liveviewers (Part 20c): the host also picks a viewer limit (VIEWER_LIMITS).
+// The price `live` is per viewer minute. The hold covers length × limit, the
+// room lets in at most that many viewers, the server counts the viewers every
+// 30 seconds (sampleViewers) and only the viewer minutes watched are charged.
+// Events from before 20c (no viewer limit) are charged by the minutes run.
 import crypto from "crypto";
 import {
   AccessToken, RoomServiceClient, EgressClient, StreamOutput, StreamProtocol, TrackSource, TrackType, DataPacket_Kind,
@@ -44,6 +50,8 @@ export interface LiveEvent {
   /** vm_livesession: the length chosen, the one extension, the end time (null for events from before Part 19). */
   lengthMin: number | null; extendMin: number | null; endsAt: number | null;
   holdId: string | null; extendHoldId: string | null;
+  /** vm_liveviewers: the most viewers allowed, the viewer seconds counted, the last count. */
+  viewerLimit: number | null; viewerSeconds: number; sampledAt: number | null;
 }
 
 const n = (v: unknown) => (v === null || v === undefined ? null : Number(v));
@@ -58,6 +66,7 @@ function rowToEvent(r: Record<string, unknown>): LiveEvent {
     captionSeconds: Number(r.caption_seconds ?? 0),
     lengthMin: n(r.length_min), extendMin: n(r.extend_min), endsAt: n(r.ends_at),
     holdId: r.hold_id ? String(r.hold_id) : null, extendHoldId: r.extend_hold_id ? String(r.extend_hold_id) : null,
+    viewerLimit: n(r.viewer_limit), viewerSeconds: Number(r.viewer_seconds ?? 0) || 0, sampledAt: n(r.sampled_at),
   };
 }
 
@@ -83,6 +92,21 @@ export const SESSION_MINUTES = [15, 30, 45, 60, 90, 120, 180] as const;
 export const EXTEND_MINUTES = [10, 20, 30] as const;
 /** The longest a session can run with its extension. */
 export const MAX_SESSION_MINUTES = 210;
+// ── vm_liveviewers: viewer limits ─────────────────────────────────────────────
+/** The viewer limits a host can pick, at most LIVE_MAX_VIEWERS. */
+export const VIEWER_LIMITS = [10, 25, 50, 100] as const;
+export const viewerChoices = () => {
+  const list = VIEWER_LIMITS.filter((v) => v <= maxViewers());
+  return list.length ? list : [maxViewers()];
+};
+export function parseViewers(v: unknown): number {
+  const x = Number(v);
+  if (!viewerChoices().includes(x as any)) throw new LiveError(400, "bad_viewers", `Choose the most viewers: ${viewerChoices().join(", ")}.`);
+  return x;
+}
+/** Viewer minutes counted so far, rounded up to a whole minute. */
+export const viewerMinutes = (e: LiveEvent) => Math.ceil(Math.max(0, e.viewerSeconds) / 60 - 1e-9);
+
 /** A hold stays open this long past the end time, so a late end still settles it. */
 const HOLD_SLACK_MS = 2 * 3600_000;
 
@@ -153,10 +177,20 @@ export const isOwner = (e: LiveEvent, wallet: string | null | undefined) => !!wa
 const HOST = "host";
 
 /** The host may publish a camera or a screen and a microphone. The room is made here, with a viewer limit. */
-export async function hostToken(e: LiveEvent, name: string): Promise<{ url: string; token: string }> {
+export async function hostToken(e: LiveEvent, name: string, viewers?: unknown): Promise<{ url: string; token: string }> {
   if (e.status === "ended") throw new LiveError(409, "ended", "This live event has ended.");
   const { cfg, rooms } = clients();
-  await rooms.createRoom({ name: e.room, emptyTimeout: 10 * 60, departureTimeout: 120, maxParticipants: maxViewers() + 1, metadata: JSON.stringify({ title: e.title }) });
+  // vm_liveviewers: before going live the host's viewer limit sets the room's size. A room
+  // made earlier with another size is made again (nobody watches before the event is live).
+  let limit = e.viewerLimit ?? maxViewers();
+  if (e.status === "scheduled" && viewers !== undefined) {
+    limit = parseViewers(viewers);
+    if (limit !== e.viewerLimit) {
+      await rooms.deleteRoom(e.room).catch(() => {});
+      await save(e.id, { viewer_limit: limit });
+    }
+  }
+  await rooms.createRoom({ name: e.room, emptyTimeout: 10 * 60, departureTimeout: 120, maxParticipants: limit + 1, metadata: JSON.stringify({ title: e.title }) });
   const at = new AccessToken(cfg.key, cfg.secret, { identity: HOST, name, ttl: "6h" });
   at.addGrant({
     roomJoin: true, room: e.room, canPublish: true, canSubscribe: false, canPublishData: false,
@@ -168,7 +202,14 @@ export async function hostToken(e: LiveEvent, name: string): Promise<{ url: stri
 /** A viewer may only watch and listen. */
 export async function viewerToken(e: LiveEvent): Promise<{ url: string; token: string }> {
   if (e.status !== "live") throw new LiveError(409, e.status === "ended" ? "ended" : "not_live", e.status === "ended" ? "This live event has ended." : "This live event has not started yet.");
-  const { cfg } = clients();
+  const { cfg, rooms } = clients();
+  // vm_liveviewers: no more viewers than the host paid for (the room's own limit is the hard stop)
+  if (e.viewerLimit) {
+    const list = await rooms.listParticipants(e.room).catch(() => null);
+    if (list && list.filter((p) => p.identity !== HOST).length >= e.viewerLimit) {
+      throw new LiveError(409, "full", "This live event is full. Try again in a moment.");
+    }
+  }
   const at = new AccessToken(cfg.key, cfg.secret, { identity: `viewer-${crypto.randomUUID().slice(0, 12)}`, name: "Viewer", ttl: "6h" });
   at.addGrant({ roomJoin: true, room: e.room, canPublish: false, canSubscribe: true, canPublishData: false });
   return { url: cfg.url, token: await at.toJwt() };
@@ -214,7 +255,9 @@ export async function goLive(e: LiveEvent, restream: string[], minutes?: unknown
   // The same key gives back the same hold, so a retried start never holds twice.
   let holdId = e.holdId;
   if (!already) {
-    const r = await reserve({ wallet: e.wallet, action: "live", quantity: length, key: `live:${e.id}:main`, ttlMs: length * 60_000 + HOLD_SLACK_MS });
+    // vm_liveviewers: a full room for the whole length, in viewer minutes
+    const limit = e.viewerLimit ?? maxViewers();
+    const r = await reserve({ wallet: e.wallet, action: "live", quantity: length * limit, key: `live:${e.id}:main`, ttlMs: length * 60_000 + HOLD_SLACK_MS });
     holdId = r.free ? null : r.hold.id;
   }
   if (already && e.egressId) restream = [];   // the restream is already running
@@ -237,6 +280,7 @@ export async function goLive(e: LiveEvent, restream: string[], minutes?: unknown
     await save(e.id, {
       status: "live", started_at: startedAt, egress_id: egressId, restream: egressId ? 1 : 0,
       length_min: length, ends_at: startedAt + length * 60_000, hold_id: holdId,
+      viewer_limit: e.viewerLimit ?? maxViewers(), sampled_at: startedAt,
     });
   }
   return { event: (await getEvent(e.id))!, restreamError };
@@ -254,7 +298,8 @@ export async function extendEvent(e: LiveEvent, minutes: unknown): Promise<LiveE
   if (!(EXTEND_MINUTES as readonly number[]).includes(m)) throw new LiveError(400, "bad_extend", `Add ${EXTEND_MINUTES.join(", ")} minutes.`);
   if (e.lengthMin + m > MAX_SESSION_MINUTES) throw new LiveError(409, "too_long", `A live event can run at most ${MAX_SESSION_MINUTES} minutes.`);
   if (Date.now() >= e.endsAt) throw new LiveError(409, "time_up", "The live event has reached its end time.");
-  const r = await reserve({ wallet: e.wallet, action: "live", quantity: m, key: `live:${e.id}:extend`, ttlMs: Math.max(0, e.endsAt - Date.now()) + m * 60_000 + HOLD_SLACK_MS });
+  // vm_liveviewers: the extension for a full room
+  const r = await reserve({ wallet: e.wallet, action: "live", quantity: m * (e.viewerLimit ?? 1), key: `live:${e.id}:extend`, ttlMs: Math.max(0, e.endsAt - Date.now()) + m * 60_000 + HOLD_SLACK_MS });
   // Only one extension: the row changes only while extend_min is still empty.
   const res = await getDb().execute({
     sql: "UPDATE live_events SET extend_min = ?, ends_at = ends_at + ?, extend_hold_id = ?, updated_at = ? WHERE id = ? AND status = 'live' AND extend_min IS NULL",
@@ -272,11 +317,13 @@ export async function extendEvent(e: LiveEvent, minutes: unknown): Promise<LiveE
 
 /** vm_livesession: charge the minutes the event ran, the length first, then the extension. */
 async function settleSession(e: LiveEvent, endedAt: number) {
-  const ran = minutesRun(e, endedAt);
-  const length = e.lengthMin ?? 0;
+  // vm_liveviewers: viewer minutes when the event had a viewer limit, minutes run before 20c
+  const counted = e.viewerLimit != null;
+  const ran = counted ? viewerMinutes(e) : minutesRun(e, endedAt);
+  const length = counted ? (e.lengthMin ?? 0) * e.viewerLimit! : (e.lengthMin ?? 0);
   const log = (what: string) => (err: any) => console.error(`[live] ${e.id}: settling the ${what}: ${err?.message ?? err}`);
   if (e.holdId) {
-    if (!e.startedAt) await release(e.holdId).catch(log("length"));
+    if (!e.startedAt || ran <= 0) await release(e.holdId).catch(log("length"));
     else await settleHold(e.holdId, { quantity: Math.min(length, ran) }).catch(log("length"));
   }
   if (e.extendHoldId) {
@@ -290,14 +337,16 @@ async function settleSession(e: LiveEvent, endedAt: number) {
 export async function endEvent(e: LiveEvent): Promise<LiveEvent> {
   e = (await getEvent(e.id)) ?? e;   // vm_livesession: the end time may have moved since e was read
   if (e.status !== "ended") {
+    // vm_livesession: an event past its end time ended at its end time, however late this runs.
+    const endedAt = e.endsAt ? Math.min(Date.now(), e.endsAt) : Date.now();
+    // vm_liveviewers: count the viewers once more up to the end, before the room closes
+    if (e.status === "live" && e.viewerLimit) e = await sampleViewers(e, endedAt).catch(() => e);
     const c = liveConfig();
     if (c) {
       const { rooms, egress } = clients();
       if (e.egressId) await egress.stopEgress(e.egressId).catch(() => {});
       await rooms.deleteRoom(e.room).catch(() => {});
     }
-    // vm_livesession: an event past its end time ended at its end time, however late this runs.
-    const endedAt = e.endsAt ? Math.min(Date.now(), e.endsAt) : Date.now();
     // Only the first ending writes and charges, if two arrive at once.
     const res = await getDb().execute({
       sql: "UPDATE live_events SET status = 'ended', ended_at = ?, updated_at = ? WHERE id = ? AND status != 'ended'",
@@ -311,6 +360,43 @@ export async function endEvent(e: LiveEvent): Promise<LiveEvent> {
     }
   }
   return (await getEvent(e.id))!;
+}
+
+/**
+ * vm_liveviewers: add the viewers watching now for the time since the last
+ * count. A gap longer than SAMPLE_GAP_MS counts only SAMPLE_GAP_MS, so a
+ * missed count never charges for viewers nobody saw. If the live server
+ * does not answer, nothing is added. Two counts at once add once.
+ */
+const SAMPLE_GAP_MS = 60_000;
+export async function sampleViewers(e: LiveEvent, at = Date.now()): Promise<LiveEvent> {
+  if (e.status !== "live" || !e.viewerLimit || !e.startedAt || !liveConfig()) return e;
+  const from = e.sampledAt ?? e.startedAt;
+  const to = Math.min(at, e.endsAt ?? at);
+  if (to <= from) return e;
+  const { rooms } = clients();
+  const list = await rooms.listParticipants(e.room).catch(() => null);
+  if (!list) return e;
+  const count = Math.min(e.viewerLimit, list.filter((p) => p.identity !== HOST).length);
+  const seconds = (count * Math.min(SAMPLE_GAP_MS, to - from)) / 1000;
+  const res = await getDb().execute({
+    sql: `UPDATE live_events SET viewer_seconds = COALESCE(viewer_seconds, 0) + ?, sampled_at = ?,
+            peak_viewers = MAX(COALESCE(peak_viewers, 0), ?), updated_at = ?
+          WHERE id = ? AND status = 'live' AND ${e.sampledAt == null ? "sampled_at IS NULL" : "sampled_at = ?"}`,
+    args: [seconds, to, count, Date.now(), e.id, ...(e.sampledAt == null ? [] : [e.sampledAt])],
+  });
+  return res.rowsAffected ? (await getEvent(e.id)) ?? e : e;
+}
+
+/** vm_liveviewers: count the viewers of every live event with a viewer limit. Run every 30 seconds. */
+export async function sampleAllViewers(now = Date.now()): Promise<number> {
+  const r = await getDb().execute("SELECT * FROM live_events WHERE status = 'live' AND viewer_limit IS NOT NULL");
+  let n = 0;
+  for (const row of r.rows) {
+    const e = rowToEvent(row as Record<string, unknown>);
+    try { await sampleViewers(e, now); n++; } catch (err: any) { console.error(`[live] counting viewers of ${e.id} failed: ${err?.message ?? err}`); }
+  }
+  return n;
 }
 
 /**

@@ -92,14 +92,19 @@ function LiveSettings({ event, onSaved }: { event: LiveEventInfo; onSaved: () =>
 const SESSION_FALLBACK = [15, 30, 45, 60, 90, 120, 180];
 const MAX_SESSION_FALLBACK = 210;
 const DEFAULT_MINUTES = 60;
+const VIEWER_FALLBACK = [10, 25, 50, 100];
 
 /** How long the event runs, picked before going live, with its price when live events cost something. */
-function SessionLength({ minutes, onChange, choices, max, disabled }: { minutes: number; onChange: (m: number) => void; choices: number[]; max: number; disabled?: boolean }) {
+function SessionLength({ minutes, onChange, choices, max, disabled, viewers, onViewers, viewerChoices }: {
+  minutes: number; onChange: (m: number) => void; choices: number[]; max: number; disabled?: boolean;
+  /** vm_liveviewers: the viewer limit, priced per viewer minute */
+  viewers: number; onViewers: (v: number) => void; viewerChoices: number[];
+}) {
   const t = useTranslations("live");
   const money = useMoney();
   const c = useCredits();
   const per = c.costOf("live");
-  const total = per != null ? Math.ceil(per * minutes) : null;
+  const total = per != null ? Math.ceil(per * minutes * viewers) : null;
   const short = total != null && c.available != null && c.available < total;
   return (
     <fieldset disabled={disabled} data-session-length>
@@ -113,9 +118,19 @@ function SessionLength({ minutes, onChange, choices, max, disabled }: { minutes:
         ))}
       </div>
       <p className="text-[12.5px] text-dim mt-2">{t("lengthHint", { max })}</p>
+      <p className="text-[13px] font-medium text-paper mt-4 mb-2" id="live-viewers-label">{t("viewers")}</p>
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="live-viewers-label" data-viewer-limit>
+        {viewerChoices.map((v) => (
+          <label key={v} className={clsx("h-9 px-3 rounded-md border inline-flex items-center cursor-pointer text-[13.5px]", viewers === v ? "border-paper bg-slate-2 text-paper" : "border-rule text-paper-2 hover:border-rule-lit")}>
+            <input type="radio" name="live-viewers" className="sr-only" checked={viewers === v} onChange={() => onViewers(v)} />
+            <span className="tc">{v}</span>
+          </label>
+        ))}
+      </div>
+      <p className="text-[12.5px] text-dim mt-2">{t("viewersHint")}</p>
       {per != null && total != null && (
         <p className={clsx("text-[12px] mt-1", short ? "text-warn" : "text-dim")} data-price-tag="live">
-          {t("livePrice", { price: inline(money(per)), total: inline(money(total)), minutes })}
+          {t("livePrice", { price: inline(money(per)), total: inline(money(total)), minutes, viewers })}
           {short && <> <AddCreditsLink /></>}
         </p>
       )}
@@ -160,7 +175,7 @@ function SessionClock({ event, left, onExtended }: { event: LiveEventInfo; left:
               {busy === m ? t("adding") : t("addMinutes", { minutes: m })}
             </button>
           ))}
-          {per != null && <span className="text-[12px] text-dim">{t("addPrice", { price: inline(money(per)) })}</span>}
+          {per != null && <span className="text-[12px] text-dim">{t("addPrice", { price: inline(money(per * (event.viewerLimit ?? 1))) })}</span>}
         </div>
       )}
       {err && <p className="text-[12.5px] text-error" role="alert">{err.text}{err.credits && <> <AddCreditsLink /></>}</p>}
@@ -200,6 +215,11 @@ export function LiveStudio({ id }: { id: string }) {
   // vm_livesession
   const { data: cfg } = useQuery({ queryKey: ["live-config"], queryFn: getLiveConfig, staleTime: 300_000 });
   const [minutes, setMinutes] = useState(DEFAULT_MINUTES);
+  // vm_liveviewers: the viewer limit, 25 unless the server offers fewer
+  const viewerChoices = cfg?.viewerChoices?.length ? cfg.viewerChoices : VIEWER_FALLBACK;
+  const [viewersPick, setViewersPick] = useState<number | null>(null);
+  const viewerLimit = viewersPick ?? (viewerChoices.includes(25) ? 25 : viewerChoices[0]);
+  const [viewerMins, setViewerMins] = useState<number | null>(null);
   const [endsAt, setEndsAt] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => { if (event?.endsAt) setEndsAt(event.endsAt); }, [event?.endsAt]);
@@ -243,6 +263,7 @@ export function LiveStudio({ id }: { id: string }) {
     const look = () => liveStats(id).then((x) => {
       setViewers(x.viewers);
       if (x.endsAt) setEndsAt(x.endsAt);
+      if (x.viewerMinutes != null) setViewerMins(x.viewerMinutes);
       // vm_livesession: the server ended it (its end time, or an admin): stop here too.
       if (x.status === "ended") setServerEnded(true);
     }).catch(() => {});
@@ -343,7 +364,7 @@ export function LiveStudio({ id }: { id: string }) {
     inputs.current = ins;
     setPhase({ at: "starting" });
     try {
-      const { url, token } = await liveHostToken(id);
+      const { url, token } = await liveHostToken(id, viewerLimit);
       // vm_livesession: the camera and microphone belong to this page (they are also being recorded).
       // When the server closes the room at the end time, LiveKit must not stop them, or the recording stops too.
       const r = new Room({ adaptiveStream: false, dynacast: true, stopLocalTrackOnUnpublish: false });
@@ -470,7 +491,8 @@ export function LiveStudio({ id }: { id: string }) {
             >
               {t("endLive")}
             </button>
-            <span className="tc" data-viewers>{t("watching", { count: viewers })}</span>
+            <span className="tc" data-viewers>{event.viewerLimit ? t("watchingOf", { count: viewers, limit: event.viewerLimit }) : t("watching", { count: viewers })}</span>
+            {event.viewerLimit != null && viewerMins != null && <span className="tc text-dim" data-viewer-minutes>{t("viewerMinutes", { minutes: viewerMins })}</span>}
             {event.restreaming && <span className="tc">{t("restreaming")}</span>}
           </div>
           {note && <p className="text-[13px] text-warn" role="status">{note}</p>}
@@ -515,7 +537,8 @@ export function LiveStudio({ id }: { id: string }) {
         <input type="checkbox" checked={mic} onChange={(e) => setMic(e.target.checked)} /> {t("mic")}
       </label>
 
-      <SessionLength minutes={minutes} onChange={setMinutes} choices={cfg?.sessionMinutes ?? SESSION_FALLBACK} max={cfg?.maxSessionMinutes ?? MAX_SESSION_FALLBACK} />
+      <SessionLength minutes={minutes} onChange={setMinutes} choices={cfg?.sessionMinutes ?? SESSION_FALLBACK} max={cfg?.maxSessionMinutes ?? MAX_SESSION_FALLBACK}
+        viewers={viewerLimit} onViewers={setViewersPick} viewerChoices={viewerChoices} />
 
       <LiveSettings event={event} onSaved={() => void refetch()} />
 

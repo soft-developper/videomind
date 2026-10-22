@@ -858,6 +858,19 @@ const MIGRATIONS: Migration[] = [
       `INSERT INTO action_cost_estimates (id, usd_per_unit, note, updated_at) VALUES ('generate_direct', 0.01, 'Claude Sonnet 5.5, about 2,000 tokens read and up to 2,000 written', 0)`,
     ],
   },
+  {
+    // vm_liveviewers (Part 20c): a live event's host picks a viewer limit, and the
+    // price is per viewer minute, counted by the server every 30 seconds. A price
+    // already set for live (per minute of the length) now counts per viewer minute.
+    id: "033_live_viewers",
+    statements: [
+      `ALTER TABLE live_events ADD COLUMN viewer_limit INTEGER`,
+      `ALTER TABLE live_events ADD COLUMN viewer_seconds REAL NOT NULL DEFAULT 0`,
+      `ALTER TABLE live_events ADD COLUMN sampled_at INTEGER`,
+      `UPDATE action_prices SET unit = 'viewer_minute', label = 'Live event (per viewer minute)' WHERE id = 'live'`,
+      `UPDATE action_cost_estimates SET note = 'LiveKit Ship plan, per viewer minute: $0.0005 a participant minute plus about 0.011 GB of video at $0.12 per GB; free on the Build plan until its limits' WHERE id = 'live' AND updated_by IS NULL`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

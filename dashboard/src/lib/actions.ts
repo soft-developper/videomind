@@ -37,4 +37,4 @@ export function dollars(micros: number, exact = false): string {
 export const CREDIT_KINDS: Record<string, string> = {
   welcome: "Welcome", grant: "Given by an admin", remove: "Removed by an admin", topup: "Top up", charge: "Charge", refund: "Refund",
 };
-export const CREDIT_UNITS: Record<string, string> = { minute: "per minute", answer: "per answer", search: "per search", generation: "per generation", gb_month: "per GB month", second: "per second", answer_step: "per answer, each 30 minutes of video" };
+export const CREDIT_UNITS: Record<string, string> = { minute: "per minute", answer: "per answer", search: "per search", generation: "per generation", gb_month: "per GB month", second: "per second", answer_step: "per answer, each 30 minutes of video", viewer_minute: "per viewer minute" };

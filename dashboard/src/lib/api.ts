@@ -217,7 +217,7 @@ export const inviteComplete = (token: string, password: string, code: string) =>
 
 // ── vm_credits ───────────────────────────────────────────────────────────────
 export type CreditKind = "welcome" | "grant" | "remove" | "topup" | "charge" | "refund";
-export type CreditUnit = "minute" | "answer" | "search" | "generation" | "gb_month" | "second" | "answer_step";
+export type CreditUnit = "minute" | "answer" | "search" | "generation" | "gb_month" | "second" | "answer_step" | "viewer_minute";
 export interface CreditEntry {
   id: string; wallet: string; at: number; kind: CreditKind; amountMicros: number;
   action: string | null; quantity: number | null; videoId: string | null; holdId: string | null;

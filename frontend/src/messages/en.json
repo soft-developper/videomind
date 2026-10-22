@@ -1206,7 +1206,7 @@
     "length": "How long it runs",
     "lengthHint": "The live event ends by itself when this time is up. While live you can add 10, 20 or 30 minutes once, up to {max} minutes in all.",
     "minutesShort": "{minutes} min",
-    "livePrice": "Going live costs {price} a minute: {total} for {minutes} minutes, set aside now. Only the minutes it really runs are charged.",
+    "livePrice": "Going live costs {price} per viewer minute: up to {total} for {minutes} minutes with {viewers} viewers, set aside now. Only the minutes viewers really watch are charged.",
     "timeLeft": "{time} left",
     "endsAt": "Ends at {time}",
     "warnLeft": "{minutes, plural, one {# minute left.} other {# minutes left.}} The live event ends by itself at {time}.",
@@ -1214,10 +1214,14 @@
     "addMinutes": "+{minutes} min",
     "adding": "Adding",
     "added": "{minutes} minutes added. The live event now ends at {time}.",
-    "addPrice": "Adding time costs {price} a minute.",
+    "addPrice": "Adding time costs up to {price} a minute with a full room.",
     "addFailed": "Time could not be added. Try again.",
     "reachedLength": "The live event reached the length you set and was ended.",
-    "endedOnServer": "The live event ended on the server, so the studio stopped too."
+    "endedOnServer": "The live event ended on the server, so the studio stopped too.",
+    "viewers": "Most viewers",
+    "viewersHint": "Viewers past this limit see that the live event is full.",
+    "watchingOf": "{count} of {limit} watching",
+    "viewerMinutes": "{minutes, plural, one {# viewer minute so far} other {# viewer minutes so far}}"
   },
   "liveChat": {
     "confirmBlock": "Block {name} from this chat? Everything they wrote is removed.",
@@ -1366,7 +1370,8 @@
         "generation": "{price} each time",
         "gb_month": "{price} per GB a month",
         "second": "{price} a second",
-        "answer_step": "{price} an answer for every 30 minutes of video"
+        "answer_step": "{price} an answer for every 30 minutes of video",
+        "viewer_minute": "{price} a viewer minute"
       },
       "loadFailed": "Your credits could not be loaded. Try again in a minute.",
       "add": {
@@ -1882,7 +1887,7 @@
     "shelbyP": "You can choose to store videos on Shelby, a decentralized storage network on Aptos, through transactions you sign with your own wallet. Anything stored there is public and cannot be deleted or changed by us. Shelby’s current networks are early: storage is paid for a limited period, and data may be lost or wiped. Any network fees are yours. We do not control Shelby or Aptos and are not responsible for them. Keep your own copies of anything important.",
     "creditsP1": "Some actions cost credits: processing a video, answers, searches, learning paths, live captions, live events, translating a transcript, generating a video and asking AI to write its description, and keeping files on VideoMind. Credits are counted in US dollars. You add them on the Wallet page by sending ShelbyUSD from your wallet to VideoMind’s address: 1 ShelbyUSD adds 1 US dollar of credits, and each transfer is added once. We cannot undo a transfer you sign, and network fees are yours. On Shelby’s test network, ShelbyUSD has no value.",
     "credits1": "<b>Prices.</b> The Wallet page lists the price of each action, and the price is shown before an action starts. We may change prices. A new price applies only to actions started after the change, and to storage from the next day.",
-    "credits2": "<b>Holds.</b> When a paid action starts, its price is set aside from your credits and charged only if the action succeeds. A failed action costs nothing. Processing a video is charged for the minutes of sound transcribed, with a minimum per video shown before you upload, never more than was set aside. An answer about a video costs more for longer videos, as shown before you ask. A live event is charged for the minutes it really ran, never more than was set aside.",
+    "credits2": "<b>Holds.</b> When a paid action starts, its price is set aside from your credits and charged only if the action succeeds. A failed action costs nothing. Processing a video is charged for the minutes of sound transcribed, with a minimum per video shown before you upload, never more than was set aside. An answer about a video costs more for longer videos, as shown before you ask. A live event is charged for the minutes its viewers really watched, up to the viewer limit the host chose, never more than was set aside.",
     "credits3": "<b>Who pays.</b> Processing a video, answers about it and its translations are paid by the video’s owner, also when a viewer asks the question. Searches, Knowledge, generating a video and asking AI to write its description are paid by the person using them. Live events and live captions are paid by the host.",
     "credits4": "<b>Storage.</b> The files VideoMind keeps for your videos (the original, its pictures and sound, and clips) are charged once a day, at a thirtieth of the monthly price per GB, for what you keep above any free amount shown on the Wallet page. A GB is 1,000,000,000 bytes. A public video that lives on Shelby only does not count its original.",
     "credits5": "<b>Unpaid storage.</b> Your balance never goes below zero. Storage you cannot pay is owed, and it is paid first from the next credits you add. If any of it is still owed 14 days later, your videos kept on VideoMind stop playing and new uploads wait until it is paid. We do not delete your videos because storage is unpaid.",
@@ -2163,7 +2168,9 @@
     "liveAlreadyExtended": "Time was already added once to this live event.",
     "liveBadExtend": "Add {list} minutes.",
     "liveTooLong": "A live event can run at most {max} minutes.",
-    "liveTimeUp": "The live event has reached its end time."
+    "liveTimeUp": "The live event has reached its end time.",
+    "liveFull": "This live event is full. Try again in a moment.",
+    "liveBadViewers": "Choose the most viewers: {list}."
   },
   "notFound": {
     "title": "This page was not found",

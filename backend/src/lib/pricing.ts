@@ -26,7 +26,8 @@ const n = (v: unknown) => Number(v ?? 0) || 0;
 const DAY = 86400_000;
 
 /** How many units an action needs in 30 days before its measured average is used. */
-const MIN_UNITS: Record<PriceUnit, number> = { minute: 60, answer: 20, search: 20, generation: 10, second: 60, gb_month: Infinity, answer_step: 20 };
+// viewer_minute: LiveKit is not in the usage ledger, so live keeps its estimate
+const MIN_UNITS: Record<PriceUnit, number> = { minute: 60, answer: 20, search: 20, generation: 10, second: 60, gb_month: Infinity, answer_step: 20, viewer_minute: Infinity };
 
 // ── the platform fee ─────────────────────────────────────────────────────────
 export const DEFAULT_FEE_BPS = 30;
@@ -128,7 +129,10 @@ async function unitsThisMonth(now: number): Promise<Map<string, number>> {
     unitCosts(days, now),
     getDb().execute({ sql: "SELECT COALESCE(SUM(seconds), 0) AS s FROM generations WHERE status = 'succeeded' AND created_at >= ?", args: [m0] }),
     getDb().execute({ sql: "SELECT COALESCE(SUM(gb_months), 0) AS g FROM storage_days WHERE day >= ?", args: [new Date(m0).toISOString().slice(0, 10)] }),
-    getDb().execute({ sql: "SELECT COALESCE(SUM((MIN(COALESCE(ended_at, ?), COALESCE(ends_at, ?)) - started_at) / 60000.0), 0) AS m FROM live_events WHERE started_at IS NOT NULL AND started_at >= ?", args: [now, now, m0] }),
+    // vm_liveviewers: viewer minutes counted (events from before 20c count their minutes run)
+    getDb().execute({ sql: `SELECT COALESCE(SUM(CASE WHEN viewer_limit IS NOT NULL THEN COALESCE(viewer_seconds, 0) / 60.0
+              ELSE (MIN(COALESCE(ended_at, ?), COALESCE(ends_at, ?)) - started_at) / 60000.0 END), 0) AS m
+            FROM live_events WHERE started_at IS NOT NULL AND started_at >= ?`, args: [now, now, m0] }),
   ]);
   const out = new Map(usage.map((u) => [u.action, u.units]));
   out.set("generate_video", n((gen.rows[0] as any).s));

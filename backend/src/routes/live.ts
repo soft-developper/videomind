@@ -5,7 +5,7 @@
 //   GET  /mine                   the signed in wallet's events
 //   POST /                       create one { title }
 //   GET  /:id                    public: title, who, status, recording
-//   POST /:id/host-token         owner: join the room to publish
+//   POST /:id/host-token         owner: join the room to publish { viewers? } (vm_liveviewers: the viewer limit, before going live)
 //   POST /:id/start              owner: the stream is on { minutes, restream?: [rtmp urls] }
 //   POST /:id/extend             owner, while live: add time once { minutes: 10 | 20 | 30 }
 //   POST /:id/end                owner: end it for everyone
@@ -31,7 +31,7 @@ import { namesOf } from "../lib/profiles.js";
 import {
   liveConfig, createEvent, getEvent, eventsOf, isOwner, hostToken, viewerToken, parseRestream, goLive, endEvent,
   viewersNow, settle, linkRecording, LiveError, maxViewers, save, broadcast, CHAT_MODES, type LiveEvent, type ChatMode,
-  extendEvent, extendChoices, SESSION_MINUTES, EXTEND_MINUTES, MAX_SESSION_MINUTES,
+  extendEvent, extendChoices, SESSION_MINUTES, EXTEND_MINUTES, MAX_SESSION_MINUTES, viewerChoices, viewerMinutes,
 } from "../lib/live.js";
 import { creditFailure } from "../lib/charge.js";
 import { joinChat, readPass, postMessage, listMessages, deleteMessage, blockWriter, listCaptions } from "../lib/livechat.js";
@@ -60,7 +60,9 @@ async function view(e: LiveEvent, owner: boolean) {
     chatMode: e.chatMode, captions: e.captions && captionsAvailable(),
     // vm_livesession: when it ends, for everyone; how long and what can still be added, for the host
     endsAt: e.endsAt, lengthMin: e.lengthMin, extendMin: e.extendMin,
-    ...(owner ? { extendChoices: extendChoices(e) } : {}),
+    // vm_liveviewers: the limit for everyone; the viewer minutes counted for the host
+    viewerLimit: e.viewerLimit,
+    ...(owner ? { extendChoices: extendChoices(e), viewerMinutes: viewerMinutes(e) } : {}),
     ...(owner ? { restreaming: e.restream, peakViewers: e.peakViewers, captionsAvailable: captionsAvailable(), captionSeconds: e.captionSeconds, captionLimitMinutes: maxMinutes() } : {}),
   };
 }
@@ -85,6 +87,7 @@ async function ownEvent(req: any, res: any): Promise<LiveEvent | null> {
 router.get("/config", (_req, res) => res.json({
   enabled: !!liveConfig(), maxViewers: maxViewers(),
   sessionMinutes: SESSION_MINUTES, extendMinutes: EXTEND_MINUTES, maxSessionMinutes: MAX_SESSION_MINUTES,
+  viewerChoices: viewerChoices(),
 }));
 
 router.get("/mine", requireAuth, async (req, res) => {
@@ -115,7 +118,7 @@ router.post("/:id/host-token", limitLive, requireAuth, async (req, res) => {
   try {
     const e = await ownEvent(req, res); if (!e) return;
     const name = (await namesOf([e.wallet]).catch(() => new Map<string, string>())).get(e.wallet) ?? "Host";
-    return res.json(await hostToken(e, name));
+    return res.json(await hostToken(e, name, (req.body ?? {}).viewers));
   } catch (err) { return fail(res, err); }
 });
 
@@ -152,7 +155,7 @@ router.get("/:id/stats", requireAuth, async (req, res) => {
     const e = await ownEvent(req, res); if (!e) return;
     const viewers = await viewersNow(e);
     const fresh = await settle((await getEvent(e.id))!).catch(() => e);
-    return res.json({ viewers, peakViewers: fresh.peakViewers, status: fresh.status, endsAt: fresh.endsAt });
+    return res.json({ viewers, peakViewers: fresh.peakViewers, status: fresh.status, endsAt: fresh.endsAt, viewerLimit: fresh.viewerLimit, viewerMinutes: viewerMinutes(fresh) });
   } catch (err) { return fail(res, err); }
 });
 

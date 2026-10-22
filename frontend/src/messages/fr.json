@@ -1206,7 +1206,7 @@
     "length": "Durée du direct",
     "lengthHint": "Le direct se termine tout seul à la fin de cette durée. Pendant le direct, vous pouvez ajouter une fois 10, 20 ou 30 minutes, jusqu’à {max} minutes au total.",
     "minutesShort": "{minutes} min",
-    "livePrice": "Le direct coûte {price} par minute : {total} pour {minutes} minutes, mis de côté maintenant. Seules les minutes réellement diffusées sont facturées.",
+    "livePrice": "Le direct coûte {price} par minute de visionnage : jusqu’à {total} pour {minutes} minutes avec {viewers} spectateurs, mis de côté maintenant. Seules les minutes réellement regardées sont facturées.",
     "timeLeft": "Encore {time}",
     "endsAt": "Se termine à {time}",
     "warnLeft": "{minutes, plural, one {Il reste # minute.} other {Il reste # minutes.}} Le direct se termine tout seul à {time}.",
@@ -1214,10 +1214,14 @@
     "addMinutes": "+{minutes} min",
     "adding": "Ajout en cours",
     "added": "{minutes} minutes ajoutées. Le direct se termine maintenant à {time}.",
-    "addPrice": "Ajouter du temps coûte {price} par minute.",
+    "addPrice": "Ajouter du temps coûte jusqu’à {price} par minute avec une salle pleine.",
     "addFailed": "Le temps n’a pas pu être ajouté. Réessayez.",
     "reachedLength": "Le direct a atteint la durée choisie et s’est terminé.",
-    "endedOnServer": "Le direct s’est terminé sur le serveur, le studio s’est donc arrêté aussi."
+    "endedOnServer": "Le direct s’est terminé sur le serveur, le studio s’est donc arrêté aussi.",
+    "viewers": "Nombre maximal de spectateurs",
+    "viewersHint": "Au delà de cette limite, les spectateurs voient que le direct est complet.",
+    "watchingOf": "{count} sur {limit} spectateurs",
+    "viewerMinutes": "{minutes, plural, one {# minute de visionnage jusqu’ici} many {# minutes de visionnage jusqu’ici} other {# minutes de visionnage jusqu’ici}}"
   },
   "liveChat": {
     "confirmBlock": "Bloquer {name} dans cette discussion ? Tout ce que cette personne a écrit sera supprimé.",
@@ -1366,7 +1370,8 @@
         "generation": "{price} à chaque fois",
         "gb_month": "{price} par Go et par mois",
         "second": "{price} par seconde",
-        "answer_step": "{price} la réponse par tranche de 30 minutes de vidéo"
+        "answer_step": "{price} la réponse par tranche de 30 minutes de vidéo",
+        "viewer_minute": "{price} la minute de visionnage"
       },
       "loadFailed": "Vos crédits n’ont pas pu être chargés. Réessayez dans une minute.",
       "add": {
@@ -1882,7 +1887,7 @@
     "shelbyP": "Vous pouvez choisir de stocker des vidéos sur Shelby, un réseau de stockage décentralisé sur Aptos, au moyen de transactions que vous signez avec votre propre portefeuille. Tout ce qui y est stocké est public et ne peut être ni supprimé ni modifié par nous. Les réseaux actuels de Shelby en sont à leurs débuts : le stockage est payé pour une durée limitée, et les données peuvent être perdues ou effacées. Les éventuels frais de réseau sont à votre charge. Nous ne contrôlons ni Shelby ni Aptos et n’en sommes pas responsables. Gardez vos propres copies de tout ce qui est important.",
     "creditsP1": "Certaines actions coûtent des crédits : le traitement d’une vidéo, les réponses, les recherches, les parcours d’apprentissage, les sous titres en direct, les directs, la traduction d’une transcription, la génération d’une vidéo et la rédaction de sa description par l’IA, et la conservation de fichiers sur VideoMind. Les crédits sont comptés en dollars américains. Vous les ajoutez dans la page Portefeuille en envoyant des ShelbyUSD depuis votre portefeuille à l’adresse de VideoMind : 1 ShelbyUSD ajoute 1 dollar américain de crédits, et chaque transfert n’est ajouté qu’une fois. Nous ne pouvons pas annuler un transfert que vous signez, et les frais du réseau sont à votre charge. Sur le réseau de test de Shelby, les ShelbyUSD n’ont aucune valeur.",
     "credits1": "<b>Prix.</b> La page Portefeuille indique le prix de chaque action, et le prix est affiché avant qu’une action commence. Nous pouvons modifier les prix. Un nouveau prix s’applique uniquement aux actions lancées après le changement, et au stockage à partir du jour suivant.",
-    "credits2": "<b>Réserves.</b> Quand une action payante commence, son prix est mis de côté sur vos crédits et n’est prélevé que si l’action réussit. Une action qui échoue ne coûte rien. Le traitement d’une vidéo est facturé selon les minutes de son transcrites, avec un minimum par vidéo indiqué avant l’envoi, jamais plus que le montant mis de côté. Une réponse sur une vidéo coûte plus cher pour les vidéos plus longues, comme indiqué avant de poser la question. Un direct est facturé selon les minutes réellement diffusées, jamais plus que le montant mis de côté.",
+    "credits2": "<b>Réserves.</b> Quand une action payante commence, son prix est mis de côté sur vos crédits et n’est prélevé que si l’action réussit. Une action qui échoue ne coûte rien. Le traitement d’une vidéo est facturé selon les minutes de son transcrites, avec un minimum par vidéo indiqué avant l’envoi, jamais plus que le montant mis de côté. Une réponse sur une vidéo coûte plus cher pour les vidéos plus longues, comme indiqué avant de poser la question. Un direct est facturé selon les minutes réellement regardées par ses spectateurs, dans la limite de spectateurs choisie par l’hôte, jamais plus que le montant mis de côté.",
     "credits3": "<b>Qui paie.</b> Le traitement d’une vidéo, les réponses à son sujet et ses traductions sont payés par le propriétaire de la vidéo, y compris quand c’est un spectateur qui pose la question. Les recherches, Connaissances, la génération d’une vidéo et la rédaction de sa description par l’IA sont payées par la personne qui les utilise. Les directs et les sous titres en direct sont payés par l’hôte.",
     "credits4": "<b>Stockage.</b> Les fichiers que VideoMind garde pour vos vidéos (l’original, ses images et son son, et les extraits) sont facturés une fois par jour, au trentième du prix mensuel par Go, pour ce que vous gardez au delà de la quantité gratuite indiquée dans la page Portefeuille. Un Go correspond à 1 000 000 000 octets. Une vidéo publique qui n’existe que sur Shelby ne compte pas son original.",
     "credits5": "<b>Stockage impayé.</b> Votre solde ne descend jamais sous zéro. Le stockage que vous ne pouvez pas payer est dû, et il est payé en premier avec les prochains crédits que vous ajoutez. Si une partie est encore due 14 jours plus tard, vos vidéos gardées sur VideoMind ne sont plus lues et les nouveaux imports attendent jusqu’au paiement. Nous ne supprimons pas vos vidéos parce que le stockage n’est pas payé.",
@@ -2163,7 +2168,9 @@
     "liveAlreadyExtended": "Du temps a déjà été ajouté une fois à ce direct.",
     "liveBadExtend": "Ajoutez {list} minutes.",
     "liveTooLong": "Un direct peut durer au plus {max} minutes.",
-    "liveTimeUp": "Le direct a atteint son heure de fin."
+    "liveTimeUp": "Le direct a atteint son heure de fin.",
+    "liveFull": "Ce direct est complet. Réessayez dans un instant.",
+    "liveBadViewers": "Choisissez le nombre maximal de spectateurs : {list}."
   },
   "notFound": {
     "title": "Cette page est introuvable",

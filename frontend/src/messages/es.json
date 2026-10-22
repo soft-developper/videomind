@@ -1206,7 +1206,7 @@
     "length": "Cuánto dura",
     "lengthHint": "El evento en vivo termina solo cuando se acaba este tiempo. Durante la transmisión puedes añadir 10, 20 o 30 minutos una vez, hasta {max} minutos en total.",
     "minutesShort": "{minutes} min",
-    "livePrice": "Transmitir en vivo cuesta {price} por minuto: {total} por {minutes} minutos, apartados ahora. Solo se cobran los minutos que de verdad dure.",
+    "livePrice": "Transmitir en vivo cuesta {price} por minuto de espectador: hasta {total} por {minutes} minutos con {viewers} espectadores, apartados ahora. Solo se cobran los minutos que los espectadores de verdad miran.",
     "timeLeft": "Quedan {time}",
     "endsAt": "Termina a las {time}",
     "warnLeft": "{minutes, plural, one {Queda # minuto.} other {Quedan # minutos.}} El evento en vivo termina solo a las {time}.",
@@ -1214,10 +1214,14 @@
     "addMinutes": "+{minutes} min",
     "adding": "Añadiendo",
     "added": "Se añadieron {minutes} minutos. El evento en vivo ahora termina a las {time}.",
-    "addPrice": "Añadir tiempo cuesta {price} por minuto.",
+    "addPrice": "Añadir tiempo cuesta hasta {price} por minuto con la sala llena.",
     "addFailed": "No se pudo añadir tiempo. Inténtalo de nuevo.",
     "reachedLength": "El evento en vivo llegó a la duración que elegiste y terminó.",
-    "endedOnServer": "El evento en vivo terminó en el servidor, así que el estudio también se detuvo."
+    "endedOnServer": "El evento en vivo terminó en el servidor, así que el estudio también se detuvo.",
+    "viewers": "Máximo de espectadores",
+    "viewersHint": "Los espectadores que pasen este límite verán que el evento en vivo está lleno.",
+    "watchingOf": "{count} de {limit} mirando",
+    "viewerMinutes": "{minutes, plural, one {# minuto de espectador hasta ahora} many {# minutos de espectador hasta ahora} other {# minutos de espectador hasta ahora}}"
   },
   "liveChat": {
     "confirmBlock": "¿Bloquear a {name} en este chat? Se borra todo lo que escribió.",
@@ -1366,7 +1370,8 @@
         "generation": "{price} cada vez",
         "gb_month": "{price} por GB al mes",
         "second": "{price} por segundo",
-        "answer_step": "{price} por respuesta por cada 30 minutos de video"
+        "answer_step": "{price} por respuesta por cada 30 minutos de video",
+        "viewer_minute": "{price} por minuto de espectador"
       },
       "loadFailed": "No se pudieron cargar tus créditos. Vuelve a intentarlo en un minuto.",
       "add": {
@@ -1882,7 +1887,7 @@
     "shelbyP": "Puedes decidir guardar videos en Shelby, una red de almacenamiento descentralizada sobre Aptos, mediante transacciones que firmas con tu propia billetera. Todo lo que se guarda allí es público y no podemos borrarlo ni modificarlo. Las redes actuales de Shelby están en una fase temprana: el almacenamiento se paga por un período limitado y los datos pueden perderse o borrarse. Las comisiones de la red corren por tu cuenta. No controlamos Shelby ni Aptos y no somos responsables de ellas. Guarda tus propias copias de todo lo importante.",
     "creditsP1": "Algunas acciones cuestan créditos: procesar un video, las respuestas, las búsquedas, las rutas de aprendizaje, los subtítulos en vivo, los eventos en vivo, traducir una transcripción, generar un video y pedir a la IA que escriba su descripción, y guardar archivos en VideoMind. Los créditos se cuentan en dólares estadounidenses. Los añades en la página Billetera enviando ShelbyUSD desde tu billetera a la dirección de VideoMind: 1 ShelbyUSD añade 1 dólar estadounidense de créditos, y cada transferencia se añade una sola vez. No podemos deshacer una transferencia que firmas, y las comisiones de la red corren por tu cuenta. En la red de prueba de Shelby, ShelbyUSD no tiene valor.",
     "credits1": "<b>Precios.</b> La página Billetera muestra el precio de cada acción, y el precio aparece antes de que una acción empiece. Podemos cambiar los precios. Un precio nuevo se aplica solo a las acciones iniciadas después del cambio, y al almacenamiento desde el día siguiente.",
-    "credits2": "<b>Reservas.</b> Cuando empieza una acción de pago, su precio se aparta de tus créditos y se cobra solo si la acción sale bien. Una acción que falla no cuesta nada. Procesar un video se cobra por los minutos de sonido transcritos, con un mínimo por video que se muestra antes de subirlo, nunca más de lo apartado. Una respuesta sobre un video cuesta más en videos más largos, como se muestra antes de preguntar. Un evento en vivo se cobra por los minutos que de verdad duró, nunca más de lo apartado.",
+    "credits2": "<b>Reservas.</b> Cuando empieza una acción de pago, su precio se aparta de tus créditos y se cobra solo si la acción sale bien. Una acción que falla no cuesta nada. Procesar un video se cobra por los minutos de sonido transcritos, con un mínimo por video que se muestra antes de subirlo, nunca más de lo apartado. Una respuesta sobre un video cuesta más en videos más largos, como se muestra antes de preguntar. Un evento en vivo se cobra por los minutos que sus espectadores de verdad miraron, hasta el máximo de espectadores que eligió el anfitrión, nunca más de lo apartado.",
     "credits3": "<b>Quién paga.</b> Procesar un video, las respuestas sobre él y sus traducciones los paga el dueño del video, también cuando la pregunta la hace un espectador. Las búsquedas, Conocimiento, generar un video y pedir a la IA que escriba su descripción los paga quien los usa. Los eventos en vivo y los subtítulos en vivo los paga el anfitrión.",
     "credits4": "<b>Almacenamiento.</b> Los archivos que VideoMind guarda de tus videos (el original, sus imágenes y su sonido, y los clips) se cobran una vez al día, a la trigésima parte del precio mensual por GB, por lo que guardas por encima de la cantidad gratis que muestra la página Billetera. Un GB son 1.000.000.000 bytes. Un video público que solo está en Shelby no cuenta su original.",
     "credits5": "<b>Almacenamiento sin pagar.</b> Tu saldo nunca baja de cero. El almacenamiento que no puedes pagar queda debido, y se paga primero con los próximos créditos que añadas. Si una parte sigue debida 14 días después, tus videos guardados en VideoMind dejan de reproducirse y las nuevas subidas esperan hasta que se pague. No borramos tus videos porque el almacenamiento esté sin pagar.",
@@ -2163,7 +2168,9 @@
     "liveAlreadyExtended": "Ya se añadió tiempo una vez a este evento en vivo.",
     "liveBadExtend": "Añade {list} minutos.",
     "liveTooLong": "Un evento en vivo puede durar como máximo {max} minutos.",
-    "liveTimeUp": "El evento en vivo llegó a su hora de fin."
+    "liveTimeUp": "El evento en vivo llegó a su hora de fin.",
+    "liveFull": "Este evento en vivo está lleno. Inténtalo de nuevo en un momento.",
+    "liveBadViewers": "Elige el máximo de espectadores: {list}."
   },
   "notFound": {
     "title": "No se encontró esta página",
