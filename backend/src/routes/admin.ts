@@ -46,6 +46,8 @@ import {
 import { treasuryAddress, TOPUP_NETWORK } from "../lib/topup.js";
 // vm_storagecharge: storage kept and owed (Part 16e)
 import { storageTotals, storageStatus, setStorageFree, forgiveStorage, collectOwed, GB } from "../lib/storageCharge.js";
+// vm_generate: video generation settings (Part 17b)
+import { adminGeneration, setGenSettings, updateModel, allowWallet, disallowWallet, generationUnitCost, GenError } from "../lib/generation.js";
 
 const router = Router();
 const SESSION = "vm_admin", PENDING = "vm_admin_mfa";
@@ -93,6 +95,7 @@ function fail(res: Response, err: any, what: string) {
   if (err instanceof CostsError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof UsersError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof CreditsError) return res.status(err.status).json({ error: err.message, code: err.code });
+  if (err instanceof GenError) return res.status(err.status).json({ error: err.message, code: err.code });
   if (err instanceof MailError) return res.status(502).json({ error: "The email could not be sent. Check the Resend settings on the server and try again.", code: "mail_failed" });
   console.error(`[admin] ${what}: ${err?.message ?? err}`);
   return res.status(500).json({ error: `${what} did not work. Try again.`, code: "server_error" });
@@ -386,8 +389,8 @@ const usdOf = (micros: number) => micros / MICROS;
 router.get("/credits", requireAdmin, async (_req, res) => {
   // vm_topup: where top ups go (TOPUP_TREASURY_ADDRESS on the server, read only here).
   try {
-    const [overview, storage] = await Promise.all([creditsOverview(), storageTotals()]);
-    return res.json({ ...overview, storage, topup: { treasury: treasuryAddress(), network: TOPUP_NETWORK } });
+    const [overview, storage, genCost] = await Promise.all([creditsOverview(), storageTotals(), generationUnitCost()]);
+    return res.json({ ...overview, costs: [...overview.costs, genCost], storage, topup: { treasury: treasuryAddress(), network: TOPUP_NETWORK } });
   }
   catch (err) { fail(res, err, "Loading the credits"); }
 });
@@ -443,6 +446,42 @@ router.post("/credits/entries/:id/refund", requireAdmin, async (req, res) => {
     await audit(me(res), "credit_refunded", e.wallet, { usd: usdOf(e.amountMicros), charge: req.params.id, note: e.note });
     return res.status(201).json(e);
   } catch (err) { fail(res, err, "Refunding the charge"); }
+});
+// ── vm_generate: Generation ──────────────────────────────────────────────────
+//   GET  /generation                      settings, models, today's spend, the allowlist, recent generations
+//   POST /generation/settings  { access, dailyUsd }   off, allowlist or everyone; real money a day
+//   POST /generation/models/:id { enabled, costUsdPerSecond }
+//   POST /generation/allow     { wallet }      POST /generation/disallow { wallet }
+router.get("/generation", requireAdmin, async (_req, res) => {
+  try { return res.json(await adminGeneration()); } catch (err) { fail(res, err, "Loading generation"); }
+});
+router.post("/generation/settings", requireAdmin, async (req, res) => {
+  try {
+    const s = await setGenSettings(req.body);
+    await audit(me(res), "generation_settings_changed", null, { access: s.access, dailyUsd: s.dailyUsd });
+    return res.json(s);
+  } catch (err) { fail(res, err, "Changing generation"); }
+});
+router.post("/generation/models/:id", requireAdmin, async (req, res) => {
+  try {
+    const m = await updateModel(req.params.id, req.body);
+    await audit(me(res), "generation_model_changed", m.id, { enabled: m.enabled, costUsdPerSecond: m.costUsdPerSecond });
+    return res.json(m);
+  } catch (err) { fail(res, err, "Changing the model"); }
+});
+router.post("/generation/allow", requireAdmin, async (req, res) => {
+  try {
+    const r = await allowWallet(req.body?.wallet, me(res).email);
+    await audit(me(res), "generation_allowed", r.wallet);
+    return res.status(201).json(r);
+  } catch (err) { fail(res, err, "Adding the wallet"); }
+});
+router.post("/generation/disallow", requireAdmin, async (req, res) => {
+  try {
+    const r = await disallowWallet(req.body?.wallet);
+    await audit(me(res), "generation_disallowed", r.wallet);
+    return res.json(r);
+  } catch (err) { fail(res, err, "Removing the wallet"); }
 });
 router.post("/credits/storage", requireAdmin, async (req, res) => {
   try {

@@ -36,6 +36,7 @@ import adminRouter from "./routes/admin.js";
 import { checkMediaTools, mediaHealth } from "./lib/media.js";
 // vm_credits: a wallet's credits
 import creditsRouter from "./routes/credits.js";
+import generateRouter from "./routes/generate.js"; // vm_generate
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -80,6 +81,7 @@ app.use("/api/learn", learnRouter);
 app.use("/api/usage", usageRouter);
 app.use("/api/collections", collectionsRouter);
 app.use("/api/credits", creditsRouter);       // vm_credits: balance and prices
+app.use("/api/generate", generateRouter);     // vm_generate: videos made from a prompt
 
 app.get("/api/health", (_req, res) => {
   const s = storageHealth();

@@ -161,7 +161,7 @@ export async function myCredits(walletIn: string) {
 }
 
 // ── prices ───────────────────────────────────────────────────────────────────
-export type PriceUnit = "minute" | "answer" | "search" | "generation" | "gb_month";
+export type PriceUnit = "minute" | "answer" | "search" | "generation" | "gb_month" | "second";
 export interface ActionPrice { id: string; label: string; unit: PriceUnit; microsPerUnit: number; position: number; updatedAt: number; updatedBy: string | null }
 const rowToActionPrice = (r: any): ActionPrice => ({
   id: String(r.id), label: String(r.label), unit: String(r.unit) as PriceUnit, microsPerUnit: n(r.micros_per_unit),

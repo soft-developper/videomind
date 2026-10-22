@@ -1197,14 +1197,16 @@
         "learn_paths": "مسارات التعلّم في المعرفة",
         "learn_ask": "إجابة من اسأل مكتبتك",
         "live_captions": "الترجمة النصية المباشرة",
-        "storage": "التخزين على VideoMind"
+        "storage": "التخزين على VideoMind",
+        "generate_video": "إنشاء فيديو من وصف"
       },
       "per": {
         "minute": "{price} للدقيقة",
         "answer": "{price} للإجابة",
         "search": "{price} للبحث",
         "generation": "{price} في كل مرة",
-        "gb_month": "{price} لكل غيغابايت شهريًا"
+        "gb_month": "{price} لكل غيغابايت شهريًا",
+        "second": "{price} للثانية"
       },
       "loadFailed": "تعذّر تحميل رصيدك. حاول مرة أخرى بعد دقيقة.",
       "add": {

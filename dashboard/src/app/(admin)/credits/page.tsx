@@ -18,7 +18,7 @@ import { num, when, short, gb } from "@/lib/format";
 
 const msg = (e: unknown) => (e instanceof ApiError ? e.message : "That did not work. Try again.");
 const asInput = (micros: number) => String(micros / 1_000_000);
-const unitWord: Record<string, string> = { minute: "minutes", answer: "answers", search: "searches", generation: "generations", gb_month: "GB months" };
+const unitWord: Record<string, string> = { minute: "minutes", answer: "answers", search: "searches", generation: "generations", gb_month: "GB months", second: "seconds" };
 
 function Tile({ label, value, sub, test }: { label: string; value: string; sub?: string; test: string }) {
   return (

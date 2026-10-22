@@ -1197,14 +1197,16 @@
         "learn_paths": "Parcours d’apprentissage dans Connaissances",
         "learn_ask": "Une réponse de Interroger votre bibliothèque",
         "live_captions": "Sous-titres en direct",
-        "storage": "Stockage sur VideoMind"
+        "storage": "Stockage sur VideoMind",
+        "generate_video": "Générer une vidéo à partir d’une description"
       },
       "per": {
         "minute": "{price} la minute",
         "answer": "{price} la réponse",
         "search": "{price} la recherche",
         "generation": "{price} à chaque fois",
-        "gb_month": "{price} par Go et par mois"
+        "gb_month": "{price} par Go et par mois",
+        "second": "{price} par seconde"
       },
       "loadFailed": "Vos crédits n’ont pas pu être chargés. Réessayez dans une minute.",
       "add": {

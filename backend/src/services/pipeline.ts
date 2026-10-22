@@ -28,6 +28,8 @@ import { CreditsError } from "../lib/credits.js";
 import { afterChange as shelbyAfterChange } from "../lib/shelbyHome.js";
 // vm_media: thumbnails and video facts, a job of its own next to these stages
 import { INSPECT, makeInspectHandler } from "./inspect.js";
+// vm_generate: a video made from a prompt arrives through a job of its own
+import { GENERATE_JOB, makeGenerateHandler, generationGaveUp } from "../lib/generation.js";
 import { EMBED, embedHandler, queueEmbed } from "./search.js";
 // vm_anchors: confirming a store on Shelby
 import { ANCHOR_CHECK, anchorCheckHandler, anchorCheckGaveUp } from "./anchor.js";
@@ -168,6 +170,7 @@ export function registerPipeline(deps: PipelineDeps = { extractSound, cutSound, 
   registerHandler(ANCHOR_CHECK, anchorCheckHandler);
   registerHandler(CLIP_JOB, clipHandler);
   registerHandler(YOUTUBE_JOB, youtubeHandler);
+  registerHandler(GENERATE_JOB, makeGenerateHandler());
   // A stage that failed for good marks the video, so the page stops waiting.
   setFinalFailureHook(async (job, f) => {
     // vm_media: a video without a thumbnail is not a failed video.
@@ -180,6 +183,8 @@ export function registerPipeline(deps: PipelineDeps = { extractSound, cutSound, 
     if (job.kind === CLIP_JOB) { await clipGaveUp(job, f).catch(() => {}); return; }
     // vm_youtube: a publication that failed is not a failed video.
     if (job.kind === YOUTUBE_JOB) { await youtubeGaveUp(job, f).catch(() => {}); return; }
+    // vm_generate: a generation that failed for good marks its video and charges nothing.
+    if (job.kind === GENERATE_JOB) { await generationGaveUp(job, f).catch(() => {}); return; }
     await store.update(job.videoId, { status: "error" }).catch(() => {});
     // vm_charge: processing that failed for good is not charged.
     await releaseProcessing(job.videoId).catch(() => {});

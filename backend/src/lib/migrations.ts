@@ -708,6 +708,58 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX storage_days_owed ON storage_days(wallet, day) WHERE paid_micros < due_micros AND forgiven_at IS NULL`,
     ],
   },
+  {
+    // vm_generate: videos made from a prompt (Part 17b). Off until an admin opens it.
+    id: "027_generation",
+    statements: [
+      `CREATE TABLE gen_models (
+        id                   TEXT PRIMARY KEY,
+        label                TEXT NOT NULL,
+        provider             TEXT NOT NULL,
+        endpoint             TEXT NOT NULL,
+        resolution           TEXT NOT NULL,
+        min_seconds          INTEGER NOT NULL,
+        max_seconds          INTEGER NOT NULL,
+        cost_usd_per_second  REAL NOT NULL,
+        enabled              INTEGER NOT NULL DEFAULT 1,
+        position             INTEGER NOT NULL DEFAULT 0,
+        note                 TEXT
+      )`,
+      // Costs to VideoMind from each provider's page (21 Oct 2026); Omni's is an estimate (no price on Google's page).
+      `INSERT INTO gen_models VALUES ('minimax_h3_max', 'MiniMax H3 Max', 'fal', 'minimax/h3-max/text-to-video', '768P', 2, 15, 0.08, 1, 1, 'fal price after 31 Oct 2026')`,
+      `INSERT INTO gen_models VALUES ('wan_3', 'Wan 3.0', 'fal', 'alibaba/wan-3.0/text-to-video', '720p', 2, 30, 0.10, 1, 2, 'fal price at 720p')`,
+      `INSERT INTO gen_models VALUES ('omni_flash', 'Gemini Omni Flash 1.1', 'google', 'gemini-omni-1.1-flash', '720p', 8, 8, 0.152, 1, 3, 'Estimate: Google states no price; the clip length is not set by the request')`,
+      `CREATE TABLE generations (
+        id              TEXT PRIMARY KEY,
+        wallet          TEXT NOT NULL,
+        video_id        TEXT NOT NULL UNIQUE,
+        model_id        TEXT NOT NULL,
+        prompt          TEXT NOT NULL,
+        seconds         INTEGER NOT NULL,
+        aspect          TEXT NOT NULL,
+        status          TEXT NOT NULL,
+        cost_usd        REAL NOT NULL,
+        hold_id         TEXT,
+        provider_ref    TEXT,
+        expanded_prompt TEXT,
+        bytes           INTEGER,
+        error           TEXT,
+        error_code      TEXT,
+        submitted_at    INTEGER,
+        finished_at     INTEGER,
+        created_at      INTEGER NOT NULL,
+        updated_at      INTEGER NOT NULL
+      )`,
+      `CREATE INDEX generations_day ON generations(created_at)`,
+      `CREATE INDEX generations_wallet ON generations(wallet, created_at)`,
+      `CREATE TABLE gen_allowlist (
+        wallet      TEXT PRIMARY KEY,
+        added_by    TEXT,
+        created_at  INTEGER NOT NULL
+      )`,
+      `INSERT INTO action_prices (id, label, unit, micros_per_unit, position, updated_at) VALUES ('generate_video', 'Generating a video', 'second', 0, 8, 0)`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

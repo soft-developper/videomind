@@ -215,7 +215,7 @@ export const inviteComplete = (token: string, password: string, code: string) =>
 
 // ── vm_credits ───────────────────────────────────────────────────────────────
 export type CreditKind = "welcome" | "grant" | "remove" | "topup" | "charge" | "refund";
-export type CreditUnit = "minute" | "answer" | "search" | "generation" | "gb_month";
+export type CreditUnit = "minute" | "answer" | "search" | "generation" | "gb_month" | "second";
 export interface CreditEntry {
   id: string; wallet: string; at: number; kind: CreditKind; amountMicros: number;
   action: string | null; quantity: number | null; videoId: string | null; holdId: string | null;
@@ -254,3 +254,24 @@ export const removeCredits = (wallet: string, usd: string, note: string) => call
 export const setStorageFree = (freeGb: string) => call<{ freeBytes: number }>("POST", "/credits/storage", { freeGb });
 export const forgiveStorage = (wallet: string) => call<{ forgivenMicros: number; days: number }>("POST", `/credits/wallets/${encodeURIComponent(wallet)}/forgive-storage`);
 export const refundCredit = (id: string, note: string) => call<CreditEntry>("POST", `/credits/entries/${encodeURIComponent(id)}/refund`, { note });
+
+// ── vm_generate: video generation (Part 17b) ────────────────────────────────
+export type GenAccess = "off" | "allowlist" | "everyone";
+export interface GenModel {
+  id: string; label: string; provider: "fal" | "google"; endpoint: string; resolution: string; minSeconds: number; maxSeconds: number;
+  enabled: boolean; costUsdPerSecond: number; position: number; note: string | null; ready: boolean;
+}
+export interface GenRecent {
+  id: string; wallet: string; videoId: string; model: string; prompt: string; seconds: number; costUsd: number;
+  status: string; errorCode: string | null; error: string | null; createdAt: number; finishedAt: number | null;
+}
+export interface GenerationOverview {
+  settings: { access: GenAccess; dailyUsd: number }; models: GenModel[]; spentTodayUsd: number;
+  allowlist: Array<{ wallet: string; addedBy: string | null; createdAt: number }>;
+  last30: { videos: number; seconds: number; costUsd: number }; recent: GenRecent[];
+}
+export const getGeneration = () => call<GenerationOverview>("GET", "/generation");
+export const setGeneration = (body: { access?: GenAccess; dailyUsd?: string }) => call<{ access: GenAccess; dailyUsd: number }>("POST", "/generation/settings", body);
+export const setGenModel = (id: string, body: { enabled?: boolean; costUsdPerSecond?: string }) => call<GenModel>("POST", `/generation/models/${encodeURIComponent(id)}`, body);
+export const allowGeneration = (wallet: string) => call<{ wallet: string }>("POST", "/generation/allow", { wallet });
+export const disallowGeneration = (wallet: string) => call<{ wallet: string }>("POST", "/generation/disallow", { wallet });

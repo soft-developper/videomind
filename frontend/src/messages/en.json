@@ -1197,14 +1197,16 @@
         "learn_paths": "Learning paths in Knowledge",
         "learn_ask": "An answer from Ask your library",
         "live_captions": "Live captions",
-        "storage": "Storage on VideoMind"
+        "storage": "Storage on VideoMind",
+        "generate_video": "Generating a video from a prompt"
       },
       "per": {
         "minute": "{price} a minute",
         "answer": "{price} an answer",
         "search": "{price} a search",
         "generation": "{price} each time",
-        "gb_month": "{price} per GB a month"
+        "gb_month": "{price} per GB a month",
+        "second": "{price} a second"
       },
       "loadFailed": "Your credits could not be loaded. Try again in a minute.",
       "add": {

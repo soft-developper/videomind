@@ -16,6 +16,8 @@ import { releaseProcessing } from "../lib/charge.js";
 import { afterChange as shelbyAfterChange, shelbyGone } from "../lib/shelbyHome.js";
 // vm_storagecharge: unpaid storage pauses the videos kept here
 import { storagePaused } from "../lib/storageCharge.js";
+// vm_generate: how a generated video was made, and stopping one that is deleted
+import { generationOf, releaseGeneration } from "../lib/generation.js";
 // vm_signin: the caller is the signed in wallet, never a value they send
 import { requireAuth, optionalAuth, authOf, sameWallet } from "../lib/auth.js";
 // vm_storage: every file of a video lives in storage
@@ -73,6 +75,7 @@ export async function dropVideoWork(id: string): Promise<void> {
   await deletePublicationsForVideo(id); // vm_youtube (what is already on YouTube stays there)
   await deleteViewsForVideo(id);       // vm_analytics
   await releaseProcessing(id).catch(() => {}); // vm_charge: a video deleted while processing is not charged
+  await releaseGeneration(id).catch(() => {}); // vm_generate: nor one deleted while it is being made
   await abortUpload(id, { keepVideo: true }).catch((err) =>
     console.error(`[uploads] could not discard the unfinished upload of ${id}: ${err?.message ?? err}`));
   // If storage cannot be reached the asset rows stay, and the hourly
@@ -303,7 +306,8 @@ router.get("/:id", optionalAuth, async (req, res) => {
     const course = await courseOf(video, wallet).catch(() => null);
     const ownerWallet = normalizeWallet(video.ownerWallet);
     const ownerName = ownerWallet ? (await namesOf([ownerWallet]).catch(() => new Map<string, string>())).get(ownerWallet) ?? null : null;
-    return res.json({ ...body, streamUrl, source, shelbyGone: gone ?? null, storagePaused: !!paused, posterUrl, thumbUrl, onShelby: onShelby(video), isOwner: ownsVideo(video, wallet), course, ownerName });
+    const generated = await generationOf(video.id, ownsVideo(video, wallet)).catch(() => null);
+    return res.json({ ...body, streamUrl, source, shelbyGone: gone ?? null, storagePaused: !!paused, posterUrl, thumbUrl, onShelby: onShelby(video), isOwner: ownsVideo(video, wallet), course, ownerName, generated });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

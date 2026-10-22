@@ -1197,14 +1197,16 @@
         "learn_paths": "Rutas de aprendizaje en Conocimiento",
         "learn_ask": "Una respuesta de Pregunta a tu biblioteca",
         "live_captions": "Subtítulos en vivo",
-        "storage": "Almacenamiento en VideoMind"
+        "storage": "Almacenamiento en VideoMind",
+        "generate_video": "Generar un video a partir de una descripción"
       },
       "per": {
         "minute": "{price} por minuto",
         "answer": "{price} por respuesta",
         "search": "{price} por búsqueda",
         "generation": "{price} cada vez",
-        "gb_month": "{price} por GB al mes"
+        "gb_month": "{price} por GB al mes",
+        "second": "{price} por segundo"
       },
       "loadFailed": "No se pudieron cargar tus créditos. Vuelve a intentarlo en un minuto.",
       "add": {

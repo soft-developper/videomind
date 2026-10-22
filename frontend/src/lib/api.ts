@@ -479,8 +479,8 @@ export const getMyWallet = () => call<WalletOverview>(() => raw.get("/api/me/wal
 
 // ── vm_credits: the wallet's credits, in micro dollars (1 dollar = 1,000,000) ──
 export type CreditKind = "welcome" | "grant" | "remove" | "topup" | "charge" | "refund";
-export type CreditAction = "process_video" | "ask" | "search" | "learn_paths" | "learn_ask" | "live_captions" | "storage";
-export type CreditUnit = "minute" | "answer" | "search" | "generation" | "gb_month";
+export type CreditAction = "process_video" | "ask" | "search" | "learn_paths" | "learn_ask" | "live_captions" | "storage" | "generate_video";
+export type CreditUnit = "minute" | "answer" | "search" | "generation" | "gb_month" | "second";
 export interface CreditEntry { id: string; at: number; kind: CreditKind; amountMicros: number; action: string | null; quantity: number | null; videoId: string | null; refunded: boolean; txHash: string | null }
 export interface MyCredits {
   wallet: string; balanceMicros: number; heldMicros: number; availableMicros: number; charging: boolean;

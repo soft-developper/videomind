@@ -58,6 +58,8 @@ export interface MediaFacts {
 
 export type VideoStatus =
   | "uploading"
+  // vm_generate: being made by a video generation model (Part 17b)
+  | "generating"
   | "processing"
   | "transcribing"
   | "analyzing"
