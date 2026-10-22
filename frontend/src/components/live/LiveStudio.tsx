@@ -15,6 +15,10 @@
 // The studio counts down, offers to add time once (10, 20 or 30 minutes),
 // and stops at the end time. The server ends the event then too, so a
 // closed or sleeping tab does not keep it going.
+//
+// vm_stage (Part 21b1): the host sees the raised hands, invites up to three
+// speakers, can mute or remove them, and sees and hears them here. With
+// speakers the picture becomes a 2 by 2 view.
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Room, RoomEvent, Track } from "livekit-client";
@@ -32,6 +36,7 @@ import { LiveChat } from "./LiveChat";
 // vm_share, vm_reactions (Part 21a)
 import { LiveShareLinks } from "./LiveShare";
 import { ReactionLayer } from "./Reactions";
+import { StageGrid, StagePanel, useTiles } from "./Stage";
 // vm_lang
 import { useTranslations } from "next-intl";
 import { localize } from "@/lib/errorText";
@@ -239,6 +244,10 @@ export function LiveStudio({ id }: { id: string }) {
   useEffect(() => { setSupport(canRecord()); }, []);
 
   const room = useRef<Room | null>(null);
+  // vm_stage: the room as state, for the speakers' pictures
+  const [rm, setRm] = useState<Room | null>(null);
+  const hostLabel = data?.event ? data.event.hostName ?? `${data.event.wallet.slice(0, 6)}...${data.event.wallet.slice(-4)}` : "";
+  const { tiles } = useTiles(rm, hostLabel);
   const bus = useRef(new EventTarget());
   const feed = useRef<(() => void) | null>(null);
   const [capState, setCapState] = useState<{ on: boolean; text: string; note: string | null; credits?: boolean }>({ on: false, text: "", note: null });
@@ -284,7 +293,8 @@ export function LiveStudio({ id }: { id: string }) {
   const stopFeed = () => { feed.current?.(); feed.current = null; };
   const cleanup = async () => {
     stopFeed();
-    await room.current?.disconnect().catch(() => {}); room.current = null;
+    await room.current?.disconnect().catch(() => {}); room.current = null; setRm(null);
+    document.querySelectorAll("[data-stage-audio]").forEach((el) => el.remove());
     inputs.current?.stop(); inputs.current = null;
   };
   useEffect(() => () => { void cleanup(); }, []);
@@ -372,10 +382,17 @@ export function LiveStudio({ id }: { id: string }) {
       const r = new Room({ adaptiveStream: false, dynacast: true, stopLocalTrackOnUnpublish: false });
       room.current = r;
       r.on(RoomEvent.DataReceived, (payload, _p, _k, topic) => {
-        if (topic !== "chat" && topic !== "reactions") return;
-        try { bus.current.dispatchEvent(new CustomEvent(topic === "chat" ? "chat" : "reaction", { detail: JSON.parse(new TextDecoder().decode(payload)) })); } catch { /* not ours */ }
+        if (topic !== "chat" && topic !== "reactions" && topic !== "stage") return;
+        try { bus.current.dispatchEvent(new CustomEvent(topic === "reactions" ? "reaction" : topic ?? "", { detail: JSON.parse(new TextDecoder().decode(payload)) })); } catch { /* not ours */ }
       });
+      // vm_stage: the speakers' voices play here; their pictures are drawn by StageGrid
+      r.on(RoomEvent.TrackSubscribed, (track) => {
+        if (track.kind !== Track.Kind.Audio) return;
+        const el = track.attach(); el.setAttribute("data-stage-audio", ""); document.body.appendChild(el);
+      });
+      r.on(RoomEvent.TrackUnsubscribed, (track) => { if (track.kind === Track.Kind.Audio) track.detach().forEach((el) => el.remove()); });
       await r.connect(url, token);
+      setRm(r);
       const [video] = ins.stream.getVideoTracks();
       const [audio] = ins.stream.getAudioTracks();
       await r.localParticipant.publishTrack(video, { source: source === "screen" ? Track.Source.ScreenShare : Track.Source.Camera, name: source, simulcast: true });
@@ -474,6 +491,8 @@ export function LiveStudio({ id }: { id: string }) {
         <div className="space-y-4 min-w-0">
           <div className="relative">
             <video ref={preview} muted playsInline className="w-full aspect-video rounded-md bg-black object-contain" aria-label={t("whatViewersSee")} />
+            {/* vm_stage: with speakers on stage, the 2 by 2 view over the preview */}
+            {phase.at === "live" && tiles.length > 1 && <StageGrid tiles={tiles} label={t("whatViewersSee")} />}
             {/* vm_reactions: what viewers send, over the host's picture */}
             {phase.at === "live" && <ReactionLayer bus={bus.current} />}
             <span className="absolute start-3 top-3 flex items-center gap-2 bg-black/70 rounded px-2.5 h-7" data-live-badge>
@@ -510,6 +529,7 @@ export function LiveStudio({ id }: { id: string }) {
           <div className="panel p-4"><LiveSettings event={event} onSaved={() => void refetch()} /></div>
         </div>
         <aside className="space-y-4">
+          {phase.at === "live" && <div className="panel p-4"><StagePanel eventId={id} bus={bus.current} live /></div>}
           <div className="panel p-4">{shareBox}</div>
           <LiveChat eventId={id} status={event.status} chatMode={event.chatMode} owner bus={bus.current} className="h-[460px]" />
         </aside>

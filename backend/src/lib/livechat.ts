@@ -93,7 +93,7 @@ export async function joinChat(e: LiveEvent, who: { wallet: string | null; owner
   return { token: sign(pass), name: pass.name, host: pass.host, from: fromOf(e.id, pass.sender) };
 }
 
-async function isBlocked(eventId: string, sender: string): Promise<boolean> {
+export async function isBlocked(eventId: string, sender: string): Promise<boolean> {
   const r = await getDb().execute({ sql: "SELECT 1 FROM live_blocks WHERE event_id = ? AND sender = ?", args: [eventId, sender] });
   return r.rows.length > 0;
 }

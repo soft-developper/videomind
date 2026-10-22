@@ -902,6 +902,25 @@ const MIGRATIONS: Migration[] = [
       `INSERT INTO provider_budgets (provider) VALUES ('anthropic'), ('openai'), ('fal'), ('google'), ('livekit')`,
     ],
   },
+  {
+    // vm_stage (Part 21b1): viewers on stage. One row per signed in wallet per
+    // event while its hand is up, it is invited, or it is speaking. The row
+    // goes when the hand is lowered, the speaker leaves or is removed.
+    id: "036_live_stage",
+    statements: [
+      `CREATE TABLE live_stage (
+        event_id    TEXT NOT NULL,
+        wallet      TEXT NOT NULL,
+        identity    TEXT NOT NULL,
+        name        TEXT NOT NULL,
+        note        TEXT,
+        state       TEXT NOT NULL,
+        raised_at   INTEGER NOT NULL,
+        updated_at  INTEGER NOT NULL,
+        PRIMARY KEY (event_id, wallet)
+      )`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: Client): Promise<void> {

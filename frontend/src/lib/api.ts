@@ -585,7 +585,19 @@ export const getMyLiveEvents = () => call<{ events: LiveEventInfo[]; enabled: bo
 export const createLiveEvent = (title: string) => call<{ event: LiveEventInfo }>(() => raw.post("/api/live", { title }));
 export const getLiveEvent = (id: string) => call<{ event: LiveEventInfo }>(() => raw.get(`/api/live/${id}`));
 export const liveHostToken = (id: string, viewers?: number) => call<{ url: string; token: string }>(() => raw.post(`/api/live/${id}/host-token`, viewers ? { viewers } : {}));
-export const liveViewerToken = (id: string) => call<{ url: string; token: string }>(() => raw.post(`/api/live/${id}/viewer-token`));
+export const liveViewerToken = (id: string) => call<{ url: string; token: string; stage?: boolean }>(() => raw.post(`/api/live/${id}/viewer-token`));
+// vm_stage (Part 21b1): viewers on stage
+export type StageState = "raised" | "invited" | "speaking";
+export interface StageEntry { wallet: string; name: string; note: string | null; state: StageState; raisedAt: number; updatedAt: number }
+export interface MyStage { state: StageState | "none"; note: string | null; invitedAt: number | null; blocked: boolean; max: number; inviteMs: number }
+export const getMyStage = (id: string) => call<MyStage>(() => raw.get(`/api/live/${id}/stage/me`));
+export const raiseHand = (id: string, identity: string, note?: string) => call<{ state: StageState; note: string | null }>(() => raw.post(`/api/live/${id}/stage/hand`, { identity, note }));
+export const leaveStage = (id: string) => call<{ state: "none" }>(() => raw.delete(`/api/live/${id}/stage/hand`));
+export const acceptStage = (id: string) => call<{ state: StageState }>(() => raw.post(`/api/live/${id}/stage/accept`));
+export const getStage = (id: string) => call<{ hands: StageEntry[]; invited: StageEntry[]; speakers: StageEntry[]; max: number; inviteMs: number }>(() => raw.get(`/api/live/${id}/stage`));
+export const inviteToStage = (id: string, wallet: string) => call<{ invited: StageEntry }>(() => raw.post(`/api/live/${id}/stage/${encodeURIComponent(wallet)}/invite`));
+export const muteOnStage = (id: string, wallet: string, kind: "audio" | "video") => call<{ ok: boolean }>(() => raw.post(`/api/live/${id}/stage/${encodeURIComponent(wallet)}/mute`, { kind }));
+export const removeFromStage = (id: string, wallet: string) => call<{ removed: boolean }>(() => raw.post(`/api/live/${id}/stage/${encodeURIComponent(wallet)}/remove`));
 export const startLive = (id: string, restream: string[], minutes: number) => call<{ event: LiveEventInfo; restreamError: string | null }>(() => raw.post(`/api/live/${id}/start`, { restream, minutes }));
 /** vm_livesession: add time once while live. */
 /** vm_reactions: send a reaction into a live event (no wallet needed). */

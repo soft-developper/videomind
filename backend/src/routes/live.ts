@@ -24,6 +24,16 @@
 //   POST   /:id/captions/ticket       owner: a one use ticket for the captions WebSocket
 // vm_reactions:
 //   POST   /:id/react                 anyone watching, while live: { kind: clap | heart | laugh | wow | up }
+// vm_stage (Part 21b1), signed in wallets:
+//   GET    /:id/stage/me              my place: raised, invited, speaking or none
+//   POST   /:id/stage/hand            raise my hand { identity, note? }
+//   DELETE /:id/stage/hand            lower it, say no to an invitation, or leave the stage
+//   POST   /:id/stage/accept          say yes to the host's invitation
+// and the host:
+//   GET    /:id/stage                 hands up, invitations waiting, speakers
+//   POST   /:id/stage/:wallet/invite  invite a raised hand (up to 3 invited or speaking)
+//   POST   /:id/stage/:wallet/mute    { kind: audio | video }
+//   POST   /:id/stage/:wallet/remove  off the stage (or cancel the invitation, or lower the hand)
 import { Router } from "express";
 import { requireAuth, optionalAuth, authOf } from "../lib/auth.js";
 import { rateLimit } from "../lib/guard.js";
@@ -39,6 +49,7 @@ import {
 import { creditFailure } from "../lib/charge.js";
 import { joinChat, readPass, postMessage, listMessages, deleteMessage, blockWriter, listCaptions } from "../lib/livechat.js";
 import { captionsAvailable, makeTicket, stopCaptions, maxMinutes } from "../lib/livecaptions.js";
+import { raiseHand, leaveStage, acceptInvite, myStage, listStage, invite, removeFromStage, muteSpeaker, writerWallet, viewRow, MAX_SPEAKERS, INVITE_MS } from "../lib/livestage.js";
 
 const router = Router();
 
@@ -172,12 +183,15 @@ router.post("/:id/recording", limitLive, requireAuth, async (req, res) => {
   } catch (err) { return fail(res, err); }
 });
 
-router.post("/:id/viewer-token", limitWatch, async (req, res) => {
+router.post("/:id/viewer-token", limitWatch, optionalAuth, async (req, res) => {
   try {
     let e = await getEvent(req.params.id);
     if (!e) return res.status(404).json({ error: "Live event not found" });
     e = await settle(e).catch(() => e!);
-    return res.json(await viewerToken(e));
+    // vm_stage: a signed in viewer joins as that wallet, so the host can bring it on stage
+    const wallet = authOf(req)?.wallet ?? null;
+    const name = wallet ? (await namesOf([wallet]).catch(() => new Map<string, string>())).get(wallet) ?? short(wallet) : "";
+    return res.json(await viewerToken(e, wallet ? { wallet, name } : null));
   } catch (err) { return fail(res, err); }
 });
 
@@ -253,7 +267,11 @@ router.delete("/:id/chat/:msgId", limitLive, requireAuth, async (req, res) => {
 router.post("/:id/chat/:msgId/block", limitLive, requireAuth, async (req, res) => {
   try {
     const e = await ownEvent(req, res); if (!e) return;
-    return res.json({ removed: await blockWriter(e, req.params.msgId) });
+    // vm_stage: a blocked wallet also leaves the stage and cannot raise its hand again here
+    const writer = await writerWallet(e.id, req.params.msgId).catch(() => null);
+    const removed = await blockWriter(e, req.params.msgId);
+    if (writer) await removeFromStage(e, writer).catch(() => {});
+    return res.json({ removed });
   } catch (err) { return fail(res, err); }
 });
 
@@ -292,6 +310,80 @@ router.post("/:id/react", limitReact, async (req, res) => {
     if (e.status !== "live") return res.status(409).json({ error: "Reactions work while the event is live.", code: "not_live" });
     await broadcast(e, "reactions", { type: "reaction", kind });
     return res.status(202).json({ ok: true });
+  } catch (err) { return fail(res, err); }
+});
+
+// ── vm_stage ──────────────────────────────────────────────────────────────────
+const limitStage = rateLimit({
+  name: "live_stage",
+  label: "stage requests",
+  perClient: { max: Number(process.env.LIMIT_STAGE_PER_CLIENT_10MIN) || 120, windowMs: 10 * 60_000 },
+  global:    { max: Number(process.env.LIMIT_STAGE_GLOBAL_10MIN) || 6000, windowMs: 10 * 60_000 },
+});
+const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+
+router.get("/:id/stage/me", limitStage, requireAuth, async (req, res) => {
+  try {
+    const e = await anyEvent(req, res); if (!e) return;
+    return res.json({ ...(await myStage(e, authOf(req)!.wallet)), max: MAX_SPEAKERS, inviteMs: INVITE_MS });
+  } catch (err) { return fail(res, err); }
+});
+
+router.post("/:id/stage/hand", limitStage, requireAuth, async (req, res) => {
+  try {
+    const e = await anyEvent(req, res); if (!e) return;
+    const wallet = authOf(req)!.wallet;
+    if (isOwner(e, wallet)) return res.status(400).json({ error: "You are the host. You are on stage already.", code: "is_host" });
+    const name = (await namesOf([wallet]).catch(() => new Map<string, string>())).get(wallet) ?? short(wallet);
+    const row = await raiseHand(e, wallet, (req.body ?? {}).identity, name, (req.body ?? {}).note);
+    return res.json({ state: row.state, note: row.note });
+  } catch (err) { return fail(res, err); }
+});
+
+router.delete("/:id/stage/hand", limitStage, requireAuth, async (req, res) => {
+  try {
+    const e = await anyEvent(req, res); if (!e) return;
+    await leaveStage(e, authOf(req)!.wallet);
+    return res.json({ state: "none" });
+  } catch (err) { return fail(res, err); }
+});
+
+router.post("/:id/stage/accept", limitStage, requireAuth, async (req, res) => {
+  try {
+    const e = await anyEvent(req, res); if (!e) return;
+    const row = await acceptInvite(e, authOf(req)!.wallet);
+    return res.json({ state: row.state });
+  } catch (err) { return fail(res, err); }
+});
+
+router.get("/:id/stage", limitStage, requireAuth, async (req, res) => {
+  try {
+    const e = await ownEvent(req, res); if (!e) return;
+    const s = await listStage(e);
+    return res.json({ hands: s.hands.map(viewRow), invited: s.invited.map(viewRow), speakers: s.speakers.map(viewRow), max: s.max, inviteMs: INVITE_MS });
+  } catch (err) { return fail(res, err); }
+});
+
+router.post("/:id/stage/:wallet/invite", limitStage, requireAuth, async (req, res) => {
+  try {
+    const e = await ownEvent(req, res); if (!e) return;
+    const row = await invite(e, req.params.wallet);
+    return res.json({ invited: viewRow(row) });
+  } catch (err) { return fail(res, err); }
+});
+
+router.post("/:id/stage/:wallet/mute", limitStage, requireAuth, async (req, res) => {
+  try {
+    const e = await ownEvent(req, res); if (!e) return;
+    await muteSpeaker(e, req.params.wallet, (req.body ?? {}).kind);
+    return res.json({ ok: true });
+  } catch (err) { return fail(res, err); }
+});
+
+router.post("/:id/stage/:wallet/remove", limitStage, requireAuth, async (req, res) => {
+  try {
+    const e = await ownEvent(req, res); if (!e) return;
+    return res.json({ removed: await removeFromStage(e, req.params.wallet) });
   } catch (err) { return fail(res, err); }
 });
 

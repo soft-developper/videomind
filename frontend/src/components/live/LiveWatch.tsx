@@ -4,6 +4,8 @@
 // play here; after it the page points to the recording.
 // vm_livechat: captions over the picture (on by default, can be turned
 // off), the chat beside it, and after the event its transcript.
+// vm_stage (Part 21b1): the host and up to three speakers share the picture,
+// and a signed in viewer can raise a hand and be invited on stage.
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -15,6 +17,8 @@ import { LiveChat } from "./LiveChat";
 // vm_share, vm_reactions (Part 21a)
 import { LiveShareButton } from "./LiveShare";
 import { ReactionBar, ReactionLayer } from "./Reactions";
+import { StageGrid, HandPanel, useTiles } from "./Stage";
+import { useAuth } from "@/components/layout/AuthProvider";
 import { useFormat } from "@/lib/format";
 // vm_lang
 import { useTranslations } from "next-intl";
@@ -40,7 +44,10 @@ export function LiveWatch({ id }: { id: string }) {
   const event = data?.event;
   const stage = useRef<HTMLDivElement>(null);
   const [connected, setConnected] = useState(false);
-  const [hasVideo, setHasVideo] = useState(false);
+  // vm_stage: the room as state, for the picture and the stage
+  const [rm, setRm] = useState<Room | null>(null);
+  const [canStage, setCanStage] = useState(false);
+  const { signedIn, wallet } = useAuth();
   const [needsSound, setNeedsSound] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -49,34 +56,29 @@ export function LiveWatch({ id }: { id: string }) {
   const [cc, setCc] = useState(true);
   const [caption, setCaption] = useState<{ done: string; now: string; at: number }>({ done: "", now: "", at: 0 });
   const [lines, setLines] = useState<Array<{ at: number; text: string }> | null>(null);
+  const { tiles } = useTiles(rm, data?.event.hostName ?? (data?.event.wallet ? short(data.event.wallet) : ""));
 
   useEffect(() => {
     if (event?.status !== "live") return;
     let stopped = false;
     const r = new Room({ adaptiveStream: true, dynacast: true });
     room.current = r;
+    // vm_stage: pictures are drawn by StageGrid; every voice (host and speakers) plays from the page.
     const attach = (track: RemoteTrack) => {
-      if (!stage.current) return;
+      if (track.kind !== Track.Kind.Audio) return;
       const el = track.attach();
-      if (track.kind === Track.Kind.Video) {
-        el.className = "absolute inset-0 w-full h-full object-contain";
-        el.setAttribute("aria-label", t("picture"));
-        stage.current.querySelectorAll("video").forEach((v) => v.remove());
-        stage.current.appendChild(el);
-        setHasVideo(true);
-      } else {
-        el.setAttribute("data-live-audio", "");
-        document.body.appendChild(el);
-      }
+      el.setAttribute("data-live-audio", "");
+      document.body.appendChild(el);
     };
     r.on(RoomEvent.TrackSubscribed, (track) => attach(track as RemoteTrack));
-    r.on(RoomEvent.TrackUnsubscribed, (track) => { track.detach().forEach((el) => el.remove()); if (track.kind === Track.Kind.Video) setHasVideo(false); });
+    r.on(RoomEvent.TrackUnsubscribed, (track) => { if (track.kind === Track.Kind.Audio) track.detach().forEach((el) => el.remove()); });
     r.on(RoomEvent.AudioPlaybackStatusChanged, () => setNeedsSound(!r.canPlaybackAudio));
     // vm_livechat: captions, chat and settings, sent by the server into the room.
     r.on(RoomEvent.DataReceived, (payload, _p, _k, topic) => {
       let body: any; try { body = JSON.parse(new TextDecoder().decode(payload)); } catch { return; }
       if (topic === "chat") bus.current.dispatchEvent(new CustomEvent("chat", { detail: body }));
       else if (topic === "reactions") bus.current.dispatchEvent(new CustomEvent("reaction", { detail: body }));
+      else if (topic === "stage") bus.current.dispatchEvent(new CustomEvent("stage", { detail: body }));
       else if (topic === "settings") void refetch();
       else if (topic === "captions" && typeof body?.text === "string") {
         setCaption((c) => body.type === "final"
@@ -84,13 +86,15 @@ export function LiveWatch({ id }: { id: string }) {
           : { ...c, now: body.text, at: Date.now() });
       }
     });
-    r.on(RoomEvent.Disconnected, () => { setConnected(false); setHasVideo(false); if (!stopped) void refetch(); });
+    r.on(RoomEvent.Disconnected, () => { setConnected(false); setRm(null); if (!stopped) void refetch(); });
     (async () => {
       try {
-        const { url, token } = await liveViewerToken(id);
+        const { url, token, stage: signed } = await liveViewerToken(id);
         if (stopped) return;
         await r.connect(url, token);
         setConnected(true);
+        setCanStage(!!signed);
+        setRm(r);
         setNeedsSound(!r.canPlaybackAudio);
       } catch (e: any) {
         if (!stopped) { setErr(e instanceof ApiError ? e.message : t("couldNotLoad")); void refetch(); }
@@ -101,8 +105,10 @@ export function LiveWatch({ id }: { id: string }) {
       r.disconnect().catch(() => {});
       document.querySelectorAll("[data-live-audio]").forEach((el) => el.remove());
       room.current = null;
+      setRm(null); setCanStage(false);
     };
-  }, [event?.status, id, refetch, t]);
+    // vm_stage: signing in or out joins again, as that wallet or as a guest
+  }, [event?.status, id, refetch, t, wallet]);
 
   useEffect(() => {
     if (event?.status !== "live") return;
@@ -130,6 +136,7 @@ export function LiveWatch({ id }: { id: string }) {
   }
 
   const who = event.hostName ?? short(event.wallet);
+  const hasVideo = tiles.some((x) => x.host && x.track);
   return (
     <div className="pt-6 grid lg:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
     <div className="space-y-4 min-w-0">
@@ -152,6 +159,7 @@ export function LiveWatch({ id }: { id: string }) {
             <span className="tc text-paper" data-live-state>{event.startedAt ? t("liveAt", { time: clock((now - event.startedAt) / 1000) }) : t("live")}</span>
           </span>
         )}
+        {event.status === "live" && <StageGrid tiles={tiles} label={t("picture")} />}
         {event.status === "live" && <ReactionLayer bus={bus.current} />}
         {event.status === "live" && !hasVideo && (
           <p className="absolute inset-0 flex items-center justify-center text-[14px] text-dim">{err ?? (connected ? t("waiting") : t("connecting"))}</p>
@@ -191,6 +199,7 @@ export function LiveWatch({ id }: { id: string }) {
       </div>
 
       {event.status === "live" && <ReactionBar eventId={id} />}
+      {event.status === "live" && <HandPanel eventId={id} room={rm} canStage={canStage} signedIn={signedIn} bus={bus.current} />}
 
       {event.status === "ended" && !!lines?.length && (
         <details className="panel px-5 py-3" data-live-transcript>

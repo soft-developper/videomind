@@ -28,6 +28,12 @@
 // room lets in at most that many viewers, the server counts the viewers every
 // 30 seconds (sampleViewers) and only the viewer minutes watched are charged.
 // Events from before 20c (no viewer limit) are charged by the minutes run.
+//
+// vm_stage (Part 21b1): signed in viewers may raise a hand and the host may
+// bring up to three of them on stage (lib/livestage.ts). A signed in viewer's
+// identity in the room starts with a tag made from the event and the wallet,
+// so the server knows which wallet a participant is. The host now subscribes,
+// to see and hear the speakers.
 import crypto from "crypto";
 import {
   AccessToken, RoomServiceClient, EgressClient, StreamOutput, StreamProtocol, TrackSource, TrackType, DataPacket_Kind,
@@ -176,6 +182,23 @@ export const isOwner = (e: LiveEvent, wallet: string | null | undefined) => !!wa
 
 const HOST = "host";
 
+/** vm_stage: the room service, for the stage (lib/livestage.ts). */
+export const roomService = () => clients().rooms;
+export const HOST_IDENTITY = HOST;
+/**
+ * vm_stage: a signed in viewer's identity starts with "w", a tag made from the
+ * event and the wallet with the LiveKit secret, and a dash. The tag says
+ * nothing about the address to other viewers, and nobody can make another
+ * wallet's tag. The part after the dash differs per tab, so two tabs of the
+ * same wallet do not push each other out of the room.
+ */
+export function walletTag(eventId: string, wallet: string): string {
+  const c = liveConfig();
+  if (!c) throw new LiveError(503, "live_off", "Live is not set up on this server yet.");
+  const key = Buffer.from(crypto.hkdfSync("sha256", c.secret, "videomind", "live stage identity", 32));
+  return "w" + crypto.createHmac("sha256", key).update(`${eventId}|${normalizeWallet(wallet) ?? wallet}`).digest("base64url").replace(/[^A-Za-z0-9]/g, "").slice(0, 12) + "-";
+}
+
 /** The host may publish a camera or a screen and a microphone. The room is made here, with a viewer limit. */
 export async function hostToken(e: LiveEvent, name: string, viewers?: unknown): Promise<{ url: string; token: string }> {
   if (e.status === "ended") throw new LiveError(409, "ended", "This live event has ended.");
@@ -193,14 +216,18 @@ export async function hostToken(e: LiveEvent, name: string, viewers?: unknown): 
   await rooms.createRoom({ name: e.room, emptyTimeout: 10 * 60, departureTimeout: 120, maxParticipants: limit + 1, metadata: JSON.stringify({ title: e.title }) });
   const at = new AccessToken(cfg.key, cfg.secret, { identity: HOST, name, ttl: "6h" });
   at.addGrant({
-    roomJoin: true, room: e.room, canPublish: true, canSubscribe: false, canPublishData: false,
+    roomJoin: true, room: e.room, canPublish: true, canSubscribe: true, canPublishData: false,
     canPublishSources: [TrackSource.CAMERA, TrackSource.MICROPHONE, TrackSource.SCREEN_SHARE, TrackSource.SCREEN_SHARE_AUDIO],
   });
   return { url: cfg.url, token: await at.toJwt() };
 }
 
-/** A viewer may only watch and listen. */
-export async function viewerToken(e: LiveEvent): Promise<{ url: string; token: string }> {
+/**
+ * A viewer may only watch and listen. vm_stage: a signed in viewer gets an
+ * identity tied to the wallet (walletTag) and its name, so the host can bring
+ * it on stage; the permission to publish is only ever given by the server.
+ */
+export async function viewerToken(e: LiveEvent, who?: { wallet: string; name: string } | null): Promise<{ url: string; token: string; stage: boolean }> {
   if (e.status !== "live") throw new LiveError(409, e.status === "ended" ? "ended" : "not_live", e.status === "ended" ? "This live event has ended." : "This live event has not started yet.");
   const { cfg, rooms } = clients();
   // vm_liveviewers: no more viewers than the host paid for (the room's own limit is the hard stop)
@@ -210,9 +237,12 @@ export async function viewerToken(e: LiveEvent): Promise<{ url: string; token: s
       throw new LiveError(409, "full", "This live event is full. Try again in a moment.");
     }
   }
-  const at = new AccessToken(cfg.key, cfg.secret, { identity: `viewer-${crypto.randomUUID().slice(0, 12)}`, name: "Viewer", ttl: "6h" });
+  const tail = crypto.randomUUID().slice(0, 8);
+  const signed = !!who && !isOwner(e, who.wallet);
+  const identity = signed ? `${walletTag(e.id, who!.wallet)}${tail}` : `viewer-${crypto.randomUUID().slice(0, 12)}`;
+  const at = new AccessToken(cfg.key, cfg.secret, { identity, name: signed ? who!.name.slice(0, 60) : "Viewer", ttl: "6h" });
   at.addGrant({ roomJoin: true, room: e.room, canPublish: false, canSubscribe: true, canPublishData: false });
-  return { url: cfg.url, token: await at.toJwt() };
+  return { url: cfg.url, token: await at.toJwt(), stage: signed };
 }
 
 // ── going live and ending ─────────────────────────────────────────────────────
@@ -355,6 +385,8 @@ export async function endEvent(e: LiveEvent): Promise<LiveEvent> {
     if (res.rowsAffected > 0) {
       const fresh = (await getEvent(e.id)) ?? e;
       await settleSession(fresh, endedAt);
+      // vm_stage: nobody is on stage or has a hand up once it has ended
+      await getDb().execute({ sql: "DELETE FROM live_stage WHERE event_id = ?", args: [e.id] }).catch(() => {});
       // The captions of the event stop now, not at their next check. Loaded here: livecaptions imports this file.
       import("./livecaptions.js").then((m) => m.stopCaptions(e.id, "ended")).catch(() => {});
     }
@@ -473,11 +505,13 @@ export async function settle(e: LiveEvent): Promise<LiveEvent> {
 export const REACTIONS = ["clap", "heart", "laugh", "wow", "up"] as const;
 export type Reaction = (typeof REACTIONS)[number];
 
-export async function broadcast(e: LiveEvent, topic: "captions" | "chat" | "settings" | "reactions", body: unknown): Promise<boolean> {
+// vm_stage: "stage" goes only to the participants named in `to` (the host, one viewer).
+export async function broadcast(e: LiveEvent, topic: "captions" | "chat" | "settings" | "reactions" | "stage", body: unknown, to?: string[]): Promise<boolean> {
   if (e.status !== "live" || !liveConfig()) return false;
+  if (to && !to.length) return false;
   try {
     const { rooms } = clients();
-    await rooms.sendData(e.room, new TextEncoder().encode(JSON.stringify(body)), DataPacket_Kind.RELIABLE, { topic });
+    await rooms.sendData(e.room, new TextEncoder().encode(JSON.stringify(body)), DataPacket_Kind.RELIABLE, { topic, ...(to ? { destinationIdentities: to } : {}) });
     return true;
   } catch { return false; }
 }
