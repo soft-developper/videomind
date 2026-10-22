@@ -469,7 +469,11 @@ export async function settle(e: LiveEvent): Promise<LiveEvent> {
  * (captions, chat, settings). Viewers cannot send; only the server does.
  * Never throws: a missed message is not worth failing a request over.
  */
-export async function broadcast(e: LiveEvent, topic: "captions" | "chat" | "settings", body: unknown): Promise<boolean> {
+// vm_reactions (Part 21a): applause, heart, laugh, wow, thumbs up; sent into the room, never stored.
+export const REACTIONS = ["clap", "heart", "laugh", "wow", "up"] as const;
+export type Reaction = (typeof REACTIONS)[number];
+
+export async function broadcast(e: LiveEvent, topic: "captions" | "chat" | "settings" | "reactions", body: unknown): Promise<boolean> {
   if (e.status !== "live" || !liveConfig()) return false;
   try {
     const { rooms } = clients();

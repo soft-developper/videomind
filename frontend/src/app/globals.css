@@ -317,6 +317,17 @@ input::placeholder, textarea::placeholder { color: var(--dim-2); }
   }
 }
 
+/* vm_reactions: a reaction floats up and fades. With reduced motion it just shows, still, and goes. */
+@keyframes vm-react-up {
+  0%   { transform: translateY(0) scale(0.8); opacity: 0; }
+  12%  { opacity: 1; transform: translateY(-12px) scale(1); }
+  100% { transform: translateY(-180px) scale(1.05); opacity: 0; }
+}
+.vm-react { animation: vm-react-up 2.4s ease-out forwards; will-change: transform, opacity; }
+@media (prefers-reduced-motion: reduce) {
+  .vm-react { animation: none !important; opacity: 1; }
+}
+
 /* Touch targets */
 @media (pointer: coarse) {
   button, a { min-height: 44px; }

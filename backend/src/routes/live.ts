@@ -22,6 +22,8 @@
 //   POST   /:id/chat/:msgId/block     owner: block its writer and remove what they wrote
 //   GET    /:id/captions              public: the finished caption lines
 //   POST   /:id/captions/ticket       owner: a one use ticket for the captions WebSocket
+// vm_reactions:
+//   POST   /:id/react                 anyone watching, while live: { kind: clap | heart | laugh | wow | up }
 import { Router } from "express";
 import { requireAuth, optionalAuth, authOf } from "../lib/auth.js";
 import { rateLimit } from "../lib/guard.js";
@@ -32,6 +34,7 @@ import {
   liveConfig, createEvent, getEvent, eventsOf, isOwner, hostToken, viewerToken, parseRestream, goLive, endEvent,
   viewersNow, settle, linkRecording, LiveError, maxViewers, save, broadcast, CHAT_MODES, type LiveEvent, type ChatMode,
   extendEvent, extendChoices, SESSION_MINUTES, EXTEND_MINUTES, MAX_SESSION_MINUTES, viewerChoices, viewerMinutes,
+  REACTIONS, type Reaction,
 } from "../lib/live.js";
 import { creditFailure } from "../lib/charge.js";
 import { joinChat, readPass, postMessage, listMessages, deleteMessage, blockWriter, listCaptions } from "../lib/livechat.js";
@@ -269,6 +272,26 @@ router.post("/:id/captions/ticket", limitLive, requireAuth, async (req, res) => 
     if (e.status !== "live") return res.status(409).json({ error: "Captions start once the event is live.", code: "not_live" });
     if (e.captionSeconds >= maxMinutes() * 60) return res.status(409).json({ error: `This event has used its ${maxMinutes()} minutes of captions.`, code: "captions_used" });
     return res.json({ ticket: makeTicket(e.id), path: `/api/live/${e.id}/captions` });
+  } catch (err) { return fail(res, err); }
+});
+
+// ── vm_reactions ──────────────────────────────────────────────────────────────
+// No wallet needed. Each viewer may send 60 a minute (a fast clicker waits at
+// most a minute), and the server, not the viewer, sends the reaction into the room.
+const limitReact = rateLimit({
+  name: "live_react",
+  label: "reactions",
+  perClient: { max: Number(process.env.LIMIT_REACT_PER_CLIENT_MIN) || 60, windowMs: 60_000 },
+  global:    { max: Number(process.env.LIMIT_REACT_GLOBAL_MIN) || 6000, windowMs: 60_000 },
+});
+router.post("/:id/react", limitReact, async (req, res) => {
+  try {
+    const e = await anyEvent(req, res); if (!e) return;
+    const kind = String((req.body ?? {}).kind ?? "") as Reaction;
+    if (!(REACTIONS as readonly string[]).includes(kind)) return res.status(400).json({ error: "That reaction is not one VideoMind offers.", code: "bad_reaction" });
+    if (e.status !== "live") return res.status(409).json({ error: "Reactions work while the event is live.", code: "not_live" });
+    await broadcast(e, "reactions", { type: "reaction", kind });
+    return res.status(202).json({ ok: true });
   } catch (err) { return fail(res, err); }
 });
 

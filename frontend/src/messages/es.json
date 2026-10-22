@@ -869,7 +869,14 @@
     "qr": "Código QR de este enlace",
     "qrHint": "Apunta la cámara de un teléfono al código para abrir el video.",
     "download": "Descargar el código QR",
-    "app": "Compartir con una aplicación"
+    "app": "Compartir con una aplicación",
+    "onX": "Publicar en X",
+    "email": "Correo",
+    "more": "Más apps",
+    "videoText": "Mira «{title}» en VideoMind",
+    "liveText": "«{title}» de {host} está en vivo en VideoMind. Únete aquí:",
+    "liveTitle": "Compartir este evento en vivo",
+    "liveQrHint": "Apunta la cámara de un teléfono al código para unirte al evento en vivo."
   },
   "details": {
     "titleEmpty": "El título no puede estar vacío.",
@@ -1270,7 +1277,16 @@
     "captionsOff": "Subtítulos desactivados",
     "soundOn": "Activar el sonido",
     "whatWasSaid": "{count, plural, one {Lo que se dijo (# línea, de los subtítulos en vivo)} many {Lo que se dijo (# líneas, de los subtítulos en vivo)} other {Lo que se dijo (# líneas, de los subtítulos en vivo)}}",
-    "endsAt": "Termina a las {time}"
+    "endsAt": "Termina a las {time}",
+    "react": "Enviar una reacción",
+    "slowDown": "Ve un poco más despacio y vuelve a reaccionar.",
+    "reaction": {
+      "clap": "Aplausos",
+      "heart": "Corazón",
+      "laugh": "Risa",
+      "wow": "Asombro",
+      "up": "Me gusta"
+    }
   },
   "profile": {
     "saved": "Guardado. Tu página pública ya lo muestra.",
@@ -2190,7 +2206,9 @@
     "capProcessing": "Llegaste a tu límite de gasto mensual, así que este video no se procesó. Sube el límite en la página Billetera y vuelve a intentarlo.",
     "capCaptions": "Subtítulos detenidos: llegaste a tu límite de gasto mensual. Súbelo en la página Billetera y vuelve a activar los subtítulos.",
     "capGeneration": "Se alcanzó el límite de gasto mensual.",
-    "providerPaused": "Esto está en pausa por ahora: VideoMind llegó a su presupuesto mensual para esta función. Inténtalo más tarde."
+    "providerPaused": "Esto está en pausa por ahora: VideoMind llegó a su presupuesto mensual para esta función. Inténtalo más tarde.",
+    "reactBad": "Esa reacción no es una de las que ofrece VideoMind.",
+    "reactNotLive": "Las reacciones funcionan mientras el evento está en vivo."
   },
   "notFound": {
     "title": "No se encontró esta página",

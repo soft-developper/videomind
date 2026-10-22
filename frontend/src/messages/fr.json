@@ -869,7 +869,14 @@
     "qr": "Code QR de ce lien",
     "qrHint": "Visez le code avec l’appareil photo d’un téléphone pour ouvrir la vidéo.",
     "download": "Télécharger le code QR",
-    "app": "Partager avec une application"
+    "app": "Partager avec une application",
+    "onX": "Publier sur X",
+    "email": "Courriel",
+    "more": "Autres applis",
+    "videoText": "Regardez « {title} » sur VideoMind",
+    "liveText": "« {title} » par {host} est en direct sur VideoMind. Rejoignez le direct ici :",
+    "liveTitle": "Partager ce direct",
+    "liveQrHint": "Visez le code avec l’appareil photo d’un téléphone pour rejoindre le direct."
   },
   "details": {
     "titleEmpty": "Le titre ne peut pas être vide.",
@@ -1270,7 +1277,16 @@
     "captionsOff": "Sous-titres masqués",
     "soundOn": "Activer le son",
     "whatWasSaid": "{count, plural, one {Ce qui a été dit (# ligne, tirée des sous-titres en direct)} many {Ce qui a été dit (# lignes, tirées des sous-titres en direct)} other {Ce qui a été dit (# lignes, tirées des sous-titres en direct)}}",
-    "endsAt": "Se termine à {time}"
+    "endsAt": "Se termine à {time}",
+    "react": "Envoyer une réaction",
+    "slowDown": "Ralentissez un peu, puis réagissez de nouveau.",
+    "reaction": {
+      "clap": "Applaudissements",
+      "heart": "Cœur",
+      "laugh": "Rire",
+      "wow": "Waouh",
+      "up": "Pouce levé"
+    }
   },
   "profile": {
     "saved": "Enregistré. Votre page publique l’affiche désormais.",
@@ -2190,7 +2206,9 @@
     "capProcessing": "Votre limite de dépenses mensuelle est atteinte, cette vidéo n’a donc pas été traitée. Relevez la limite dans la page Portefeuille, puis réessayez.",
     "capCaptions": "Sous titres arrêtés : votre limite de dépenses mensuelle est atteinte. Relevez votre limite dans la page Portefeuille, puis réactivez les sous titres.",
     "capGeneration": "Limite de dépenses mensuelle atteinte.",
-    "providerPaused": "Cette fonction est en pause pour l’instant : VideoMind a atteint son budget mensuel pour elle. Réessayez plus tard."
+    "providerPaused": "Cette fonction est en pause pour l’instant : VideoMind a atteint son budget mensuel pour elle. Réessayez plus tard.",
+    "reactBad": "Cette réaction ne fait pas partie de celles proposées par VideoMind.",
+    "reactNotLive": "Les réactions fonctionnent pendant le direct."
   },
   "notFound": {
     "title": "Cette page est introuvable",

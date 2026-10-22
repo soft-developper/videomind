@@ -869,7 +869,14 @@
     "qr": "QR code deste link",
     "qrHint": "Aponte a câmera de um celular para o código para abrir o vídeo.",
     "download": "Baixar o QR code",
-    "app": "Compartilhar com um app"
+    "app": "Compartilhar com um app",
+    "onX": "Publicar no X",
+    "email": "Email",
+    "more": "Mais apps",
+    "videoText": "Assista a “{title}” no VideoMind",
+    "liveText": "“{title}”, de {host}, está ao vivo no VideoMind. Entre aqui:",
+    "liveTitle": "Compartilhar este evento ao vivo",
+    "liveQrHint": "Aponte a câmera de um celular para o código para entrar no evento ao vivo."
   },
   "details": {
     "titleEmpty": "O título não pode ficar vazio.",
@@ -1270,7 +1277,16 @@
     "captionsOff": "Legendas desativadas",
     "soundOn": "Ativar o som",
     "whatWasSaid": "{count, plural, one {O que foi dito (# linha, das legendas ao vivo)} many {O que foi dito (# linhas, das legendas ao vivo)} other {O que foi dito (# linhas, das legendas ao vivo)}}",
-    "endsAt": "Termina às {time}"
+    "endsAt": "Termina às {time}",
+    "react": "Enviar uma reação",
+    "slowDown": "Vá um pouco mais devagar e reaja de novo.",
+    "reaction": {
+      "clap": "Aplausos",
+      "heart": "Coração",
+      "laugh": "Risada",
+      "wow": "Uau",
+      "up": "Joinha"
+    }
   },
   "profile": {
     "saved": "Salvo. Sua página pública já mostra.",
@@ -2190,7 +2206,9 @@
     "capProcessing": "Seu limite de gastos mensal foi atingido, então este vídeo não foi processado. Aumente o limite na página Carteira e tente de novo.",
     "capCaptions": "Legendas paradas: seu limite de gastos mensal foi atingido. Aumente na página Carteira e ligue as legendas de novo.",
     "capGeneration": "Limite de gastos mensal atingido.",
-    "providerPaused": "Isto está em pausa por enquanto: o VideoMind atingiu o orçamento mensal para este recurso. Tente mais tarde."
+    "providerPaused": "Isto está em pausa por enquanto: o VideoMind atingiu o orçamento mensal para este recurso. Tente mais tarde.",
+    "reactBad": "Essa reação não é uma das que o VideoMind oferece.",
+    "reactNotLive": "As reações funcionam enquanto o evento está ao vivo."
   },
   "notFound": {
     "title": "Esta página não foi encontrada",

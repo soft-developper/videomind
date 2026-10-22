@@ -18,7 +18,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Room, RoomEvent, Track } from "livekit-client";
-import { Monitor, Camera, Copy, Check } from "lucide-react";
+import { Monitor, Camera } from "lucide-react";
 import { clsx } from "clsx";
 import { UploadZone } from "@/components/upload/UploadZone";
 import { QrCode } from "@/components/share/QrCode";
@@ -29,6 +29,9 @@ import {
 } from "@/lib/api";
 import { startCaptionFeed } from "@/lib/liveaudio";
 import { LiveChat } from "./LiveChat";
+// vm_share, vm_reactions (Part 21a)
+import { LiveShareLinks } from "./LiveShare";
+import { ReactionLayer } from "./Reactions";
 // vm_lang
 import { useTranslations } from "next-intl";
 import { localize } from "@/lib/errorText";
@@ -232,7 +235,6 @@ export function LiveStudio({ id }: { id: string }) {
   const [note, setNote] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [viewers, setViewers] = useState(0);
-  const [copied, setCopied] = useState(false);
   const [support, setSupport] = useState<ReturnType<typeof canRecord> | null>(null);
   useEffect(() => { setSupport(canRecord()); }, []);
 
@@ -370,8 +372,8 @@ export function LiveStudio({ id }: { id: string }) {
       const r = new Room({ adaptiveStream: false, dynacast: true, stopLocalTrackOnUnpublish: false });
       room.current = r;
       r.on(RoomEvent.DataReceived, (payload, _p, _k, topic) => {
-        if (topic !== "chat") return;
-        try { bus.current.dispatchEvent(new CustomEvent("chat", { detail: JSON.parse(new TextDecoder().decode(payload)) })); } catch { /* not ours */ }
+        if (topic !== "chat" && topic !== "reactions") return;
+        try { bus.current.dispatchEvent(new CustomEvent(topic === "chat" ? "chat" : "reaction", { detail: JSON.parse(new TextDecoder().decode(payload)) })); } catch { /* not ours */ }
       });
       await r.connect(url, token);
       const [video] = ins.stream.getVideoTracks();
@@ -417,19 +419,12 @@ export function LiveStudio({ id }: { id: string }) {
 
   if (!event) return <p className="text-[14px] text-dim">{tc("loading")}</p>;
 
+  // vm_share: the watch link with X, WhatsApp, Telegram, Email and the share sheet, and the QR code
   const shareBox = (
-    <div className="flex items-start gap-4 flex-wrap">
-      <QrCode text={watchUrl} label={t("qrLabel")} className="w-[120px] h-[120px] rounded-sm shrink-0" />
-      <div className="space-y-2 min-w-0">
-        <p className="text-[13px] text-dim">{t("watchHere")}</p>
-        <p className="tc text-paper-2 break-all" dir="ltr">{watchUrl}</p>
-        <button
-          onClick={() => { navigator.clipboard.writeText(watchUrl).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 1600); }}
-          className="btn btn-ghost h-8 px-3 text-[13px] inline-flex items-center gap-1.5"
-        >
-          {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? t("copied") : t("copyLink")}
-        </button>
-      </div>
+    <div className="space-y-3">
+      <p className="text-[13px] text-dim">{t("watchHere")}</p>
+      <LiveShareLinks id={id} title={event.title} host={event.hostName ?? `${event.wallet.slice(0, 6)}...${event.wallet.slice(-4)}`} />
+      <QrCode text={watchUrl} label={t("qrLabel")} className="w-[120px] h-[120px] rounded-sm" />
     </div>
   );
 
@@ -479,6 +474,8 @@ export function LiveStudio({ id }: { id: string }) {
         <div className="space-y-4 min-w-0">
           <div className="relative">
             <video ref={preview} muted playsInline className="w-full aspect-video rounded-md bg-black object-contain" aria-label={t("whatViewersSee")} />
+            {/* vm_reactions: what viewers send, over the host's picture */}
+            {phase.at === "live" && <ReactionLayer bus={bus.current} />}
             <span className="absolute start-3 top-3 flex items-center gap-2 bg-black/70 rounded px-2.5 h-7" data-live-badge>
               <span className={clsx("w-2.5 h-2.5 rounded-full", phase.at === "live" ? "bg-error animate-pulse" : "bg-dim")} />
               <span className="tc text-paper">{phase.at === "starting" ? t("connecting") : phase.at === "ending" ? t("ending") : t("liveAt", { time: clock(elapsed) })}</span>

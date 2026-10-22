@@ -6,6 +6,8 @@ import { useState, useRef, useEffect } from "react";
 import { Share2, Check, Copy, Download } from "lucide-react";
 import { clsx } from "clsx";
 import { QrCode } from "@/components/share/QrCode";
+// vm_share (Part 21a): X, WhatsApp, Telegram, Email and the share sheet
+import { SocialShare } from "@/components/share/SocialShare";
 import { sharedLink, downloadQrPng } from "@/lib/qr";
 import { slugify } from "@/lib/exports";
 // vm_lang
@@ -104,6 +106,8 @@ export function ShareButton({
               {ts.rich("startAt", { time: clock(at), t: (c) => <span className="tc">{c}</span> })}
             </label>
           )}
+
+          <SocialShare url={link} text={ts("videoText", { title })} subject={title} />
 
           <div className="flex items-start gap-3">
             <QrCode text={link} label={ts("qr")} className="w-[132px] h-[132px] rounded-sm shrink-0" />

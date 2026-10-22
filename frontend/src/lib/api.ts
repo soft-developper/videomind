@@ -588,6 +588,8 @@ export const liveHostToken = (id: string, viewers?: number) => call<{ url: strin
 export const liveViewerToken = (id: string) => call<{ url: string; token: string }>(() => raw.post(`/api/live/${id}/viewer-token`));
 export const startLive = (id: string, restream: string[], minutes: number) => call<{ event: LiveEventInfo; restreamError: string | null }>(() => raw.post(`/api/live/${id}/start`, { restream, minutes }));
 /** vm_livesession: add time once while live. */
+/** vm_reactions: send a reaction into a live event (no wallet needed). */
+export const sendLiveReaction = (id: string, kind: string) => call<{ ok: boolean }>(() => raw.post(`/api/live/${id}/react`, { kind }));
 export const extendLive = (id: string, minutes: number) => call<{ event: LiveEventInfo }>(() => raw.post(`/api/live/${id}/extend`, { minutes }));
 export const endLive = (id: string) => call<{ event: LiveEventInfo }>(() => raw.post(`/api/live/${id}/end`));
 export const liveStats = (id: string) => call<{ viewers: number; peakViewers: number; status: LiveStatus; endsAt: number | null; viewerLimit?: number | null; viewerMinutes?: number }>(() => raw.get(`/api/live/${id}/stats`));

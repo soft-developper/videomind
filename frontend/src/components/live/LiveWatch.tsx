@@ -12,6 +12,9 @@ import { Volume2, Captions } from "lucide-react";
 import { clsx } from "clsx";
 import { getLiveEvent, liveViewerToken, getLiveCaptions, ApiError } from "@/lib/api";
 import { LiveChat } from "./LiveChat";
+// vm_share, vm_reactions (Part 21a)
+import { LiveShareButton } from "./LiveShare";
+import { ReactionBar, ReactionLayer } from "./Reactions";
 import { useFormat } from "@/lib/format";
 // vm_lang
 import { useTranslations } from "next-intl";
@@ -73,6 +76,7 @@ export function LiveWatch({ id }: { id: string }) {
     r.on(RoomEvent.DataReceived, (payload, _p, _k, topic) => {
       let body: any; try { body = JSON.parse(new TextDecoder().decode(payload)); } catch { return; }
       if (topic === "chat") bus.current.dispatchEvent(new CustomEvent("chat", { detail: body }));
+      else if (topic === "reactions") bus.current.dispatchEvent(new CustomEvent("reaction", { detail: body }));
       else if (topic === "settings") void refetch();
       else if (topic === "captions" && typeof body?.text === "string") {
         setCaption((c) => body.type === "final"
@@ -129,13 +133,16 @@ export function LiveWatch({ id }: { id: string }) {
   return (
     <div className="pt-6 grid lg:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
     <div className="space-y-4 min-w-0">
-      <div>
+      <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0">
         <h1 className="font-display text-[22px] sm:text-[26px] leading-tight text-paper" dir="auto">{event.title}</h1>
         <Link href={`/u/${event.wallet}`} className="text-[13.5px] text-paper-2 hover:text-paper hover:underline underline-offset-2">{t("by", { name: who })}</Link>
         {/* vm_livesession: when the event ends by itself */}
         {event.status === "live" && event.endsAt && (
           <p className="text-[13px] text-dim mt-0.5" data-live-ends>{t("endsAt", { time: f.date(event.endsAt, { timeStyle: "short" }) })}</p>
         )}
+      </div>
+      <LiveShareButton id={id} title={event.title} host={who} />
       </div>
 
       <div ref={stage} className="relative w-full aspect-video rounded-md bg-black overflow-hidden" data-live-stage>
@@ -145,6 +152,7 @@ export function LiveWatch({ id }: { id: string }) {
             <span className="tc text-paper" data-live-state>{event.startedAt ? t("liveAt", { time: clock((now - event.startedAt) / 1000) }) : t("live")}</span>
           </span>
         )}
+        {event.status === "live" && <ReactionLayer bus={bus.current} />}
         {event.status === "live" && !hasVideo && (
           <p className="absolute inset-0 flex items-center justify-center text-[14px] text-dim">{err ?? (connected ? t("waiting") : t("connecting"))}</p>
         )}
@@ -181,6 +189,8 @@ export function LiveWatch({ id }: { id: string }) {
           </button>
         )}
       </div>
+
+      {event.status === "live" && <ReactionBar eventId={id} />}
 
       {event.status === "ended" && !!lines?.length && (
         <details className="panel px-5 py-3" data-live-transcript>
