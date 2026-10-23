@@ -24,14 +24,16 @@ import { LegalFooter, PublicBar as Bar } from "@/components/legal/LegalPage";
 // vm_lang
 import { useTranslations } from "next-intl";
 import { useWatchProgress } from "@/lib/useWatchProgress";
-import { useRef, useState, useCallback } from "react";
+import { use, useRef, useState, useCallback } from "react";
 import { clsx } from "clsx";
 import { GeneratedBadge } from "@/components/generate/GeneratedBadge"; // vm_generate
 // vm_translate: the words in another language
 import { useVideoText, presentQuery } from "@/lib/useVideoText";
 import { TextLanguagePicker } from "@/components/video/TextLanguage";
 
-export default function PublicVideo({ params }: { params: { id: string } }) {
+export default function PublicVideo(props: { params: Promise<{ id: string }> }) {
+  // vm_next15: params arrive as a promise in Next 15
+  const params = use(props.params);
   const tv = useTranslations("videoPage");
   const ts = useTranslations("sharedVideo");
   const tpub = useTranslations("public");

@@ -1,7 +1,7 @@
 "use client";
 // vm_content: one video, to review it and take it down or restore it.
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ExternalLink } from "lucide-react";
 import { useAdmin } from "@/components/Shell";
 import { Note } from "@/components/AuthCard";
@@ -20,7 +20,9 @@ function Panel({ title, children, danger }: { title: string; children: React.Rea
   );
 }
 
-export default function ContentVideoPage({ params }: { params: { id: string } }) {
+export default function ContentVideoPage(props: { params: Promise<{ id: string }> }) {
+  // vm_next15: params arrive as a promise in Next 15
+  const params = use(props.params);
   const { signedOut } = useAdmin();
   const [v, setV] = useState<AdminVideoDetail | null>(null);
   const [err, setErr] = useState<string | null>(null);

@@ -23,7 +23,8 @@ async function profile(wallet: string): Promise<Shared | null> {
   }
 }
 
-export async function generateMetadata({ params }: { params: { wallet: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ wallet: string }> }): Promise<Metadata> {
+  const params = await props.params;   // vm_next15
   const p = await profile(params.wallet);
   if (!p) return { title: "VideoMind", robots: { index: false, follow: false } };
   const who = p.name ?? `${p.wallet.slice(0, 6)}…${p.wallet.slice(-4)}`;

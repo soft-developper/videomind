@@ -2,7 +2,7 @@
 // vm_admin_users: one wallet. What it has, what it used, and the actions
 // an admin can take: sign out everywhere, suspend, delete its data.
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import { ChevronLeft, Copy, Check } from "lucide-react";
 import { useAdmin } from "@/components/Shell";
 import { Note } from "@/components/AuthCard";
@@ -34,7 +34,9 @@ function UsageRows({ u }: { u: UsageNumbers }) {
   );
 }
 
-export default function UserPage({ params }: { params: { wallet: string } }) {
+export default function UserPage(props: { params: Promise<{ wallet: string }> }) {
+  // vm_next15: params arrive as a promise in Next 15
+  const params = use(props.params);
   const wallet = decodeURIComponent(params.wallet);
   const { signedOut } = useAdmin();
   const [d, setD] = useState<UserDetail | null>(null);

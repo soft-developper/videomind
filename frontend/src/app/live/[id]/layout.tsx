@@ -5,7 +5,8 @@ import { getTranslations } from "next-intl/server";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const params = await props.params;   // vm_next15
   if (!/^[0-9a-f-]{36}$/i.test(params.id)) return { title: "VideoMind", robots: { index: false, follow: false } };
   const stop = new AbortController();
   const timer = setTimeout(() => stop.abort(), 5000);

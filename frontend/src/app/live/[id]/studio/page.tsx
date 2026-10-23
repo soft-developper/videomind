@@ -1,4 +1,5 @@
 "use client";
+import { use } from "react";
 // vm_live: the host's studio for one live event.
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { AppShell } from "@/components/layout/AppShell";
@@ -12,7 +13,9 @@ import { getLiveEvent } from "@/lib/api";
 // vm_lang
 import { useTranslations } from "next-intl";
 
-export default function StudioPage({ params }: { params: { id: string } }) {
+export default function StudioPage(props: { params: Promise<{ id: string }> }) {
+  // vm_next15: params arrive as a promise in Next 15
+  const params = use(props.params);
   const t = useTranslations("live");
   const tc = useTranslations("common");
   const { connected } = useWallet();

@@ -13,7 +13,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { ArrowLeft, Captions, CaptionsOff, Maximize, Minimize, Pause, Play, QrCode as QrIcon, Keyboard } from "lucide-react";
 import { getVideo, momentFromUrl, ApiError } from "@/lib/api";
@@ -57,7 +57,9 @@ const QR_STEP = 10;
 /** The keys, named in the reader's language, and what each does. */
 const KEYS = ["play", "back", "forward", "next", "prev", "code", "captions", "full", "sound", "list"] as const;
 
-export default function Present({ params }: { params: { id: string } }) {
+export default function Present(props: { params: Promise<{ id: string }> }) {
+  // vm_next15: params arrive as a promise in Next 15
+  const params = use(props.params);
   const t_ = useTranslations("present");
   const tv = useTranslations("videoPage");
   const tpub = useTranslations("public");
@@ -88,7 +90,7 @@ export default function Present({ params }: { params: { id: string } }) {
   const [failed, setFailed] = useState(false);
   // While playing, the controls step aside after a few still seconds. The code and captions stay.
   const [idle, setIdle] = useState(false);
-  const idleTimer = useRef<ReturnType<typeof setTimeout>>();
+  const idleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const wake = useCallback(() => {
     setIdle(false);
     clearTimeout(idleTimer.current);

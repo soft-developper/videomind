@@ -63,7 +63,8 @@ const PLAIN: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const params = await props.params;   // vm_next15
   const v = await sharedVideo(params.id);
   if (!v || !v.title || v.visibility === "private") return PLAIN;
 

@@ -4,7 +4,7 @@
 // its public videos and courses. Unlisted and private videos never appear.
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { use, useState } from "react";
 import { Copy, Check, ExternalLink } from "lucide-react";
 import { getPublicProfile, ApiError, type ProfileCard } from "@/lib/api";
 import { clock } from "@/components/video/VideoCard";
@@ -40,7 +40,9 @@ function Tile({ v }: { v: ProfileCard }) {
   );
 }
 
-export default function PublicProfilePage({ params }: { params: { wallet: string } }) {
+export default function PublicProfilePage(props: { params: Promise<{ wallet: string }> }) {
+  // vm_next15: params arrive as a promise in Next 15
+  const params = use(props.params);
   const t = useTranslations("publicProfile");
   const tc = useTranslations("common");
   const me = useSessionWallet();

@@ -86,7 +86,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
     const [playing, setPlaying] = useState(false);
     const [muted, setMuted] = useState(false);
     const [show, setShow] = useState(true);
-    const hide = useRef<ReturnType<typeof setTimeout>>();
+    const hide = useRef<ReturnType<typeof setTimeout>>(undefined);
     const durSent = useRef(false);
     const started = useRef(false);
     // vm_progress: "Resumed at 12:30", until a few seconds into playing or Start over.

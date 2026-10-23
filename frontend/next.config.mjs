@@ -9,12 +9,8 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000",
   },
-  images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "api.testnet.shelby.xyz" },
-      { protocol: "https", hostname: "explorer.shelby.xyz" },
-    ],
-  },
+  // vm_next15: no images.remotePatterns: next/image is not used, and the setting is what
+  // the Image Optimizer advisory (GHSA-9g9p-9gw9-jx7f) needs to be exposed.
   webpack: (config) => {
     config.resolve.fallback = { ...config.resolve.fallback, fs: false };
     return config;

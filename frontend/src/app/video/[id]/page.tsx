@@ -21,7 +21,7 @@ import { ArrowLeft, MessageSquare, X, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useWatchProgress } from "@/lib/useWatchProgress";
-import { useCallback, useState, useRef } from "react";
+import { use, useCallback, useState, useRef } from "react";
 import { clsx } from "clsx";
 import { useSessionWallet } from "@/components/layout/AuthProvider";
 // vm_info: category, collection, tags and who can watch
@@ -41,7 +41,9 @@ import { useFormat } from "@/lib/format";
 import { useVideoText, presentQuery } from "@/lib/useVideoText";
 import { TextLanguagePicker, TranslationsPanel } from "@/components/video/TextLanguage";
 
-export default function VideoPage({ params }: { params: { id: string } }) {
+export default function VideoPage(props: { params: Promise<{ id: string }> }) {
+  // vm_next15: params arrive as a promise in Next 15
+  const params = use(props.params);
   const tv = useTranslations("videoPage");
   const fmt = useFormat();
   const media = useMediaText();
