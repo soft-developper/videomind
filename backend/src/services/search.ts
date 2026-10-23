@@ -158,8 +158,19 @@ export async function backfillEmbed(limit = 25): Promise<number> {
     if (created) queued++;
   }
   if (queued) console.log(`[search] queued ${queued} earlier video(s) for search`);
-  return queued;
+  // vm_reindex (Part 22a): indexing that failed (an outage of a few minutes is enough) is tried
+  // again, at most once every REINDEX_AFTER_MS per video, so a video is not left out of search for good.
+  const again = await getDb().execute({
+    sql: `UPDATE jobs SET status = 'queued', attempts = 0, run_after = ?, error = NULL, error_code = NULL, finished_at = NULL, updated_at = ?
+           WHERE id IN (SELECT j.id FROM jobs j JOIN videos v ON v.id = j.video_id
+                         WHERE j.kind = ? AND j.status = 'failed' AND v.status = 'ready' AND COALESCE(j.finished_at, j.updated_at) < ?
+                         ORDER BY j.updated_at ASC LIMIT ?)`,
+    args: [Date.now(), Date.now(), EMBED, Date.now() - REINDEX_AFTER_MS, limit],
+  });
+  if (again.rowsAffected) console.log(`[search] trying ${again.rowsAffected} failed index job(s) again`);
+  return queued + again.rowsAffected;
 }
+const REINDEX_AFTER_MS = 6 * 3600_000;
 
 // ── searching ─────────────────────────────────────────────────────────────
 

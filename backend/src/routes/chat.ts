@@ -34,6 +34,7 @@ const VIDEO_BUDGET = {
 };
 // vm_info: a private video answers questions only for its owner
 import { canView, PRIVATE_VIDEO, blockedFor } from "../lib/videoInfo.js";
+import { billedLength } from "../lib/videoLength.js";
 
 const router = Router();
 
@@ -66,7 +67,8 @@ router.post("/:videoId", limitAi, optionalAuth, async (req, res) => {
     // A question on a video counts against the video's owner. The asker
     // is recorded too, or left empty for a visitor.
     // vm_priceshapes: one step per 30 minutes of the video
-    const steps = askSteps(video.meta?.durationSeconds ?? video.ai.transcript.at(-1)?.end);
+    // vm_length: the length the server measured, never shorter than the transcript
+    const steps = askSteps(billedLength(video));
     const result = await charged({ wallet: owner, action: "ask", quantity: steps, videoId: video.id }, () => withUsage(
       { feature: "ask", ownerWallet: ownerOf(video), actorWallet: authOf(req)?.wallet ?? null, videoId: video.id },
       () => chatWithVideo(video.ai!.transcript!, question, video.title)));

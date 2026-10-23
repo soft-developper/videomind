@@ -18,6 +18,7 @@ import { normalizeWallet } from "./auth.js";
 import { buildCues, toSrt, type Cue } from "./captions.js";
 import { CAPTION_LINE, type ClipFrame } from "./media.js";
 import type { TranscriptSegment, VideoRecord } from "../types/video.js";
+import { lengthOf } from "./videoLength.js";
 
 export type ClipKind = "cut" | "social";
 export type ClipStatus = "queued" | "making" | "ready" | "failed";
@@ -71,7 +72,7 @@ export function parseClip(body: unknown, video: VideoRecord): ClipRequest {
   if (!frames.includes(frame)) throw new ClipError(400, "bad_frame", kind === "cut" ? "A quick cut keeps the original frame." : "Choose vertical, square or 16:9.");
   const start = Number(b.startSeconds), end = Number(b.endSeconds);
   if (!Number.isFinite(start) || !Number.isFinite(end)) throw new ClipError(400, "bad_range", "Give a start and an end.");
-  const length = video.meta?.durationSeconds ?? null;
+  const length = lengthOf(video);   // vm_length
   if (start < 0 || end <= start) throw new ClipError(400, "bad_range", "The end must come after the start.");
   if (length !== null && end > length + 0.5) throw new ClipError(400, "past_end", `The video is ${clock(length)} long.`);
   const seconds = end - start;

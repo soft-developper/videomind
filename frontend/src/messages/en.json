@@ -2265,7 +2265,11 @@
     "stageNotSpeaking": "That person is not on stage.",
     "stageNoMic": "Their microphone is not on.",
     "stageNoCamera": "Their camera is not on.",
-    "stageIsHost": "You are the host. You are on stage already."
+    "stageIsHost": "You are the host. You are on stage already.",
+    "apiBadOrigin": "This site is not allowed to use the VideoMind API.",
+    "apiBadJson": "The request body is not valid JSON.",
+    "apiTooLarge": "The request is too large.",
+    "apiServerError": "Something went wrong on the server. Try again in a moment."
   },
   "notFound": {
     "title": "This page was not found",

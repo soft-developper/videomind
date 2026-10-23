@@ -13,6 +13,7 @@ import { rateLimit } from "../lib/guard.js";
 import { canView, PRIVATE_VIDEO, blockedFor } from "../lib/videoInfo.js";
 import { listNotes, addNote, editNote, deleteNote, NoteError } from "../lib/notes.js";
 import type { VideoRecord } from "../types/video.js";
+import { lengthOf } from "../lib/videoLength.js";   // vm_length
 
 const router = Router();
 
@@ -30,10 +31,6 @@ async function videoFor(req: any, res: any): Promise<VideoRecord | null> {
   if (!canView(video, authOf(req)!.wallet)) { res.status(403).json(blockedFor(video)); return null; }
   return video;
 }
-const lengthOf = (v: VideoRecord) => {
-  const end = Math.max(0, ...(v.ai?.transcript ?? []).map((s) => s.end));
-  return v.meta?.durationSeconds ?? v.media?.durationSeconds ?? (end > 0 ? end + 1 : null);
-};
 const fail = (res: any, err: any) => {
   if (err instanceof NoteError) return res.status(err.status).json({ error: err.message, code: err.code });
   console.error(`[notes] ${err?.message ?? err}`);

@@ -27,6 +27,7 @@ import {
   addPublication, getPublication, publicationsOf, uploadsToday, updatePublication, YouTubeError, type Publication,
 } from "../lib/youtube.js";
 import { queuePublication, YOUTUBE_JOB } from "../services/youtube.js";
+import { lengthOf } from "../lib/videoLength.js";   // vm_length
 
 export const youtubeRouter = Router();
 export const youtubeVideoRouter = Router();
@@ -121,7 +122,7 @@ youtubeVideoRouter.get("/:id/youtube", requireAuth, async (req, res) => {
       publications: (await publicationsOf(video.id)).map(view),
       suggested: {
         title: (video.title ?? "").replace(/[<>]/g, "").slice(0, 100),
-        description: suggestDescription({ summary: video.ai?.summary, chapters: video.ai?.chapters, durationSeconds: video.meta.durationSeconds, link }),
+        description: suggestDescription({ summary: video.ai?.summary, chapters: video.ai?.chapters, durationSeconds: lengthOf(video) ?? undefined, link }),
         tags: (video.tags?.length ? video.tags : (video.ai?.tags ?? [])).slice(0, 15),
       },
       limits: { perDay: perWallet(), usedToday: await uploadsToday(authOf(req)!.wallet) },

@@ -9,6 +9,7 @@ import { rateLimit, clientKey } from "../lib/guard.js";
 import { canView, ownsVideo } from "../lib/videoInfo.js";
 import { parseReport, recordView, ViewError } from "../lib/views.js";
 import { ownerAnalytics, RANGES } from "../lib/analytics.js";
+import { lengthOf } from "../lib/videoLength.js";
 
 export const viewsRouter = Router();
 export const analyticsRouter = Router();
@@ -32,7 +33,7 @@ viewsRouter.post("/:id/views", limitViews, express.text({ type: "text/plain", li
     const wallet = authOf(req)?.wallet;
     if (!canView(video, wallet)) return res.status(404).json({ error: "Video not found" });
     if (ownsVideo(video, wallet)) return res.json({ counted: false, reason: "owner" });
-    const duration = video.meta?.durationSeconds ?? video.media?.durationSeconds ?? null;
+    const duration = lengthOf(video);   // vm_length
     const out = await recordView(video.id, r, clientKey(req), duration);
     return res.json({ counted: out.counted, view: out.view, ...(out.reason ? { reason: out.reason } : {}) });
   } catch (err: any) {

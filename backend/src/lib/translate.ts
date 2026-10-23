@@ -27,6 +27,7 @@ import { reserve, settle, release } from "./credits.js";
 import { withUsage, ownerOf } from "./usage.js";
 import { askClaude, obj, str, num, list, ClaudeError } from "../services/claude.js";
 import type { Chapter, Highlight, TranscriptSegment, VideoRecord } from "../types/video.js";
+import { billedLength } from "./videoLength.js";
 
 export const TRANSLATE_JOB = "translate";
 export const LANGS = ["en", "es", "fr", "ar", "pt"] as const;
@@ -138,11 +139,9 @@ export function insightsOf(v: VideoRecord): string {
   return crypto.createHash("sha1").update(JSON.stringify([a.summary ?? "", a.chapters ?? [], a.highlights ?? []])).digest("hex").slice(0, 16);
 }
 
-/** The length the owner pays for: the video's, or where its transcript ends. */
+/** The length the owner pays for (vm_length: the measured length, never shorter than the transcript). */
 export function minutesOf(v: VideoRecord): number {
-  const end = Math.max(0, ...(v.ai?.transcript ?? []).map((s) => s.end));
-  const secs = v.meta?.durationSeconds ?? v.media?.durationSeconds ?? end;
-  return Math.max(secs, end) / 60;
+  return billedLength(v) / 60;
 }
 
 // ── asking for one ──────────────────────────────────────────────────────────

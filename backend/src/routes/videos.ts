@@ -10,7 +10,7 @@ import { NOT_RETRYABLE, statusForStage } from "../services/pipeline.js";
 import { shelbyBlobUrl } from "../lib/shelbyClient.js";
 import type { VideoRecord } from "../types/video.js";
 // vm_apiguard: wallet checks and rate limits, see src/lib/guard.ts
-import { limitUpload, limitPipeline, limitDelete, rateLimit } from "../lib/guard.js";
+import { limitUpload, limitRetry, limitAnchorCheck, limitDelete, rateLimit } from "../lib/guard.js";
 import { releaseProcessing } from "../lib/charge.js";
 // vm_shelbyhome: public videos play from Shelby once it holds them
 import { afterChange as shelbyAfterChange, shelbyGone } from "../lib/shelbyHome.js";
@@ -48,6 +48,7 @@ import { deleteViewsForVideo } from "../lib/views.js";   // vm_analytics
 // vm_translate: captions in another language, translations removed with the video, chapters translated again
 import { dropTranslations, refreshInsights, getTranslation, isLang } from "../lib/translate.js";
 import { normalizeWallet } from "../lib/auth.js";
+import { lengthOf, measuredLength } from "../lib/videoLength.js";
 
 /**
  * vm_transcribe: a library list needs chapters and a summary, not every
@@ -260,7 +261,7 @@ router.get("/:id/anchors", optionalAuth, async (req, res) => {
 });
 
 // POST /api/videos/:id/anchors/check: look the newest store up on the chain now.
-router.post("/:id/anchors/check", limitPipeline, requireAuth, async (req, res) => {
+router.post("/:id/anchors/check", limitAnchorCheck, requireAuth, async (req, res) => {
   try {
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
@@ -476,7 +477,7 @@ router.get("/:id/jobs", optionalAuth, async (req, res) => {
 // ── POST /api/videos/:id/jobs/:kind/retry ──────────────────────────────────────
 // vm_jobs: run one failed stage again. Stages that already finished are
 // not repeated.
-router.post("/:id/jobs/:kind/retry", limitPipeline, requireAuth, async (req, res) => {
+router.post("/:id/jobs/:kind/retry", limitRetry, requireAuth, async (req, res) => {
   try {
     const video = await store.get(req.params.id);
     if (!video) return res.status(404).json({ error: "Video not found" });
@@ -509,9 +510,7 @@ router.put("/:id/chapters", limitEdit, requireAuth, async (req, res) => {
     if (!video) return res.status(404).json({ error: "Video not found" });
     if (!ownsVideo(video, authOf(req)!.wallet)) return res.status(403).json(NOT_OWNER);
     if (video.status !== "ready") return res.status(409).json({ error: "Chapters can be edited once the video is ready.", code: "not_ready" });
-    const transcriptEnd = Math.max(0, ...(video.ai?.transcript ?? []).map((s) => s.end));
-    const length = video.meta?.durationSeconds ?? video.media?.durationSeconds ?? (transcriptEnd > 0 ? transcriptEnd + 1 : null);
-    const chapters = parseChapters(req.body, length);
+    const chapters = parseChapters(req.body, lengthOf(video));   // vm_length
     await store.update(video.id, { ai: { chapters } });
     // vm_translate: each finished translation gets the new chapters (free)
     const after = await store.get(video.id);
@@ -559,6 +558,9 @@ router.patch("/:id/duration", requireAuth, async (req, res) => {
     if (!video) return res.status(404).json({ error: "Video not found" });
     if (!ownsVideo(video, authOf(req)!.wallet)) return res.status(403).json(NOT_OWNER);
 
+    // vm_length: the browser's length is only a fallback. Once the server has
+    // measured the file it is kept, so a reported length cannot change prices or bounds.
+    if (measuredLength(video) !== null) return res.json({ success: true, ignored: true });
     await store.update(req.params.id, {
       meta: { ...video.meta, durationSeconds },
     });

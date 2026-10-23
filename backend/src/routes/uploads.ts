@@ -1,7 +1,7 @@
 // src/routes/uploads.ts
 // vm_upload: resumable uploads. See src/lib/uploads.ts for how it works.
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { limitUpload, limitPipeline, limitDelete, rateLimit } from "../lib/guard.js";
+import { limitUpload, limitDelete, rateLimit, PROCESS_LIMIT, checkBudget, spendBudget } from "../lib/guard.js";
 import { requireAuth, authOf, sameWallet } from "../lib/auth.js";
 import { getStorage, storageHealth, checkStorage } from "../lib/storage.js";
 import {
@@ -63,6 +63,9 @@ router.post("/", limitUpload, requireAuth, requireStorage, async (req, res) => {
   try {
     const b = (req.body ?? {}) as Record<string, unknown>;
     if (await storagePaused(authOf(req)!.wallet)) return res.status(402).json({ error: STORAGE_UNPAID, code: "storage_unpaid" });
+    // vm_limits: the processing allowance is checked before any byte is sent, and used only once the upload is accepted.
+    // Counted per wallet, not per address, so a class on one network does not share it.
+    if (!checkBudget(PROCESS_LIMIT, req, res, `w:${authOf(req)!.wallet}`)) return;
     const u = await createUpload({
       wallet: authOf(req)!.wallet,
       filename: String(b.filename ?? ""), size: Number(b.size),
@@ -70,6 +73,7 @@ router.post("/", limitUpload, requireAuth, requireStorage, async (req, res) => {
       // A blank title is allowed here: it is then taken from the file name.
       info: parseInfo({ ...b, title: typeof b.title === "string" && b.title.trim() ? b.title : undefined }),
     });
+    spendBudget(PROCESS_LIMIT, req, `w:${authOf(req)!.wallet}`);
     return res.status(201).json({ ...describe(u), title: u.title, videoBlobName: u.videoBlobName, done: [], uploadedBytes: 0 });
   } catch (err) { return fail(res, err); }
 });
@@ -135,7 +139,7 @@ router.put("/:id/parts/:n", limitParts, async (req, res) => {
 });
 
 // ── POST /api/uploads/:id/complete ──────────────────────────────────────────
-router.post("/:id/complete", limitPipeline, requireAuth, async (req, res) => {
+router.post("/:id/complete", requireAuth, async (req, res) => {   // vm_limits: counted when the upload opened
   try {
     const u = await owned(req, res); if (!u) return;
     return res.status(200).json(await completeUpload(u.videoId));

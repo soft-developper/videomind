@@ -75,6 +75,34 @@ export interface LimitOptions {
 }
 
 /**
+ * vm_limits: is there room for one more, without taking it? Answers 429 and
+ * returns false when there is not. Pair with spendBudget once the request
+ * has been accepted, so refused requests never use the budget.
+ */
+export function checkBudget(opts: LimitOptions, req: Request, res: Response, who?: string): boolean {
+  registry.set(opts.name, opts);
+  const now = Date.now();
+  sweep(now);
+  const wait = Math.max(
+    waitFor(`${opts.name}:c:${who ?? clientKey(req)}`, opts.perClient.max, now),
+    waitFor(`${opts.name}:g`, opts.global.max, now)
+  );
+  if (wait <= 0) return true;
+  const mins = Math.max(1, Math.ceil(wait / 60));
+  console.warn(`[guard] 429 family=${opts.name} caller=${clientKey(req)} wait=${wait}s`);
+  recordLimitHit(opts.name, clientKey(req));
+  res.setHeader("Retry-After", String(wait));
+  res.status(429).json({ error: `Too many ${opts.label}. Please try again in about ${mins} minute${mins === 1 ? "" : "s"}.` });
+  return false;
+}
+/** vm_limits: use one unit of budget for an accepted request (see checkBudget). `who` (a wallet) replaces the caller's address. */
+export function spendBudget(opts: LimitOptions, req: Request, who?: string): void {
+  const now = Date.now();
+  count(`${opts.name}:c:${who ?? clientKey(req)}`, opts.perClient.windowMs, now);
+  count(`${opts.name}:g`, opts.global.windowMs, now);
+}
+
+/**
  * Take one unit of budget for this request. Returns true if there was
  * room. Otherwise it has already answered 429 and returns false, and the
  * caller must stop. A rejected request does not consume budget.
@@ -130,12 +158,33 @@ export const AI_LIMIT: LimitOptions = {
 };
 export const limitAi = rateLimit(AI_LIMIT);
 
-/** Starting the pipeline: each call spends a Whisper transcription and a Claude analysis. */
-export const limitPipeline = rateLimit({
+/**
+ * Starting the pipeline: each video spends a Whisper transcription and a
+ * Claude analysis. vm_limits (Part 22a): checked when the upload opens, so
+ * nobody sends a whole file only to be told to wait, and counted only when
+ * the upload is accepted (checkBudget, then spendBudget). Money is guarded by
+ * credits and the provider budgets (Part 20e); this guards the queue.
+ */
+export const PROCESS_LIMIT: LimitOptions = {
   name: "pipeline",
-  label: "uploads being processed",
-  perClient: { max: envInt("LIMIT_PIPELINE_PER_CLIENT_HOUR", 10), windowMs: HOUR },
-  global:    { max: envInt("LIMIT_PIPELINE_GLOBAL_HOUR", 30),     windowMs: HOUR },
+  label: "videos to process",
+  perClient: { max: envInt("LIMIT_PIPELINE_PER_CLIENT_HOUR", 20), windowMs: HOUR },   // per wallet
+  global:    { max: envInt("LIMIT_PIPELINE_GLOBAL_HOUR", 300),    windowMs: HOUR },
+};
+registry.set(PROCESS_LIMIT.name, PROCESS_LIMIT);   // listed on the dashboard before its first use
+/** vm_limits: running a failed step again (its own budget, not the uploads'). */
+export const limitRetry = rateLimit({
+  name: "retry",
+  label: "retries",
+  perClient: { max: envInt("LIMIT_RETRY_PER_CLIENT_HOUR", 30), windowMs: HOUR },
+  global:    { max: envInt("LIMIT_RETRY_GLOBAL_HOUR", 600),    windowMs: HOUR },
+});
+/** vm_limits: asking Shelby again whether a store is confirmed (reads only). */
+export const limitAnchorCheck = rateLimit({
+  name: "anchor_check",
+  label: "Shelby checks",
+  perClient: { max: envInt("LIMIT_ANCHOR_CHECK_PER_CLIENT_10MIN", 30), windowMs: 10 * MIN },
+  global:    { max: envInt("LIMIT_ANCHOR_CHECK_GLOBAL_10MIN", 1000), windowMs: 10 * MIN },
 });
 
 /** Reserving an id and sending a file (up to 2 GB to disk). One upload uses two. */

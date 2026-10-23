@@ -14,6 +14,7 @@ import { canView, PRIVATE_VIDEO, blockedFor } from "../lib/videoInfo.js";
 import { saveProgress, getProgress, listProgress, clearProgress, finished, ProgressError, RESUME_AFTER } from "../lib/progress.js";
 import { thumbUrls } from "./videos.js";
 import type { VideoRecord } from "../types/video.js";
+import { lengthOf } from "../lib/videoLength.js";   // vm_length
 
 const router = Router();
 
@@ -31,7 +32,6 @@ async function videoFor(req: any, res: any): Promise<VideoRecord | null> {
   if (!canView(video, authOf(req)!.wallet)) { res.status(403).json(blockedFor(video)); return null; }
   return video;
 }
-const lengthOf = (v: VideoRecord) => v.meta?.durationSeconds ?? v.media?.durationSeconds ?? null;
 const resumeAt = (p: { positionSeconds: number; durationSeconds: number | null } | null) =>
   p && p.positionSeconds >= RESUME_AFTER && !finished(p.positionSeconds, p.durationSeconds) ? p.positionSeconds : null;
 

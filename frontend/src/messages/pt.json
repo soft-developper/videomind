@@ -2265,7 +2265,11 @@
     "stageNotSpeaking": "Essa pessoa não está no palco.",
     "stageNoMic": "O microfone dessa pessoa não está ligado.",
     "stageNoCamera": "A câmera dessa pessoa não está ligada.",
-    "stageIsHost": "Você é o anfitrião. Já está no palco."
+    "stageIsHost": "Você é o anfitrião. Já está no palco.",
+    "apiBadOrigin": "Este site não tem permissão para usar a API do VideoMind.",
+    "apiBadJson": "O conteúdo da solicitação não é um JSON válido.",
+    "apiTooLarge": "A solicitação é grande demais.",
+    "apiServerError": "Algo deu errado no servidor. Tente de novo em instantes."
   },
   "notFound": {
     "title": "Esta página não foi encontrada",

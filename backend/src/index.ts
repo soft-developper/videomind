@@ -55,7 +55,7 @@ app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS: ${origin} not allowed`));
+    callback(Object.assign(new Error(`CORS: ${origin} not allowed`), { status: 403, code: "bad_origin" }));
   },
   credentials: true,
 }));
@@ -96,6 +96,20 @@ app.get("/api/health", (_req, res) => {
     // vm_media: the FFmpeg version found at startup, or null
     media: mediaHealth(),
   });
+});
+
+// vm_errors (Part 22a): every answer is JSON, never Express's HTML page (which
+// shows a stack trace unless NODE_ENV is production). An unknown API path is a
+// JSON 404; a site that is not allowed, a body that is not JSON or is too large
+// get plain refusals; anything else is logged and answered without details.
+app.use("/api", (_req, res) => { res.status(404).json({ error: "Not found.", code: "not_found" }); });
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (res.headersSent) return next(err);
+  if (err?.code === "bad_origin") return res.status(403).json({ error: "This site is not allowed to use the VideoMind API.", code: "bad_origin" });
+  if (err?.type === "entity.parse.failed") return res.status(400).json({ error: "The request body is not valid JSON.", code: "bad_json" });
+  if (err?.type === "entity.too.large") return res.status(413).json({ error: "The request is too large.", code: "too_large" });
+  console.error(`[api] ${req.method} ${req.path}: ${err?.stack ?? err}`);
+  return res.status(Number(err?.status) >= 400 && Number(err?.status) < 600 ? Number(err.status) : 500).json({ error: "Something went wrong on the server. Try again in a moment.", code: "server_error" });
 });
 
 // vm_shelby09d: the 6-hourly blob renewal cron is gone. Shelby storage is
