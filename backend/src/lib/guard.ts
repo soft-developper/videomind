@@ -26,14 +26,40 @@ export function isWalletAddress(v: unknown): v is string {
 }
 
 /**
- * Best effort caller key. Render forwards the caller in X-Forwarded-For.
- * A caller can forge that header to dodge the per caller limit, which is
- * why every limit also has a global cap that cannot be dodged.
+ * vm_callerip (Part 22b): who the caller is, for per caller limits, view
+ * counting and the security log.
+ *
+ * The first X-Forwarded-For entry is whatever the caller typed: Render keeps
+ * it and adds the real address after it (confirmed on api.vidzmind.xyz on
+ * 23 Oct 2026). On Render (RENDER=true, set by Render) the service sits behind
+ * Cloudflare, which sets True-Client-IP and CF-Connecting-IP to the real
+ * visitor and does not let a caller forge them, so those are read first.
+ * CLIENT_IP_HEADER overrides the list (comma separated header names).
+ * Elsewhere (a local run) the connection's own address is used, so a typed
+ * header means nothing. If Render ever sends neither header, the old first
+ * X-Forwarded-For entry is used and a warning is logged once.
  */
+const ipHeaders = (): string[] => {
+  const set = process.env.CLIENT_IP_HEADER?.trim();
+  if (set) return set.toLowerCase().split(",").map((h) => h.trim()).filter(Boolean);
+  return process.env.RENDER === "true" ? ["true-client-ip", "cf-connecting-ip"] : [];
+};
+const IP_RE = /^[0-9a-fA-F:.]{2,45}$/;
+let warnedNoHeader = false;
 export function clientKey(req: Request): string {
-  const xff = req.headers["x-forwarded-for"];
-  const first = (Array.isArray(xff) ? xff[0] : xff ?? "").split(",")[0].trim();
-  return first || req.socket?.remoteAddress || "unknown";
+  const headers = ipHeaders();
+  for (const h of headers) {
+    const v = req.headers[h];
+    const one = (Array.isArray(v) ? v[0] : v ?? "").trim();
+    if (IP_RE.test(one)) return one;
+  }
+  if (headers.length) {
+    if (!warnedNoHeader) { warnedNoHeader = true; console.warn(`[guard] none of ${headers.join(", ")} arrived; using the first X-Forwarded-For entry, which a caller can forge`); }
+    const xff = req.headers["x-forwarded-for"];
+    const first = (Array.isArray(xff) ? xff[0] : xff ?? "").split(",")[0].trim();
+    return first || req.socket?.remoteAddress || "unknown";
+  }
+  return req.socket?.remoteAddress || "unknown";
 }
 
 interface Bucket { count: number; resetAt: number }
